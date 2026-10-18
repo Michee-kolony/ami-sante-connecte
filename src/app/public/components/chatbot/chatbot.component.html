@@ -1,0 +1,112 @@
+@if (visible) {
+  <div class="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-3 sm:bottom-8 sm:right-8">
+
+    <!-- Fenêtre de discussion -->
+    @if (ouvert) {
+      <section class="flex h-[min(34rem,calc(100dvh-7.5rem))] w-[calc(100vw-2.5rem)] origin-bottom-right flex-col overflow-hidden rounded-3xl bg-white shadow-2xl shadow-brand-950/25 ring-1 ring-slate-900/5 motion-safe:animate-chat-in dark:bg-slate-900 dark:shadow-black/50 dark:ring-white/10 sm:w-[23rem]"
+               role="dialog" [attr.aria-label]="'Questions fréquentes' | t">
+        <!-- En-tête -->
+        <header class="relative flex items-center gap-3 overflow-hidden bg-gradient-to-br from-brand-700 via-brand-800 to-brand-950 px-4 py-3.5 text-white">
+          <div class="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-accent-500/30 blur-2xl"></div>
+          <div class="relative flex h-11 w-11 flex-none items-center justify-center rounded-full bg-white p-1 shadow">
+            <img src="images/logo-icon.png" alt="" class="h-full w-full object-contain">
+            <span class="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-accent-400 ring-2 ring-brand-800"></span>
+          </div>
+          <div class="relative min-w-0 flex-1">
+            <p class="truncate font-semibold">{{ 'Assistant AMI' | t }}</p>
+            <p class="truncate text-xs text-brand-100">{{ 'Questions fréquentes · réponse immédiate' | t }}</p>
+          </div>
+          <button type="button" class="relative flex h-9 w-9 items-center justify-center rounded-full text-brand-100 transition hover:bg-white/10 hover:text-white"
+                  (click)="basculerSon()" [title]="(sonActif ? 'Couper le son' : 'Activer le son') | t" [attr.aria-label]="(sonActif ? 'Couper le son' : 'Activer le son') | t">
+            <i class="fa-solid" [class]="sonActif ? 'fa-volume-high' : 'fa-volume-xmark'"></i>
+          </button>
+          <button type="button" class="relative flex h-9 w-9 items-center justify-center rounded-full text-brand-100 transition hover:bg-white/10 hover:text-white"
+                  (click)="fermer()" [attr.aria-label]="'Fermer' | t">
+            <i class="fa-solid fa-chevron-down"></i>
+          </button>
+        </header>
+
+        <!-- Fil -->
+        <div #fil class="min-h-0 flex-1 space-y-2.5 overflow-y-auto bg-slate-50 px-3.5 py-4 dark:bg-slate-950/50" aria-live="polite">
+          @for (b of bulles; track $index) {
+            <div class="flex motion-safe:animate-bulle-in" [class]="b.de === 'moi' ? 'justify-end' : 'justify-start'">
+              <div class="max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed shadow-sm"
+                   [class]="b.de === 'moi'
+                     ? 'rounded-br-md bg-brand-700 text-white dark:bg-brand-600'
+                     : b.urgent
+                       ? 'rounded-bl-md bg-rose-50 text-rose-900 ring-1 ring-rose-200 dark:bg-rose-500/10 dark:text-rose-100 dark:ring-rose-500/30'
+                       : 'rounded-bl-md bg-white text-slate-700 dark:bg-slate-800 dark:text-slate-200'">
+                @if (b.urgent) { <i class="fa-solid fa-triangle-exclamation mr-1 text-rose-500"></i> }
+                {{ b.brut ? b.texte : (b.texte | t) }}
+                @if (b.lien) {
+                  <a [routerLink]="b.lien.route" [fragment]="b.lien.fragment" (click)="fermer()"
+                     class="mt-2 flex items-center gap-1.5 text-xs font-semibold text-brand-700 hover:underline dark:text-brand-300">
+                    {{ b.lien.texte | t }} <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                  </a>
+                }
+              </div>
+            </div>
+          }
+
+          @if (frappe) {
+            <div class="flex justify-start motion-safe:animate-bulle-in" [attr.aria-label]="'L’assistant écrit…' | t">
+              <div class="flex items-center gap-1 rounded-2xl rounded-bl-md bg-white px-4 py-3.5 shadow-sm dark:bg-slate-800">
+                <span class="h-2 w-2 rounded-full bg-slate-400 motion-safe:animate-point"></span>
+                <span class="h-2 w-2 rounded-full bg-slate-400 motion-safe:animate-point [animation-delay:150ms]"></span>
+                <span class="h-2 w-2 rounded-full bg-slate-400 motion-safe:animate-point [animation-delay:300ms]"></span>
+              </div>
+            </div>
+          }
+
+          @if (!frappe && suggestions.length) {
+            <div class="flex flex-col items-end gap-1.5 pt-1 motion-safe:animate-bulle-in">
+              @for (f of suggestions; track f.question) {
+                <button type="button" (click)="choisir(f)"
+                        class="max-w-[90%] rounded-full border px-3.5 py-1.5 text-left text-xs font-medium transition hover:-translate-y-0.5"
+                        [class]="f.urgent
+                          ? 'border-rose-200 bg-white text-rose-700 hover:bg-rose-50 dark:border-rose-500/30 dark:bg-slate-900 dark:text-rose-300'
+                          : 'border-brand-200 bg-white text-brand-700 hover:bg-brand-50 dark:border-brand-500/30 dark:bg-slate-900 dark:text-brand-300 dark:hover:bg-brand-500/10'">
+                  {{ f.question | t }}
+                </button>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- Saisie -->
+        <form class="flex items-center gap-2 border-t border-slate-100 bg-white p-2.5 dark:border-slate-800 dark:bg-slate-900" (ngSubmit)="envoyer()">
+          <input name="saisie" [(ngModel)]="saisie" maxlength="300" autocomplete="off"
+                 class="input flex-1 rounded-full border-transparent bg-slate-100 py-2.5 dark:border-transparent dark:bg-slate-800"
+                 [placeholder]="'Posez votre question…' | t">
+          <button type="submit" class="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-brand-700 text-white transition hover:bg-brand-800 disabled:opacity-40 dark:bg-brand-600"
+                  [disabled]="!saisie.trim() || frappe" [attr.aria-label]="'Envoyer' | t">
+            <i class="fa-solid fa-paper-plane text-sm"></i>
+          </button>
+        </form>
+      </section>
+    }
+
+    <!-- Bulle d'accroche (mobile ou visite déjà faite) -->
+    @if (accroche && !ouvert) {
+      <button type="button" (click)="ouvrir()"
+              class="relative max-w-[16rem] rounded-2xl rounded-br-md bg-white px-4 py-3 text-left text-sm text-slate-700 shadow-xl ring-1 ring-slate-900/5 motion-safe:animate-chat-in dark:bg-slate-800 dark:text-slate-200 dark:ring-white/10">
+        <span class="block font-semibold text-slate-900 dark:text-white">{{ 'Bonjour 👋' | t }}</span>
+        {{ 'Une question sur la grossesse ou la vaccination ? Je peux vous aider.' | t }}
+        <span class="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-slate-200 text-[10px] text-slate-600 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-300"
+              (click)="$event.stopPropagation(); accroche = false" role="button" [attr.aria-label]="'Fermer' | t">
+          <i class="fa-solid fa-xmark"></i>
+        </span>
+      </button>
+    }
+
+    <!-- Bouton flottant -->
+    <button type="button" (click)="ouvert ? fermer() : ouvrir()"
+            class="group relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand-600 to-accent-600 text-white shadow-xl shadow-brand-900/30 transition hover:scale-105 focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-300 motion-safe:animate-pop"
+            [attr.aria-label]="(ouvert ? 'Fermer l’assistant' : 'Ouvrir l’assistant') | t" [attr.aria-expanded]="ouvert">
+      @if (!ouvert) {
+        <span class="absolute inset-0 rounded-full bg-accent-400/50 motion-safe:animate-ping [animation-iteration-count:3]"></span>
+      }
+      <i class="fa-solid relative text-xl transition duration-300" [class]="ouvert ? 'fa-xmark rotate-90' : 'fa-comments'"></i>
+    </button>
+  </div>
+}

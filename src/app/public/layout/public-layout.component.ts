@@ -4,11 +4,12 @@ import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
 import { LangueToggleComponent } from '../../shared/i18n/langue-toggle.component';
 import { TraduirePipe } from '../../shared/i18n/traduire.pipe';
 import { RetourHautComponent } from '../../shared/retour-haut.component';
+import { ChatbotComponent } from '../components/chatbot/chatbot.component';
 
 @Component({
   selector: 'app-public-layout',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, ThemeToggleComponent, LangueToggleComponent, TraduirePipe, RetourHautComponent],
+  imports: [RouterOutlet, RouterLink, ThemeToggleComponent, LangueToggleComponent, TraduirePipe, RetourHautComponent, ChatbotComponent],
   templateUrl: './public-layout.component.html',
 })
 export class PublicLayoutComponent {

@@ -32,6 +32,19 @@
     <router-outlet />
   </main>
 
+  <!-- Vagues au-dessus du pied de page -->
+  <div class="relative -mb-px h-24 overflow-hidden sm:h-36" aria-hidden="true">
+    <svg class="absolute bottom-0 left-0 h-full w-[200%] motion-safe:animate-vague-lente" viewBox="0 0 2880 160" preserveAspectRatio="none">
+      <path d="M0,62 C180,96 540,28 720,62 C900,96 1260,28 1440,62 C1620,96 1980,28 2160,62 C2340,96 2700,28 2880,62 L2880,160 L0,160 Z" class="fill-accent-500/35"></path>
+    </svg>
+    <svg class="absolute bottom-0 left-0 h-full w-[200%] motion-safe:animate-vague-rapide [animation-direction:reverse]" viewBox="0 0 2880 160" preserveAspectRatio="none">
+      <path d="M0,88 C240,118 720,58 960,88 C1200,118 1680,58 1920,88 C2160,118 2640,58 2880,88 L2880,160 L0,160 Z" class="fill-brand-600/55"></path>
+    </svg>
+    <svg class="absolute bottom-0 left-0 h-full w-[200%] motion-safe:animate-vague-lente [animation-duration:30s]" viewBox="0 0 2880 160" preserveAspectRatio="none">
+      <path d="M0,124 C360,142 1080,106 1440,124 C1800,142 2520,106 2880,124 L2880,160 L0,160 Z" class="fill-brand-950"></path>
+    </svg>
+  </div>
+
   <footer class="bg-brand-950 text-slate-400">
     <div class="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-4 lg:px-8">
       <div class="md:col-span-2">
@@ -75,4 +88,5 @@
   </footer>
 
   <app-retour-haut />
+  <app-chatbot />
 </div>

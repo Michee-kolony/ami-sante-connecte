@@ -191,6 +191,50 @@ export const LINGALA: Record<string, string> = {
     'Tozwi sango na yo malamu, tokozongisela yo eyano noki.',
   'Envoyer un autre message': 'Tinda sango mosusu',
 
+  // --- Chatbot FAQ ------------------------------------------------------------
+  'Questions fréquentes': 'Mituna oyo batunaka mingi',
+  'Assistant AMI': 'Mosungi ya AMI',
+  'Questions fréquentes · réponse immédiate': 'Mituna oyo batunaka mingi · eyano noki',
+  'Couper le son': 'Kanga lokito',
+  'Activer le son': 'Fungola lokito',
+  'L’assistant écrit…': 'Mosungi azali kokoma…',
+  'Posez votre question…': 'Tuna motuna na yo…',
+  'Envoyer': 'Tinda',
+  'Bonjour 👋': 'Mbote 👋',
+  'Une question sur la grossesse ou la vaccination ? Je peux vous aider.': 'Ozali na motuna na ntina ya zemi to mangwele ? Nakoki kosalisa yo.',
+  'Ouvrir l’assistant': 'Fungola mosungi',
+  'Fermer l’assistant': 'Kanga mosungi',
+  'Bonjour 👋 Je suis l’assistant d’AMI Santé Connect.': 'Mbote 👋 Nazali mosungi ya AMI Santé Connect.',
+  'Choisissez une question ou écrivez la vôtre.': 'Pona motuna to komá oyo na yo.',
+  'Je n’ai pas trouvé de réponse à votre question. Écrivez à notre équipe, elle vous répondra.':
+    'Nazwi eyano te mpo na motuna na yo. Komela basáli na biso, bakozongisela yo.',
+  'Formulaire de contact': 'Formulaire ya kosolola',
+  'Voir le contact': 'Tala esika ya kokutana',
+  'Qu’est-ce qu’AMI Santé Connect ?': 'AMI Santé Connect ezali nini ?',
+  'C’est un outil numérique qui aide les équipes de santé à enregistrer et suivre les femmes enceintes lors des consultations prénatales, et à suivre la vaccination des enfants, même sans connexion internet.':
+    'Ezali esaleli ya numérique oyo esalisaka basáli ya bokolongono kokoma mpe kolanda basi ya zemi na botaleli ya zemi, mpe kolanda mangwele ya bana, ata Internet ezali te.',
+  'Quand commencer mes consultations prénatales ?': 'Ntango nini nabanda botaleli ya zemi ?',
+  'Dès que vous pensez être enceinte. L’OMS recommande au moins 8 contacts avec un professionnel de santé pendant la grossesse. Un suivi régulier permet de repérer tôt les complications.':
+    'Soki kaka okanisi ozali na zemi. OMS elingi ete omona mosáli ya bokolongono mbala 8 to koleka na tango ya zemi. Bolandi ya mbala na mbala esalisaka komona mikakatano noki.',
+  'Quels sont les signes d’urgence pendant la grossesse ?': 'Bilembo nini ya likama na tango ya zemi ?',
+  'Allez immédiatement à l’hôpital en cas de saignement, de fortes douleurs au ventre, de fièvre, de maux de tête violents ou de vision trouble, de convulsions, de perte de liquide, ou si le bébé ne bouge plus.':
+    'Kende noki na lopitalo soki makila ebimi, soki libumu ezali kopota makasi, soki ozali na fièvre, soki motó ezali kopota makasi to miso ezali komona malamu te, soki ozali kobeta ndeke (convulsions), soki mai ebimi, to soki mwana azali lisusu koningana te.',
+  'Quels vaccins pour mon bébé ?': 'Mangwele nini mpo na mwana na ngai ?',
+  'Votre bébé reçoit des vaccins à la naissance, à 6, 10 et 14 semaines, puis à 9 mois (dont la rougeole et la fièvre jaune). Gardez bien son carnet : l’agent de vaccination vous indiquera la prochaine date.':
+    'Mwana na yo azwaka mangwele na mbotama, na mposo 6, 10 mpe 14, sima na sanza 9 (elongo na rougeole mpe fièvre jaune). Batelá buku na ye malamu : mosáli ya mangwele akoyebisa yo mokolo oyo ekolanda.',
+  'Vais-je recevoir des rappels de rendez-vous ?': 'Nakozwa bokundoli ya ba rendez-vous ?',
+  'Oui, si vous l’acceptez. Les rappels sont envoyés par SMS, appel ou WhatsApp selon votre choix, avec un message discret qui ne contient aucune information médicale.':
+    'Ee, soki ondimi. Ba bokundoli etindamaka na SMS, appel to WhatsApp ndenge oponi, na sango ya sekele oyo ezali na sango ya maladi te.',
+  'Mes données sont-elles protégées ?': 'Ba données na ngai ebatelami ?',
+  'Oui. Seul le personnel autorisé accède à votre dossier, chaque accès est enregistré, et les échanges sont chiffrés. Vous pouvez retirer votre accord pour les messages à tout moment.':
+    'Ee. Kaka basáli oyo bapesameli ndingisa nde bakoki kotala dossier na yo, mbala nyonso ekomamaka, mpe bokabolani ebombami. Okoki kozongisa ndingisa na yo mpo na ba message ntango nyonso.',
+  'Où se trouve la structure pilote ?': 'Lopitalo ya komeka ezali wapi ?',
+  'À l’Hôpital Militaire de la Garde Républicaine, Camp Colonel Tshatshi, Zone de Santé Militaire Kokolo, à Kinshasa.':
+    'Na Lopitalo ya Basoda ya Garde Républicaine, Camp Colonel Tshatshi, Zone de Santé Militaire Kokolo, na Kinshasa.',
+  'Je suis un professionnel de santé': 'Nazali mosáli ya bokolongono',
+  'Bienvenue ! Connectez-vous à l’espace professionnel avec votre compte individuel pour enregistrer et suivre les patientes.':
+    'Boyei malamu ! Kota na esika ya basáli na compte na yo moko mpo na kokoma mpe kolanda bamama.',
+
   // --- Pied de page -------------------------------------------------------------
   'Des données fiables pour une meilleure santé de la mère, de l’enfant et de la communauté.':
     'Ba données ya solo mpo na bokolongono malamu ya mama, ya mwana mpe ya lisanga.',
