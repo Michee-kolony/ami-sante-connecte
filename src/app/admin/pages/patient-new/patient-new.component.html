@@ -1,0 +1,473 @@
+<div class="mx-auto max-w-7xl space-y-6">
+  <!-- En-tête -->
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <nav class="mb-1 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+        <a routerLink="/admin/patientes" class="hover:text-brand-700 dark:hover:text-brand-300">Patientes</a>
+        <i class="fa-solid fa-chevron-right text-[9px]"></i>
+        <span class="text-slate-700 dark:text-slate-200">Nouvel enregistrement</span>
+      </nav>
+      <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Enregistrement CPN</h1>
+      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Première consultation prénatale · {{ structure.nom }}</p>
+    </div>
+    <div class="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-xs">
+      <i class="fa-solid fa-fingerprint text-slate-400"></i>
+      <span class="text-slate-500 dark:text-slate-400">Identifiant AMI</span>
+      <span class="font-mono font-semibold text-slate-900 dark:text-white">Attribué à l’enregistrement</span>
+    </div>
+  </div>
+
+  @if (saved) {
+    <div class="flex items-start gap-4 rounded-2xl border p-5"
+         [class]="saved === 'valide' ? 'border-accent-200 dark:border-accent-500/30 bg-accent-50 dark:bg-accent-500/10' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'">
+      <div class="flex h-11 w-11 flex-none items-center justify-center rounded-xl"
+           [class]="saved === 'valide' ? 'bg-accent-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'">
+        <i class="fa-solid" [class]="saved === 'valide' ? 'fa-check' : 'fa-floppy-disk'"></i>
+      </div>
+      <div class="flex-1">
+        <p class="font-semibold text-slate-900 dark:text-white">{{ saved === 'valide' ? 'Dossier créé et validé' : 'Brouillon enregistré' }}</p>
+        <p class="mt-0.5 text-sm text-slate-600 dark:text-slate-300">
+          Identifiant attribué : <span class="font-mono font-semibold">AMI-LOC-9B21E4</span> (local, en attente de synchronisation).
+          Le contrôle de doublons sera relancé à la synchronisation.
+        </p>
+      </div>
+      <a routerLink="/admin/patientes/AMI-LOC-7F3A2C" class="btn-secondary hidden sm:inline-flex">Voir le dossier</a>
+    </div>
+  }
+
+  <!-- Stepper -->
+  <div class="card p-4 sm:p-5">
+    <ol class="grid grid-cols-5 gap-2">
+      @for (s of steps; track s.title; let i = $index) {
+        <li>
+          <button type="button" (click)="goTo(i)" class="group flex w-full flex-col items-center gap-2 text-center sm:flex-row sm:text-left">
+            <span class="flex h-10 w-10 flex-none items-center justify-center rounded-full text-sm font-semibold transition"
+                  [class]="i < step ? 'bg-accent-500 text-white' : i === step ? 'bg-brand-700 text-white ring-4 ring-brand-100 dark:ring-brand-500/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:bg-slate-200 dark:group-hover:bg-slate-700'">
+              @if (i < step) { <i class="fa-solid fa-check"></i> } @else { <i class="fa-solid {{ s.icon }}"></i> }
+            </span>
+            <span class="hidden min-w-0 md:block">
+              <span class="flex items-center gap-1.5 text-sm font-semibold" [class]="i === step ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'">
+                {{ s.title }}
+                @if (s.clinical) { <i class="fa-solid fa-user-nurse text-[11px] text-rose-500" title="Réservé au personnel clinique"></i> }
+              </span>
+              <span class="block truncate text-xs text-slate-400">{{ s.subtitle }}</span>
+            </span>
+          </button>
+        </li>
+      }
+    </ol>
+    <div class="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+      <div class="h-full rounded-full bg-gradient-to-r from-brand-700 to-accent-500 transition-all duration-300" [style.width.%]="progress"></div>
+    </div>
+  </div>
+
+  <div class="grid gap-6 lg:grid-cols-3">
+    <!-- Formulaire -->
+    <form class="card lg:col-span-2" (ngSubmit)="next()">
+      <div class="card-header">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">Étape {{ step + 1 }} sur {{ steps.length }}</p>
+          <h2 class="mt-0.5 text-lg font-semibold text-slate-900 dark:text-white">{{ steps[step].title }}</h2>
+        </div>
+        @if (steps[step].clinical) {
+          <span class="badge bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300 ring-1 ring-rose-200 dark:ring-rose-500/30"><i class="fa-solid fa-user-nurse"></i> Personnel clinique</span>
+        }
+      </div>
+
+      <div class="space-y-6 p-5 sm:p-6">
+        @switch (step) {
+          <!-- ÉTAPE 1 : Identité -->
+          @case (0) {
+            <div class="grid gap-5 sm:grid-cols-3">
+              <div>
+                <label class="label" for="nom">Nom <span class="req">*</span></label>
+                <input id="nom" name="nom" class="input uppercase" [(ngModel)]="form.nom" placeholder="ex. KABEYA">
+              </div>
+              <div>
+                <label class="label" for="postnom">Postnom</label>
+                <input id="postnom" name="postnom" class="input uppercase" [(ngModel)]="form.postnom" placeholder="ex. MUJINGA">
+              </div>
+              <div>
+                <label class="label" for="prenom">Prénom</label>
+                <input id="prenom" name="prenom" class="input" [(ngModel)]="form.prenom" placeholder="ex. Esther">
+              </div>
+            </div>
+            <p class="hint -mt-3"><i class="fa-solid fa-circle-info mr-1"></i>Noms composés et caractères locaux acceptés. Postnom et prénom selon l’usage local.</p>
+
+            <div>
+              <span class="label">Date de naissance ou âge déclaré <span class="req">*</span></span>
+              <div class="inline-flex rounded-xl bg-slate-100 dark:bg-slate-800 p-1 text-sm">
+                <button type="button" class="rounded-lg px-4 py-1.5 font-medium transition"
+                        [class]="form.ageMode === 'date' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'"
+                        (click)="form.ageMode = 'date'">Date de naissance</button>
+                <button type="button" class="rounded-lg px-4 py-1.5 font-medium transition"
+                        [class]="form.ageMode === 'age' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'"
+                        (click)="form.ageMode = 'age'">Âge déclaré</button>
+              </div>
+              <div class="mt-3 grid gap-5 sm:grid-cols-2">
+                @if (form.ageMode === 'date') {
+                  <input type="date" name="ddn" class="input" [(ngModel)]="form.dateNaissance" [max]="today">
+                } @else {
+                  <div class="relative">
+                    <input type="number" name="age" class="input pr-14" [(ngModel)]="form.ageDeclare" min="0" placeholder="ex. 24">
+                    <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-slate-400">ans</span>
+                  </div>
+                }
+                @if (ageCalcule !== null) {
+                  <div class="flex items-center gap-2 rounded-xl px-3.5 text-sm"
+                       [class]="ageImprobable ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-300' : 'bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300'">
+                    <i class="fa-solid" [class]="ageImprobable ? 'fa-triangle-exclamation text-amber-500' : 'fa-cake-candles text-slate-400'"></i>
+                    {{ ageCalcule }} ans{{ ageImprobable ? ' — valeur improbable, à vérifier (non bloquant)' : '' }}
+                  </div>
+                }
+              </div>
+            </div>
+
+            <div>
+              <label class="label" for="piece">Pièce / identifiant national <span class="text-xs font-normal text-slate-400">(facultatif)</span></label>
+              <div class="relative">
+                <i class="fa-solid fa-id-card pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input id="piece" name="piece" class="input pl-10" [(ngModel)]="form.piece" placeholder="Carte d’électeur, carte militaire…">
+              </div>
+            </div>
+          }
+
+          <!-- ÉTAPE 2 : Contact -->
+          @case (1) {
+            <div class="grid gap-5 sm:grid-cols-2">
+              <div>
+                <label class="label" for="tel1">Téléphone principal</label>
+                <div class="flex">
+                  <span class="inline-flex items-center gap-1.5 rounded-l-xl border border-r-0 border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-3 text-sm text-slate-600 dark:text-slate-300">🇨🇩 +243</span>
+                  <input id="tel1" name="tel1" class="input rounded-l-none" [class.border-amber-400]="telInvalide" [(ngModel)]="form.tel1" placeholder="81 234 5678" inputmode="tel">
+                </div>
+                @if (telInvalide) {
+                  <p class="mt-1.5 text-xs text-amber-700 dark:text-amber-300"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Longueur inhabituelle — vérifiez le numéro.</p>
+                }
+                <label class="mt-2.5 flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                  <input type="checkbox" name="partage" class="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-brand-600 dark:text-brand-400 focus:ring-brand-500" [(ngModel)]="form.tel1Partage">
+                  Numéro partagé (conjoint, famille…)
+                </label>
+              </div>
+              <div>
+                <label class="label" for="tel2">Téléphone secondaire <span class="text-xs font-normal text-slate-400">(facultatif)</span></label>
+                <div class="flex">
+                  <span class="inline-flex items-center rounded-l-xl border border-r-0 border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-3 text-sm text-slate-600 dark:text-slate-300">+243</span>
+                  <input id="tel2" name="tel2" class="input rounded-l-none" [(ngModel)]="form.tel2" placeholder="99 000 0000" inputmode="tel">
+                </div>
+              </div>
+            </div>
+
+            <div class="rounded-2xl border border-slate-200 dark:border-slate-800">
+              <div class="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 px-4 py-3">
+                <i class="fa-solid fa-file-signature text-brand-600 dark:text-brand-400"></i>
+                <div>
+                  <p class="text-sm font-semibold text-slate-900 dark:text-white">Consentement au contact</p>
+                  <p class="text-xs text-slate-500 dark:text-slate-400">Lire le texte de consentement v1.2 à la patiente, puis enregistrer sa réponse par canal.</p>
+                </div>
+              </div>
+              <ul class="divide-y divide-slate-100 dark:divide-slate-800">
+                @for (c of canaux; track c.key) {
+                  <li class="flex items-center gap-3 px-4 py-3">
+                    <span class="flex h-9 w-9 items-center justify-center rounded-lg {{ c.color }}"><i class="{{ c.icon }}"></i></span>
+                    <span class="flex-1 text-sm font-medium text-slate-700 dark:text-slate-200">{{ c.label }}</span>
+                    <div class="inline-flex rounded-lg border border-slate-200 dark:border-slate-800 p-0.5 text-xs font-semibold">
+                      <button type="button" class="rounded-md px-3 py-1.5 transition"
+                              [class]="$any(form.consent)[c.key] === true ? 'bg-accent-500 text-white' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50'"
+                              (click)="setConsent($any(c.key), true)">Oui</button>
+                      <button type="button" class="rounded-md px-3 py-1.5 transition"
+                              [class]="$any(form.consent)[c.key] === false ? 'bg-rose-500 text-white' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50'"
+                              (click)="setConsent($any(c.key), false)">Non</button>
+                    </div>
+                  </li>
+                }
+              </ul>
+              <div class="rounded-b-2xl bg-slate-50 dark:bg-slate-800/50 px-4 py-2.5 text-xs text-slate-500 dark:text-slate-400">
+                <i class="fa-solid fa-clock-rotate-left mr-1"></i> Enregistré avec la date, l’agent ({{ user.nom }}) et la version du texte. Révocable à tout moment.
+              </div>
+            </div>
+          }
+
+          <!-- ÉTAPE 3 : Résidence & structure -->
+          @case (2) {
+            <div class="grid gap-5 sm:grid-cols-2">
+              <div>
+                <label class="label" for="province">Province</label>
+                <select id="province" name="province" class="input" [(ngModel)]="form.province">
+                  @for (p of ['Kinshasa', 'Kongo-Central']; track p) { <option>{{ p }}</option> }
+                </select>
+              </div>
+              <div>
+                <label class="label" for="commune">Ville / commune</label>
+                <select id="commune" name="commune" class="input" [(ngModel)]="form.commune">
+                  @for (c of communes[form.province]; track c) { <option>{{ c }}</option> }
+                </select>
+              </div>
+              <div>
+                <label class="label" for="quartier">Quartier</label>
+                <input id="quartier" name="quartier" class="input" [(ngModel)]="form.quartier" placeholder="ex. Camp Tshatshi">
+              </div>
+              <div>
+                <label class="label" for="avenue">Avenue / n°</label>
+                <input id="avenue" name="avenue" class="input" [(ngModel)]="form.avenue" placeholder="ex. Av. de la Libération, 12">
+              </div>
+              <div class="sm:col-span-2">
+                <label class="label" for="repere">Repère de localisation <span class="text-xs font-normal text-slate-400">(seulement si utile au suivi)</span></label>
+                <textarea id="repere" name="repere" rows="2" class="input" [(ngModel)]="form.repere" placeholder="ex. Derrière l’église, portail bleu"></textarea>
+              </div>
+            </div>
+
+            <div class="rounded-2xl bg-brand-50/60 dark:bg-brand-500/10 p-4 ring-1 ring-brand-100 dark:ring-brand-500/20">
+              <p class="mb-3 flex items-center gap-2 text-sm font-semibold text-brand-900 dark:text-white"><i class="fa-solid fa-hospital"></i> Structure de prise en charge</p>
+              <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label class="label" for="structure">Structure sanitaire <span class="req">*</span></label>
+                  <input id="structure" class="input" [value]="structure.nom" disabled>
+                </div>
+                <div>
+                  <label class="label" for="aire">Zone / aire de santé</label>
+                  <select id="aire" name="aire" class="input" [(ngModel)]="form.aire">
+                    <option>AS Camp Tshatshi</option>
+                    <option>AS Kokolo</option>
+                  </select>
+                  <p class="hint">{{ structure.zone }}</p>
+                </div>
+              </div>
+            </div>
+          }
+
+          <!-- ÉTAPE 4 : Obstétrique -->
+          @case (3) {
+            <div class="grid gap-5 sm:grid-cols-2">
+              <div>
+                <label class="label" for="dc">Date de la consultation <span class="req">*</span></label>
+                <input id="dc" type="date" name="dc" class="input" [class.border-amber-400]="consultationFuture" [(ngModel)]="form.dateConsultation">
+                @if (consultationFuture) {
+                  <p class="mt-1.5 text-xs text-amber-700 dark:text-amber-300"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Date future — utilisez la saisie planifiée.</p>
+                }
+              </div>
+              <div>
+                <label class="label" for="tc">Type de consultation <span class="req">*</span></label>
+                <select id="tc" name="tc" class="input" [(ngModel)]="form.typeConsultation">
+                  <option>Première CPN</option>
+                  <option>Suivi</option>
+                  <option>Transfert</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <p class="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white"><i class="fa-regular fa-calendar text-accent-600 dark:text-accent-400"></i> Date des dernières règles (DDR)</p>
+                <div class="inline-flex rounded-xl bg-slate-100 dark:bg-slate-800 p-1 text-xs font-semibold">
+                  <button type="button" class="rounded-lg px-3 py-1.5 transition" [class]="form.ddrConnue ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'" (click)="form.ddrConnue = true">Connue</button>
+                  <button type="button" class="rounded-lg px-3 py-1.5 transition" [class]="!form.ddrConnue ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'" (click)="form.ddrConnue = false">Inconnue</button>
+                </div>
+              </div>
+
+              @if (form.ddrConnue) {
+                <div class="mt-4 grid gap-5 sm:grid-cols-2">
+                  <div>
+                    <label class="label" for="ddr">DDR</label>
+                    <input id="ddr" type="date" name="ddr" class="input" [class.border-rose-400]="ddrApresConsultation" [(ngModel)]="form.ddr">
+                    @if (ddrApresConsultation) {
+                      <p class="mt-1.5 text-xs text-rose-700 dark:text-rose-300"><i class="fa-solid fa-circle-exclamation mr-1"></i>La DDR est postérieure à la date de consultation.</p>
+                    }
+                  </div>
+                  <div>
+                    <span class="label">Fiabilité de la DDR <span class="req">*</span></span>
+                    <div class="grid grid-cols-3 gap-2">
+                      @for (f of ['Fiable', 'Incertaine', 'Inconnue']; track f) {
+                        <button type="button" class="rounded-xl border px-2 py-2.5 text-xs font-semibold transition"
+                                [class]="form.ddrFiabilite === f ? 'border-brand-600 bg-brand-50 dark:bg-brand-500/10 text-brand-800 dark:text-brand-300 ring-2 ring-brand-500/20' : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50'"
+                                (click)="form.ddrFiabilite = f">{{ f }}</button>
+                      }
+                    </div>
+                  </div>
+                </div>
+              } @else {
+                <div class="mt-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 p-4">
+                  <p class="text-sm text-slate-600 dark:text-slate-300"><i class="fa-solid fa-circle-info mr-1 text-brand-600 dark:text-brand-400"></i>
+                    Aucune date ne sera inventée. Saisissez l’âge gestationnel estimé et la méthode utilisée.</p>
+                  <div class="mt-4 grid gap-4 sm:grid-cols-3">
+                    <div>
+                      <label class="label" for="agm">Méthode</label>
+                      <select id="agm" name="agm" class="input" [(ngModel)]="form.agMethode">
+                        <option>Échographie</option>
+                        <option>Examen clinique</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="label" for="ags">Semaines (SA)</label>
+                      <input id="ags" type="number" name="ags" class="input" [(ngModel)]="form.agSemaines" min="0" max="44" placeholder="16">
+                    </div>
+                    <div>
+                      <label class="label" for="agj">Jours</label>
+                      <input id="agj" type="number" name="agj" class="input" [(ngModel)]="form.agJours" min="0" max="6" placeholder="0">
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+
+            <div class="grid gap-5 sm:grid-cols-2">
+              <div>
+                <label class="label" for="dpa">DPA validée cliniquement <span class="text-xs font-normal text-slate-400">(si différente)</span></label>
+                <input id="dpa" type="date" name="dpa" class="input" [class.border-amber-400]="ecartSensible" [(ngModel)]="form.dpaSaisie">
+                @if (ecartSensible) {
+                  <p class="mt-1.5 text-xs text-amber-700 dark:text-amber-300"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Écart de {{ ecartDpa }} jours avec la DPA calculée.</p>
+                }
+              </div>
+              <div>
+                <label class="label" for="risque">Grossesse à risque / facteur</label>
+                <select id="risque" name="risque" class="input" [(ngModel)]="form.risque">
+                  <option>Aucun facteur identifié</option>
+                  <option>Antécédent de césarienne</option>
+                  <option>Hypertension</option>
+                  <option>Grossesse multiple</option>
+                  <option>Âge &lt; 18 ans ou &gt; 35 ans</option>
+                  <option>Autre (selon protocole)</option>
+                </select>
+                <p class="hint"><i class="fa-solid fa-lock mr-1"></i>Champ clinique — aucun diagnostic déduit automatiquement.</p>
+              </div>
+            </div>
+
+            @if (ecartSensible) {
+              <div>
+                <label class="label" for="just">Justification clinique de la correction <span class="req">*</span></label>
+                <textarea id="just" name="just" rows="2" class="input" [(ngModel)]="form.dpaJustification" placeholder="ex. Échographie du premier trimestre réalisée le…"></textarea>
+                <p class="hint">La valeur calculée, la valeur corrigée, l’auteur, la date et le motif seront conservés.</p>
+              </div>
+            }
+          }
+
+          <!-- ÉTAPE 5 : Suivi -->
+          @case (4) {
+            <div class="grid gap-5 sm:grid-cols-2">
+              <div>
+                <label class="label" for="rdv">Date du prochain rendez-vous <span class="req">*</span></label>
+                <input id="rdv" type="date" name="rdv" class="input" [(ngModel)]="form.prochainRdv" [min]="today">
+                <p class="hint">Selon le plan de soins établi par le soignant.</p>
+              </div>
+              <div>
+                <label class="label" for="canal">Canal de rappel</label>
+                <select id="canal" name="canal" class="input" [(ngModel)]="form.canalRappel">
+                  <option [disabled]="form.consent.sms !== true">SMS {{ form.consent.sms !== true ? '(pas de consentement)' : '' }}</option>
+                  <option [disabled]="form.consent.appel !== true">Appel {{ form.consent.appel !== true ? '(pas de consentement)' : '' }}</option>
+                  <option [disabled]="form.consent.whatsapp !== true">WhatsApp {{ form.consent.whatsapp !== true ? '(pas de consentement)' : '' }}</option>
+                  <option>Aucun rappel</option>
+                </select>
+                <p class="hint">Seuls les canaux consentis sont disponibles.</p>
+              </div>
+            </div>
+
+            <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 p-4">
+              <p class="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Aperçu du rappel (texte discret)</p>
+              <div class="max-w-sm rounded-2xl rounded-tl-sm bg-white dark:bg-slate-900 p-3 text-sm text-slate-700 dark:text-slate-200 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
+                Bonjour, nous vous rappelons votre rendez-vous du {{ fmt(form.prochainRdv || null) }} à l’HMGR. Merci.
+              </div>
+              <p class="mt-2 text-xs text-slate-500 dark:text-slate-400"><i class="fa-solid fa-eye-slash mr-1"></i>Aucun détail médical n’est inclus dans le message.</p>
+            </div>
+
+            <div class="rounded-2xl border p-4" [class]="manquants.length ? 'border-amber-200 dark:border-amber-500/30 bg-amber-50/60 dark:bg-amber-500/10' : 'border-accent-200 dark:border-accent-500/30 bg-accent-50/60 dark:bg-accent-500/10'">
+              <p class="flex items-center gap-2 text-sm font-semibold" [class]="manquants.length ? 'text-amber-900 dark:text-amber-300' : 'text-accent-900 dark:text-accent-300'">
+                <i class="fa-solid" [class]="manquants.length ? 'fa-list-check' : 'fa-circle-check'"></i>
+                {{ manquants.length ? 'Champs obligatoires manquants' : 'Tous les champs obligatoires sont renseignés' }}
+              </p>
+              @if (manquants.length) {
+                <ul class="mt-2 flex flex-wrap gap-2">
+                  @for (m of manquants; track m) { <li class="badge bg-white dark:bg-slate-900 text-amber-800 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-500/30">{{ m }}</li> }
+                </ul>
+              }
+            </div>
+          }
+        }
+      </div>
+
+      <!-- Actions -->
+      <div class="flex flex-col-reverse gap-3 border-t border-slate-100 dark:border-slate-800 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <button type="button" class="btn-ghost" (click)="prev()" [disabled]="step === 0">
+          <i class="fa-solid fa-arrow-left"></i> Précédent
+        </button>
+        <div class="flex flex-col gap-2 sm:flex-row">
+          <button type="button" class="btn-secondary" (click)="save('brouillon')"><i class="fa-regular fa-floppy-disk"></i> Enregistrer en brouillon</button>
+          @if (step < steps.length - 1) {
+            <button type="submit" class="btn-primary">Continuer <i class="fa-solid fa-arrow-right"></i></button>
+          } @else {
+            <button type="button" class="btn bg-accent-600 text-white hover:bg-accent-700" [disabled]="manquants.length > 0" (click)="save('valide')">
+              <i class="fa-solid fa-circle-check"></i> Valider le dossier
+            </button>
+          }
+        </div>
+      </div>
+    </form>
+
+    <!-- Panneau latéral -->
+    <aside class="space-y-4 lg:sticky lg:top-24 lg:self-start">
+      <!-- Datation -->
+      <div class="card overflow-hidden">
+        <div class="bg-gradient-to-br from-brand-700 to-brand-900 p-5 text-white">
+          <p class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-brand-200"><i class="fa-solid fa-calculator"></i> Datation estimée</p>
+          <div class="mt-4 grid grid-cols-2 gap-4">
+            <div>
+              <p class="text-xs text-brand-200">Âge gestationnel</p>
+              <p class="mt-1 text-2xl font-bold tracking-tight">
+                @if (agCalcule) { {{ agCalcule.sa }} SA <span class="text-base font-semibold text-brand-200">+ {{ agCalcule.j }} j</span> }
+                @else if (!form.ddrConnue && form.agSemaines !== null) { {{ form.agSemaines }} SA <span class="text-base font-semibold text-brand-200">+ {{ form.agJours ?? 0 }} j</span> }
+                @else { — }
+              </p>
+            </div>
+            <div>
+              <p class="text-xs text-brand-200">DPA</p>
+              <p class="mt-1 text-2xl font-bold tracking-tight">{{ fmt(form.dpaSaisie || dpaCalculee || dpaDepuisAg) }}</p>
+            </div>
+          </div>
+        </div>
+        <div class="space-y-2 p-4 text-xs text-slate-600 dark:text-slate-300">
+          <p class="flex justify-between"><span class="text-slate-500 dark:text-slate-400">Méthode</span>
+            <span class="font-medium text-slate-800 dark:text-slate-100">{{ form.dpaSaisie ? 'Validée cliniquement' : form.ddrConnue ? 'DDR + 280 j (cycle 28 j)' : form.agMethode }}</span></p>
+          <p class="flex justify-between"><span class="text-slate-500 dark:text-slate-400">Date de référence</span><span class="font-medium text-slate-800 dark:text-slate-100">{{ fmt(form.dateConsultation) }}</span></p>
+          <p class="flex justify-between"><span class="text-slate-500 dark:text-slate-400">DDR</span><span class="font-medium text-slate-800 dark:text-slate-100">{{ form.ddrConnue ? fmt(form.ddr || null) : 'Inconnue' }}</span></p>
+          @if (ddrIncertaine) {
+            <p class="mt-2 rounded-lg bg-amber-50 dark:bg-amber-500/10 p-2 text-amber-800 dark:text-amber-300"><i class="fa-solid fa-triangle-exclamation mr-1"></i>DDR {{ form.ddrFiabilite.toLowerCase() }} : estimation à confirmer.</p>
+          }
+          <p class="pt-1 text-[11px] leading-relaxed text-slate-400">Estimation à confirmer par un professionnel selon le protocole en vigueur.</p>
+        </div>
+      </div>
+
+      <!-- Alertes -->
+      <div class="card">
+        <div class="card-header py-3">
+          <h3 class="card-title"><i class="fa-solid fa-shield-heart text-amber-500"></i> Contrôles de cohérence</h3>
+          <span class="badge" [class]="alertes.length ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300' : 'bg-accent-50 dark:bg-accent-500/10 text-accent-700 dark:text-accent-300'">{{ alertes.length }}</span>
+        </div>
+        <div class="p-4">
+          @if (alertes.length) {
+            <ul class="space-y-2">
+              @for (a of alertes; track a) {
+                <li class="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-200"><i class="fa-solid fa-triangle-exclamation mt-0.5 text-amber-500"></i>{{ a }}</li>
+              }
+            </ul>
+            <p class="mt-3 text-[11px] text-slate-400">Aucune donnée n’est corrigée automatiquement.</p>
+          } @else {
+            <p class="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400"><i class="fa-solid fa-circle-check text-accent-500"></i> Aucune incohérence détectée.</p>
+          }
+        </div>
+      </div>
+
+      <!-- Doublons -->
+      <div class="card p-4">
+        <p class="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white"><i class="fa-solid fa-clone text-violet-500"></i> Doublons potentiels</p>
+        @if (form.nom.toUpperCase().startsWith('KAB')) {
+          <div class="mt-3 rounded-xl bg-violet-50 dark:bg-violet-500/10 p-3 text-sm">
+            <p class="font-medium text-violet-900 dark:text-violet-300">1 correspondance possible</p>
+            <p class="mt-0.5 text-xs text-violet-700 dark:text-violet-300">Esther KABEYA MUJINGA · 27 ans · AMI-2026-000142</p>
+            <a routerLink="/admin/patientes/AMI-2026-000142" class="mt-2 inline-block text-xs font-semibold text-violet-800 dark:text-violet-300 underline">Comparer</a>
+          </div>
+        } @else {
+          <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Vérification automatique sur nom, âge, téléphone et adresse.</p>
+        }
+      </div>
+    </aside>
+  </div>
+</div>

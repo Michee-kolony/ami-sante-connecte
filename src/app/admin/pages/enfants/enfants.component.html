@@ -1,0 +1,176 @@
+<div class="mx-auto max-w-7xl space-y-6">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Enfants vaccinés</h1>
+      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Suivi du calendrier vaccinal de routine des bébés et des enfants de moins de 2 ans.</p>
+    </div>
+    <button type="button" class="btn-secondary" disabled title="Export nominatif désactivé — autorisation requise">
+      <i class="fa-solid fa-file-export"></i> Exporter <i class="fa-solid fa-lock text-xs"></i>
+    </button>
+  </div>
+
+  <!-- Statistiques -->
+  <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="card flex items-center gap-4 p-4">
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"><i class="fa-solid fa-baby"></i></div>
+      <div><p class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats.total }}</p><p class="text-xs text-slate-500 dark:text-slate-400">Enfants suivis</p></div>
+    </div>
+    <div class="card flex items-center gap-4 p-4">
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-accent-50 text-accent-600 dark:bg-accent-500/10 dark:text-accent-400"><i class="fa-solid fa-shield-heart"></i></div>
+      <div><p class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats.complets }}</p><p class="text-xs text-slate-500 dark:text-slate-400">Complètement vaccinés</p></div>
+    </div>
+    <div class="card flex items-center gap-4 p-4">
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400"><i class="fa-solid fa-triangle-exclamation"></i></div>
+      <div><p class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats.retard }}</p><p class="text-xs text-slate-500 dark:text-slate-400">En retard de vaccination</p></div>
+    </div>
+    <div class="card flex items-center gap-4 p-4">
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400"><i class="fa-solid fa-syringe"></i></div>
+      <div><p class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats.dosesMois }}</p><p class="text-xs text-slate-500 dark:text-slate-400">Doses administrées ce mois</p></div>
+    </div>
+  </div>
+
+  <!-- Liste -->
+  <div class="card overflow-hidden">
+    <div class="flex flex-col gap-3 border-b border-slate-100 p-4 dark:border-slate-800 lg:flex-row lg:items-center">
+      <div class="relative flex-1">
+        <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-slate-400"></i>
+        <input type="search" class="input pl-10" placeholder="Rechercher par nom, identifiant, parent ou téléphone"
+               [value]="recherche()" (input)="recherche.set($any($event.target).value)">
+      </div>
+      <div class="-mx-4 flex gap-2 overflow-x-auto px-4 lg:mx-0 lg:px-0">
+        @for (s of statuts; track s) {
+          <button type="button" (click)="filtreStatut.set(s)"
+                  class="flex flex-none items-center gap-2 rounded-full px-3.5 py-2 text-sm font-medium ring-1 transition"
+                  [class]="filtreStatut() === s
+                    ? 'bg-brand-700 text-white ring-brand-700 dark:bg-brand-600 dark:ring-brand-600'
+                    : 'bg-white text-slate-600 ring-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-800'">
+            {{ s }} <span class="rounded-full bg-black/10 px-1.5 text-xs dark:bg-white/10">{{ compte(s) }}</span>
+          </button>
+        }
+      </div>
+    </div>
+
+    <!-- Légende -->
+    <div class="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-slate-100 px-5 py-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
+      <span class="font-medium text-slate-700 dark:text-slate-300">Calendrier :</span>
+      @for (c of contacts; track c; let i = $index) {
+        <span><span class="font-semibold text-slate-700 dark:text-slate-300">{{ i + 1 }}</span> = {{ c }}</span>
+      }
+      <span class="ml-auto flex flex-wrap gap-3">
+        <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-accent-500"></span>Reçu</span>
+        <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full ring-2 ring-amber-400"></span>À faire</span>
+        <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-rose-500"></span>En retard</span>
+        <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full ring-1 ring-slate-300 dark:ring-slate-600"></span>À venir</span>
+      </span>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
+        <thead class="bg-slate-50/70 dark:bg-slate-800/50">
+          <tr>
+            <th class="table-th">Enfant</th>
+            <th class="table-th">Âge</th>
+            <th class="table-th">Parent / tuteur</th>
+            <th class="table-th">Progression</th>
+            <th class="table-th">Prochaine vaccination</th>
+            <th class="table-th">Statut</th>
+            <th class="table-th"><span class="sr-only">Détail</span></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+          @for (e of filtres(); track e.id) {
+            <tr class="cursor-pointer transition hover:bg-slate-50/70 dark:hover:bg-slate-800/50" (click)="basculer(e)">
+              <td class="table-td">
+                <div class="flex items-center gap-3">
+                  <span class="flex h-10 w-10 flex-none items-center justify-center rounded-full text-sm font-semibold"
+                        [class]="e.sexe === 'F' ? 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-300' : 'bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-300'">
+                    {{ e.prenom.charAt(0) }}{{ e.nom.charAt(0) }}
+                  </span>
+                  <div>
+                    <p class="whitespace-nowrap font-medium text-slate-900 dark:text-white">
+                      {{ e.prenom }} {{ e.nom }}
+                      <i class="fa-solid ml-1 text-xs" [class]="e.sexe === 'F' ? 'fa-venus text-rose-400' : 'fa-mars text-sky-400'" [title]="e.sexe === 'F' ? 'Fille' : 'Garçon'"></i>
+                    </p>
+                    <p class="whitespace-nowrap text-xs text-slate-500 dark:text-slate-400"><span class="font-mono">{{ e.id }}</span> · {{ fmt(e.dateNaissance) }}</p>
+                  </div>
+                </div>
+              </td>
+              <td class="table-td whitespace-nowrap">{{ age(e) }}</td>
+              <td class="table-td">
+                <p class="whitespace-nowrap">{{ e.tuteur }}</p>
+                <p class="whitespace-nowrap text-xs text-slate-500 dark:text-slate-400">{{ e.telephone }}</p>
+              </td>
+              <td class="table-td">
+                <div class="flex items-center gap-1.5">
+                  @for (c of contacts; track c; let i = $index) {
+                    <span class="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold ring-1 {{ pastille(etatContact(e, c)) }}" [title]="c">
+                      @if (etatContact(e, c) === 'a-venir') { {{ i + 1 }} } @else { <i class="fa-solid {{ icone(etatContact(e, c)) }}"></i> }
+                    </span>
+                  }
+                </div>
+              </td>
+              <td class="table-td whitespace-nowrap">
+                @if (prochaine(e); as p) {
+                  <p [class]="p.enRetard ? 'font-semibold text-rose-600 dark:text-rose-400' : p.aFaire ? 'font-semibold text-amber-600 dark:text-amber-400' : ''">{{ p.contact }}</p>
+                  <p class="text-xs text-slate-500 dark:text-slate-400">{{ p.enRetard ? 'Prévue le ' + fmt(p.date) + ' — à rattraper' : p.aFaire ? 'Prévue le ' + fmt(p.date) + ' — à faire' : 'Le ' + fmt(p.date) }}</p>
+                } @else {
+                  <span class="text-slate-400">—</span>
+                }
+              </td>
+              <td class="table-td"><span class="badge {{ badgeStatut(statut(e)) }}">{{ statut(e) }}</span></td>
+              <td class="table-td text-right">
+                <i class="fa-solid fa-chevron-down text-xs text-slate-400 transition" [class.rotate-180]="ouvert() === e.id"></i>
+              </td>
+            </tr>
+
+            <!-- Détail du carnet -->
+            @if (ouvert() === e.id) {
+              <tr class="bg-slate-50/60 dark:bg-slate-800/30">
+                <td colspan="7" class="px-5 py-5">
+                  <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                    @for (c of contacts; track c) {
+                      <div class="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+                        <p class="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{{ c }}</p>
+                        <ul class="space-y-2">
+                          @for (d of dosesDuContact(c); track d.code) {
+                            <li class="flex items-start gap-2 text-sm" [title]="d.maladie">
+                              <span class="mt-0.5 flex h-4 w-4 flex-none items-center justify-center rounded-full text-[8px] ring-1 {{ pastille(etatDose(e, d)) }}">
+                                <i class="fa-solid {{ icone(etatDose(e, d)) }}"></i>
+                              </span>
+                              <div class="min-w-0">
+                                <p class="font-medium text-slate-800 dark:text-slate-100">{{ d.nom }}</p>
+                                @if (e.recues[d.code]; as r) {
+                                  <p class="text-[11px] text-slate-500 dark:text-slate-400">{{ fmt(r.date) }} · {{ r.agent }}</p>
+                                } @else {
+                                  <p class="text-[11px]" [class]="etatDose(e, d) === 'retard' ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400'">
+                                    {{ etatDose(e, d) === 'retard' ? 'En retard' : etatDose(e, d) === 'due' ? 'À faire' : 'À venir' }}
+                                  </p>
+                                }
+                              </div>
+                            </li>
+                          }
+                        </ul>
+                      </div>
+                    }
+                  </div>
+                  <div class="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
+                    <span><i class="fa-solid fa-location-dot mr-1"></i>{{ e.aire }}</span>
+                    @if (statut(e) === 'En retard') {
+                      <button type="button" class="btn-primary px-3 py-1.5 text-xs" (click)="$event.stopPropagation()">
+                        <i class="fa-solid fa-list-check"></i> Créer une tâche de rattrapage
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          } @empty {
+            <tr><td colspan="7" class="table-td py-10 text-center text-slate-500 dark:text-slate-400">Aucun enfant ne correspond à la recherche.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="text-xs text-slate-400"><i class="fa-solid fa-circle-info mr-1"></i>Calendrier de routine utilisé pour le calcul : à valider par le responsable PEV. Une dose est « en retard » 4 semaines après l’âge recommandé.</p>
+</div>

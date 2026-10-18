@@ -1,0 +1,99 @@
+<div class="grid min-h-screen lg:grid-cols-2">
+  <!-- Panneau de présentation -->
+  <section class="relative hidden overflow-hidden bg-brand-950 lg:flex lg:py-12">
+    <div class="pointer-events-none absolute -right-32 -top-32 h-96 w-96 rounded-full bg-brand-600/30 blur-3xl"></div>
+    <div class="pointer-events-none absolute -bottom-40 -left-20 h-96 w-96 rounded-full bg-accent-500/25 blur-3xl"></div>
+
+    <!-- Contenu centré et limité en largeur (classe container) -->
+    <div class="container relative flex max-w-xl flex-col justify-between">
+      <div class="logo-plate relative w-52 rounded-xl bg-white p-3 shadow-xl shadow-black/30">
+        <img src="images/logo-full.webp" alt="AMI Santé Connect — Des données fiables pour une meilleure santé" class="h-auto w-full" width="610" height="261">
+      </div>
+
+      <div class="relative max-w-lg">
+        <h1 class="text-4xl font-bold leading-tight tracking-tight text-white">
+          {{ 'Un dossier maternel unique, sûr et disponible même hors connexion.' | t }}
+        </h1>
+        <p class="mt-4 text-base leading-relaxed text-slate-300">
+          {{ 'Enregistrement des femmes enceintes à la consultation prénatale, datation de la grossesse et suivi des rendez-vous.' | t }}
+        </p>
+
+        <ul class="mt-10 space-y-4">
+          <li class="flex items-start gap-3">
+            <span class="mt-0.5 flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-white/10 text-brand-300"><i class="fa-solid fa-id-card"></i></span>
+            <div><p class="font-medium text-white">{{ 'Identification fiable' | t }}</p><p class="text-sm text-slate-400">{{ 'Recherche préalable et détection des doublons.' | t }}</p></div>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="mt-0.5 flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-white/10 text-accent-300"><i class="fa-solid fa-cloud-arrow-up"></i></span>
+            <div><p class="font-medium text-white">{{ 'Hors connexion' | t }}</p><p class="text-sm text-slate-400">{{ 'Saisie locale chiffrée, synchronisation contrôlée.' | t }}</p></div>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="mt-0.5 flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-white/10 text-accent-300"><i class="fa-solid fa-user-shield"></i></span>
+            <div><p class="font-medium text-white">{{ 'Confidentialité' | t }}</p><p class="text-sm text-slate-400">{{ 'Accès par rôle et journal d’audit complet.' | t }}</p></div>
+          </li>
+        </ul>
+      </div>
+
+      <p class="relative text-xs text-slate-500 dark:text-slate-400">{{ 'Projet pilote' | t }} · Hôpital Militaire de la Garde Républicaine — Camp Colonel Tshatshi · ZSM Kokolo, RDC</p>
+    </div>
+  </section>
+
+  <!-- Formulaire -->
+  <section class="relative flex items-center justify-center px-4 py-12 sm:px-8">
+    <div class="absolute right-4 top-4 flex items-center gap-2 sm:right-6 sm:top-6"><app-langue-toggle /><app-theme-toggle /></div>
+    <div class="w-full max-w-md">
+      <a routerLink="/" class="mb-8 inline-flex items-center gap-2 text-sm font-medium text-slate-500 dark:text-slate-400 transition hover:text-brand-700 dark:hover:text-brand-300">
+        <i class="fa-solid fa-arrow-left"></i> {{ 'Retour au site' | t }}
+      </a>
+      <img src="images/logo-full.webp" alt="AMI Santé Connect" class="mb-8 h-auto w-40 dark:rounded-xl dark:bg-white dark:p-2 lg:hidden" width="610" height="261">
+
+      <h2 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ 'Connexion' | t }}</h2>
+      <p class="mt-1.5 text-sm text-slate-500 dark:text-slate-400">{{ 'Utilisez votre compte individuel. Les comptes partagés ne sont pas autorisés.' | t }}</p>
+
+      <form class="mt-8 space-y-5" (ngSubmit)="login()">
+        <div>
+          <label class="label" for="login">{{ 'E-mail' | t }}</label>
+          <div class="relative">
+            <i class="fa-regular fa-envelope pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input id="login" type="email" class="input pl-10" placeholder="prenom.nom@amisante.cd" autocomplete="username">
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between">
+            <label class="label" for="password">{{ 'Mot de passe' | t }}</label>
+            <a href="#" class="mb-1.5 text-xs font-medium text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300">{{ 'Mot de passe oublié ?' | t }}</a>
+          </div>
+          <div class="relative">
+            <i class="fa-solid fa-lock pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input id="password" [type]="showPassword ? 'text' : 'password'" class="input px-10" placeholder="••••••••" autocomplete="current-password">
+            <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" (click)="showPassword = !showPassword" [attr.aria-label]="'Afficher le mot de passe' | t">
+              <i class="fa-regular" [class.fa-eye]="!showPassword" [class.fa-eye-slash]="showPassword"></i>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label class="label" for="structure">{{ 'Structure sanitaire' | t }}</label>
+          <div class="relative">
+            <i class="fa-solid fa-hospital pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <select id="structure" class="input appearance-none pl-10" name="structure" [(ngModel)]="structure">
+              <option value="hmgr">HMGR — Camp Colonel Tshatshi</option>
+              <option value="kokolo">CS Militaire Kokolo</option>
+            </select>
+            <i class="fa-solid fa-chevron-down pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-primary w-full py-3">
+          {{ 'Se connecter' | t }} <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </form>
+
+      <div class="mt-8 flex items-start gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 text-xs text-slate-600 dark:text-slate-300">
+        <i class="fa-solid fa-mobile-screen-button mt-0.5 text-brand-600 dark:text-brand-400"></i>
+        <p>{{ 'Appareil approuvé' | t }} <strong class="font-semibold text-slate-800 dark:text-slate-100">TAB-CPN-02</strong>. {{ 'La session se verrouille automatiquement après 10 minutes d’inactivité.' | t }}</p>
+      </div>
+    </div>
+  </section>
+</div>

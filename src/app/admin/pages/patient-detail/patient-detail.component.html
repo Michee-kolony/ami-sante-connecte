@@ -1,0 +1,203 @@
+<div class="mx-auto max-w-7xl space-y-6">
+  <nav class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+    <a routerLink="/admin/patientes" class="hover:text-brand-700 dark:hover:text-brand-300">Patientes</a>
+    <i class="fa-solid fa-chevron-right text-[9px]"></i>
+    <span class="font-mono text-slate-700 dark:text-slate-200">{{ p.id }}</span>
+  </nav>
+
+  @if (p.sync === 'en attente') {
+    <div class="flex items-center gap-3 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-300">
+      <i class="fa-solid fa-cloud-arrow-up text-amber-500"></i>
+      <span class="flex-1"><strong class="font-semibold">Fiche locale non synchronisée.</strong> Identifiant provisoire — un contrôle de doublons sera fait à la synchronisation.</span>
+      <a routerLink="/admin/synchronisation" class="font-semibold underline">Synchroniser</a>
+    </div>
+  } @else if (p.sync === 'conflit') {
+    <div class="flex items-center gap-3 rounded-xl border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-4 py-3 text-sm text-rose-900 dark:text-rose-300">
+      <i class="fa-solid fa-code-compare text-rose-500"></i>
+      <span class="flex-1"><strong class="font-semibold">Conflit de synchronisation.</strong> Deux appareils ont modifié cette fiche. Arbitrage requis.</span>
+      <a routerLink="/admin/synchronisation" class="font-semibold underline">Résoudre</a>
+    </div>
+  }
+
+  <!-- Carte identité -->
+  <div class="card overflow-hidden">
+    <div class="h-20 bg-gradient-to-r from-brand-900 via-brand-700 to-accent-600"></div>
+    <div class="px-5 pb-5 sm:px-6">
+      <div class="-mt-10 flex flex-col gap-4 sm:flex-row sm:items-end">
+        <app-avatar [photo]="p.photo" [prenom]="p.prenom" [nomFamille]="p.nom" class="h-20 w-20 rounded-2xl text-2xl shadow-lg ring-4 ring-white dark:ring-slate-900" />
+        <div class="flex-1">
+          <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ p.prenom }} {{ p.nom }} <span class="font-semibold text-slate-500 dark:text-slate-400">{{ p.postnom }}</span></h1>
+          <div class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
+            <span class="font-mono">{{ p.id }}</span>
+            <span><i class="fa-solid fa-cake-candles mr-1"></i>{{ p.age }} ans</span>
+            <span><i class="fa-solid fa-phone mr-1"></i>{{ p.telephone }}</span>
+            <span><i class="fa-solid fa-location-dot mr-1"></i>{{ p.quartier }}, {{ p.commune }}</span>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <span class="badge bg-accent-50 dark:bg-accent-500/10 py-1 text-accent-700 dark:text-accent-300 ring-1 ring-accent-200 dark:ring-accent-500/30"><i class="fa-solid fa-circle text-[6px]"></i> {{ p.statut }}</span>
+          @if (p.risque && !vueNonClinique) {
+            <span class="badge bg-rose-50 dark:bg-rose-500/10 py-1 text-rose-700 dark:text-rose-300 ring-1 ring-rose-200 dark:ring-rose-500/30"><i class="fa-solid fa-circle-exclamation"></i> Grossesse à risque</span>
+          }
+          <a routerLink="/admin/messages" [queryParams]="{ patiente: p.id }" class="btn-primary px-3 py-1.5 text-xs"><i class="fa-solid fa-comment-dots"></i> Écrire</a>
+        </div>
+      </div>
+    </div>
+    <div class="flex gap-1 overflow-x-auto border-t border-slate-100 dark:border-slate-800 px-3">
+      @for (t of [{ k: 'resume', l: 'Résumé', i: 'fa-house-medical' }, { k: 'cpn', l: 'Consultations', i: 'fa-stethoscope' }, { k: 'historique', l: 'Historique & audit', i: 'fa-clock-rotate-left' }]; track t.k) {
+        <button class="flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition"
+                [class]="tab === t.k ? 'border-brand-700 text-brand-800 dark:text-brand-300' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100'"
+                (click)="tab = $any(t.k)">
+          <i class="fa-solid {{ t.i }}"></i> {{ t.l }}
+        </button>
+      }
+      <label class="ml-auto flex cursor-pointer items-center gap-2 whitespace-nowrap px-3 text-xs text-slate-500 dark:text-slate-400">
+        <input type="checkbox" class="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-brand-600 dark:text-brand-400" [checked]="vueNonClinique" (change)="vueNonClinique = !vueNonClinique">
+        Simuler la vue agent d’accueil
+      </label>
+    </div>
+  </div>
+
+  @switch (tab) {
+    @case ('resume') {
+      <div class="grid gap-6 lg:grid-cols-3">
+        <!-- Grossesse -->
+        <div class="card lg:col-span-2">
+          <div class="card-header">
+            <h2 class="card-title"><i class="fa-solid fa-person-pregnant text-accent-600 dark:text-accent-400"></i> Grossesse en cours</h2>
+            <span class="text-xs text-slate-500 dark:text-slate-400">Référence : 18/10/2026</span>
+          </div>
+          @if (vueNonClinique) {
+            <div class="flex flex-col items-center gap-3 p-10 text-center">
+              <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400"><i class="fa-solid fa-lock text-xl"></i></div>
+              <p class="font-semibold text-slate-900 dark:text-white">Accès restreint au personnel clinique</p>
+              <p class="max-w-sm text-sm text-slate-500 dark:text-slate-400">Votre rôle (agent d’accueil) ne permet pas de consulter les données obstétricales. Cette tentative a été journalisée.</p>
+            </div>
+          } @else {
+            <div class="p-5 sm:p-6">
+              <div class="grid gap-6 sm:grid-cols-3">
+                <div>
+                  <p class="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">Âge gestationnel</p>
+                  <p class="mt-1 text-2xl font-bold text-slate-900 dark:text-white">{{ p.ageGestationnel }}</p>
+                </div>
+                <div>
+                  <p class="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">DPA</p>
+                  <p class="mt-1 text-2xl font-bold text-slate-900 dark:text-white">{{ fmt(p.dpa) }}</p>
+                  <p class="text-xs text-slate-500 dark:text-slate-400">Méthode : {{ p.dpaMethode }}</p>
+                </div>
+                <div>
+                  <p class="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">DDR</p>
+                  <p class="mt-1 text-2xl font-bold text-slate-900 dark:text-white">{{ fmt(p.ddr) }}</p>
+                  <p class="text-xs" [class]="p.ddrFiabilite === 'Fiable' ? 'text-accent-600 dark:text-accent-400' : 'text-amber-600 dark:text-amber-400'">{{ p.ddrFiabilite }}</p>
+                </div>
+              </div>
+
+              <div class="mt-8">
+                <div class="mb-2 flex justify-between text-xs font-medium text-slate-500 dark:text-slate-400">
+                  <span>T1</span><span>T2</span><span>T3</span><span>40 SA</span>
+                </div>
+                <div class="relative h-3 rounded-full bg-gradient-to-r from-brand-100 dark:from-brand-500/20 via-brand-100 dark:via-brand-500/20 to-accent-100 dark:to-accent-500/20">
+                  <div class="h-full rounded-full bg-gradient-to-r from-brand-400 via-brand-700 to-accent-600" [style.width.%]="progression"></div>
+                  <div class="absolute top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-4 border-white dark:border-slate-900 bg-brand-700 shadow" [style.left.%]="progression"></div>
+                </div>
+              </div>
+
+              @if (p.ddrFiabilite !== 'Fiable') {
+                <div class="mt-6 flex items-start gap-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-300">
+                  <i class="fa-solid fa-triangle-exclamation mt-0.5 text-amber-500"></i>
+                  <p>Datation basée sur des données incertaines — à confirmer selon le protocole clinique.</p>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- Prochain RDV -->
+        <div class="space-y-6">
+          <div class="card p-5">
+            <p class="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white"><i class="fa-solid fa-calendar-check text-accent-600 dark:text-accent-400"></i> Prochain rendez-vous</p>
+            @if (p.prochainRdv) {
+              <p class="mt-3 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ fmt(p.prochainRdv) }}</p>
+              <p class="text-sm text-slate-500 dark:text-slate-400">CPN {{ p.cpnCount + 1 }} · 10:00</p>
+              <div class="mt-4 flex gap-2">
+                <button class="btn-secondary flex-1 py-2 text-xs"><i class="fa-solid fa-pen"></i> Modifier</button>
+                <button class="btn-secondary flex-1 py-2 text-xs"><i class="fa-solid fa-check"></i> Honoré</button>
+              </div>
+            } @else {
+              <p class="mt-3 text-sm text-slate-500 dark:text-slate-400">Aucun rendez-vous programmé.</p>
+            }
+          </div>
+
+          <div class="card p-5">
+            <p class="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white"><i class="fa-solid fa-file-signature text-brand-600 dark:text-brand-400"></i> Consentements</p>
+            <ul class="mt-3 space-y-2.5 text-sm">
+              <li class="flex items-center justify-between"><span class="text-slate-600 dark:text-slate-300"><i class="fa-solid fa-comment-sms mr-2 w-4 text-sky-600 dark:text-sky-400"></i>SMS</span><span class="badge bg-accent-50 dark:bg-accent-500/10 text-accent-700 dark:text-accent-300">Oui</span></li>
+              <li class="flex items-center justify-between"><span class="text-slate-600 dark:text-slate-300"><i class="fa-solid fa-phone mr-2 w-4 text-brand-700 dark:text-brand-300"></i>Appel</span><span class="badge bg-accent-50 dark:bg-accent-500/10 text-accent-700 dark:text-accent-300">Oui</span></li>
+              <li class="flex items-center justify-between"><span class="text-slate-600 dark:text-slate-300"><i class="fa-brands fa-whatsapp mr-2 w-4 text-accent-600 dark:text-accent-400"></i>WhatsApp</span><span class="badge bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300">Non</span></li>
+            </ul>
+            <p class="mt-3 text-xs text-slate-400">Texte v1.2 · recueilli le {{ fmt(p.creeLe) }} · révocable</p>
+          </div>
+        </div>
+      </div>
+    }
+
+    @case ('cpn') {
+      <div class="card overflow-hidden">
+        <div class="card-header">
+          <h2 class="card-title"><i class="fa-solid fa-stethoscope text-brand-600 dark:text-brand-400"></i> Consultations prénatales</h2>
+          <button class="btn-primary py-2 text-xs"><i class="fa-solid fa-plus"></i> Nouvelle CPN</button>
+        </div>
+        @if (vueNonClinique) {
+          <p class="p-8 text-center text-sm text-slate-500 dark:text-slate-400"><i class="fa-solid fa-lock mr-1"></i> Accès restreint au personnel clinique.</p>
+        } @else {
+          <ol class="relative space-y-6 p-6 before:absolute before:bottom-6 before:left-[39px] before:top-6 before:w-px before:bg-slate-200 dark:before:bg-slate-700">
+            @for (c of cpns; track c.n) {
+              <li class="relative flex gap-4">
+                <span class="z-10 flex h-9 w-9 flex-none items-center justify-center rounded-full bg-brand-700 text-xs font-bold text-white ring-4 ring-white dark:ring-slate-900">{{ c.n }}</span>
+                <div class="flex-1 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+                  <div class="flex flex-wrap items-center justify-between gap-2">
+                    <p class="font-semibold text-slate-900 dark:text-white">CPN {{ c.n }} · {{ fmt(c.date) }}</p>
+                    <span class="text-xs text-slate-500 dark:text-slate-400">{{ c.soignant }}</span>
+                  </div>
+                  <div class="mt-3 grid grid-cols-3 gap-3 text-sm">
+                    <div><p class="text-xs text-slate-500 dark:text-slate-400">Âge gest.</p><p class="font-medium">{{ c.ag }}</p></div>
+                    <div><p class="text-xs text-slate-500 dark:text-slate-400">Poids</p><p class="font-medium">{{ c.poids }}</p></div>
+                    <div><p class="text-xs text-slate-500 dark:text-slate-400">TA</p><p class="font-medium">{{ c.ta }}</p></div>
+                  </div>
+                </div>
+              </li>
+            }
+          </ol>
+        }
+      </div>
+    }
+
+    @case ('historique') {
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><i class="fa-solid fa-clock-rotate-left text-brand-600 dark:text-brand-400"></i> Historique des modifications</h2>
+          <span class="badge bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"><i class="fa-solid fa-lock"></i> Non modifiable</span>
+        </div>
+        <ul class="divide-y divide-slate-100 dark:divide-slate-800">
+          @for (h of historique; track h.date) {
+            <li class="flex gap-4 px-5 py-4">
+              <div class="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"><i class="fa-solid fa-pen-to-square text-sm"></i></div>
+              <div class="flex-1">
+                <p class="text-sm font-medium text-slate-900 dark:text-white">{{ h.action }}</p>
+                <p class="mt-0.5 text-sm text-slate-600 dark:text-slate-300">{{ h.detail }}</p>
+                <p class="mt-1 text-xs text-slate-400">{{ h.auteur }} · {{ h.role }} · {{ h.date }}</p>
+              </div>
+            </li>
+          }
+          <li class="flex gap-4 px-5 py-4">
+            <div class="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-accent-50 dark:bg-accent-500/10 text-accent-600 dark:text-accent-400"><i class="fa-solid fa-plus text-sm"></i></div>
+            <div class="flex-1">
+              <p class="text-sm font-medium text-slate-900 dark:text-white">Création du dossier</p>
+              <p class="mt-1 text-xs text-slate-400">Inf. Grâce Mbuyi · Sage-femme CPN · {{ fmt(p.creeLe) }}</p>
+            </div>
+          </li>
+        </ul>
+      </div>
+    }
+  }
+</div>

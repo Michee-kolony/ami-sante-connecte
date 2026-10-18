@@ -1,0 +1,140 @@
+<div class="mx-auto max-w-7xl space-y-4">
+  <div [class]="actif() ? 'hidden md:block' : ''">
+    <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Messages</h1>
+    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Échangez avec les patientes que vous avez consultées, uniquement sur les canaux qu’elles ont acceptés.</p>
+  </div>
+
+  <div class="card grid grid-cols-1 overflow-hidden md:grid-cols-[16rem_minmax(0,1fr)] xl:grid-cols-[20rem_minmax(0,1fr)]"
+       [class]="actif() ? 'h-[calc(100dvh-8.5rem)] md:h-[calc(100dvh-15rem)] md:min-h-[30rem]' : 'h-[calc(100dvh-15rem)] min-h-[26rem] md:min-h-[30rem]'">
+    <!-- Liste des conversations -->
+    <aside class="min-h-0 flex-col border-slate-100 dark:border-slate-800 md:border-r" [class]="actif() ? 'hidden md:flex' : 'flex'">
+      <div class="border-b border-slate-100 p-3 dark:border-slate-800">
+        <div class="relative">
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-slate-400"></i>
+          <input type="search" class="input rounded-full bg-slate-50 pl-10 dark:bg-slate-800/60" placeholder="Rechercher une patiente"
+                 [value]="recherche()" (input)="recherche.set($any($event.target).value)">
+        </div>
+      </div>
+      <ul class="min-h-0 flex-1 divide-y divide-slate-100 overflow-y-auto dark:divide-slate-800">
+        @for (f of fils(); track f.patienteId) {
+          <li>
+            <button type="button" (click)="ouvrir(f.patienteId)"
+                    class="flex w-full items-center gap-3 px-4 py-3.5 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                    [class]="selection() === f.patienteId ? 'bg-brand-50/70 dark:bg-brand-500/10' : ''">
+              <div class="relative">
+                <app-avatar [photo]="f.patiente.photo" [prenom]="f.patiente.prenom" [nomFamille]="f.patiente.nom" class="h-11 w-11 rounded-full text-sm" />
+                <span class="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-white text-[10px] ring-2 ring-white dark:bg-slate-900 dark:ring-slate-900"
+                      [class]="f.canal === 'WhatsApp' ? 'text-[#25d366]' : f.canal ? 'text-brand-600 dark:text-brand-400' : 'text-slate-400'">
+                  <i class="{{ icone(f.canal) }}"></i>
+                </span>
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-baseline justify-between gap-2">
+                  <p class="truncate font-medium text-slate-900 dark:text-white">{{ f.patiente.prenom }} {{ f.patiente.nom }}</p>
+                  @if (derniereDate(f)) {
+                    <span class="flex-none text-[11px]" [class]="f.nonLus ? 'font-semibold text-accent-600 dark:text-accent-400' : 'text-slate-400'">{{ jour(derniereDate(f)) === 'Aujourd’hui' ? heure(derniereDate(f)) : jour(derniereDate(f)) }}</span>
+                  }
+                </div>
+                <div class="flex items-center justify-between gap-2">
+                  <p class="truncate text-xs" [class]="f.nonLus ? 'font-medium text-slate-700 dark:text-slate-200' : 'text-slate-500 dark:text-slate-400'">{{ apercu(f) }}</p>
+                  @if (f.nonLus) {
+                    <span class="flex h-5 min-w-5 flex-none items-center justify-center rounded-full bg-accent-500 px-1.5 text-[11px] font-semibold text-white">{{ f.nonLus }}</span>
+                  }
+                </div>
+              </div>
+            </button>
+          </li>
+        } @empty {
+          <li class="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400">Aucune patiente trouvée.</li>
+        }
+      </ul>
+    </aside>
+
+    <!-- Conversation -->
+    @if (actif(); as f) {
+      <section class="flex min-h-0 min-w-0 flex-col">
+        <header class="flex items-center gap-3 border-b border-slate-100 px-3 py-3 dark:border-slate-800 sm:px-5">
+          <button type="button" class="btn-ghost -ml-1 px-2.5 md:hidden" (click)="fermer()" aria-label="Retour à la liste"><i class="fa-solid fa-arrow-left"></i></button>
+          <app-avatar [photo]="f.patiente.photo" [prenom]="f.patiente.prenom" [nomFamille]="f.patiente.nom" class="h-10 w-10 rounded-full text-sm" />
+          <div class="min-w-0 flex-1">
+            <p class="truncate font-semibold text-slate-900 dark:text-white">{{ f.patiente.prenom }} {{ f.patiente.nom }} <span class="font-normal text-slate-500 dark:text-slate-400">{{ f.patiente.postnom }}</span></p>
+            <p class="truncate text-xs text-slate-500 dark:text-slate-400">
+              <i class="{{ icone(f.canal) }} mr-1"></i>{{ f.canal ?? 'Aucun canal' }}<span class="hidden sm:inline"> · {{ f.patiente.ageGestationnel }}</span><span class="hidden lg:inline"> · dernière consultation le {{ fmt(f.derniereConsultation) }}</span>
+            </p>
+          </div>
+          <a [routerLink]="['/admin/patientes', f.patienteId]" class="btn-secondary flex-none px-3 py-2 text-xs" title="Ouvrir le dossier"><i class="fa-solid fa-folder-open"></i><span class="hidden sm:inline"> Dossier</span></a>
+        </header>
+
+        <!-- Fil des messages -->
+        <div #fil class="min-h-0 flex-1 space-y-2 overflow-y-auto bg-slate-50/70 px-3 py-5 dark:bg-slate-950/40 sm:px-6">
+          @if (f.consentement) {
+            <p class="mx-auto mb-4 max-w-md rounded-xl bg-amber-50 px-3 py-2 text-center text-[11px] text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">
+              <i class="fa-solid fa-lock mr-1"></i>
+              @if (f.canal === 'Application') { Messages chiffrés dans l’application. } @else { Message transmis par {{ f.canal }} : n’y mettez aucun détail médical sensible. }
+            </p>
+          }
+
+          @for (m of f.messages; track m.id; let i = $index) {
+            @if (nouveauJour(i)) {
+              <div class="py-2 text-center"><span class="rounded-full bg-white px-3 py-1 text-[11px] font-medium text-slate-500 shadow-sm dark:bg-slate-800 dark:text-slate-400">{{ jour(m.date) }}</span></div>
+            }
+            <div class="flex" [class]="m.auteur === 'medecin' ? 'justify-end' : 'justify-start'">
+              <div class="max-w-[88%] rounded-2xl px-3.5 py-2 text-sm shadow-sm sm:max-w-[75%] xl:max-w-[65%]"
+                   [class]="m.auteur === 'medecin'
+                     ? 'rounded-br-md bg-brand-700 text-white dark:bg-brand-600'
+                     : 'rounded-bl-md bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100'">
+                <p class="whitespace-pre-line break-words">{{ m.texte }}</p>
+                <p class="mt-1 flex items-center justify-end gap-1 text-[10px]" [class]="m.auteur === 'medecin' ? 'text-brand-100' : 'text-slate-400'">
+                  {{ heure(m.date) }}
+                  @if (m.auteur === 'medecin') {
+                    <i class="fa-solid" [class]="m.statut === 'lu' ? 'fa-check-double text-accent-300' : 'fa-check'" [title]="m.statut === 'lu' ? 'Lu' : 'Envoyé'"></i>
+                  }
+                </p>
+              </div>
+            </div>
+          } @empty {
+            @if (f.consentement) {
+              <p class="py-10 text-center text-sm text-slate-500 dark:text-slate-400">Aucun message. Écrivez le premier message à {{ f.patiente.prenom }}.</p>
+            }
+          }
+        </div>
+
+        <!-- Saisie -->
+        @if (f.consentement) {
+          <div class="relative border-t border-slate-100 p-3 dark:border-slate-800 sm:p-4">
+            @if (afficherModeles) {
+              <ul class="absolute bottom-full left-3 right-3 z-10 mb-2 max-h-72 space-y-1 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-900 sm:left-4 sm:right-auto sm:w-[min(28rem,calc(100%-2rem))]">
+                <li class="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Messages rapides</li>
+                @for (m of modeles; track m) {
+                  <li><button type="button" class="w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800" (click)="insererModele(m)">{{ m }}</button></li>
+                }
+              </ul>
+            }
+            <form class="flex items-end gap-2" (ngSubmit)="envoyer()">
+              <button type="button" class="btn-ghost flex-none px-3 py-2.5" (click)="afficherModeles = !afficherModeles" title="Messages rapides" [class.text-brand-700]="afficherModeles">
+                <i class="fa-solid fa-bolt"></i><span class="sr-only">Messages rapides</span>
+              </button>
+              <textarea name="texte" rows="1" class="input max-h-32 min-h-[2.75rem] resize-none rounded-2xl" [(ngModel)]="texte" (keydown)="clavier($event)"
+                        [placeholder]="'Écrire à ' + f.patiente.prenom + '…'" maxlength="1000"></textarea>
+              <button type="submit" class="btn-primary h-11 w-11 flex-none rounded-full p-0" [disabled]="!texte.trim()" aria-label="Envoyer">
+                <i class="fa-solid fa-paper-plane"></i>
+              </button>
+            </form>
+            <p class="mt-1.5 hidden pl-12 text-[11px] text-slate-400 md:block">Entrée pour envoyer · Maj + Entrée pour aller à la ligne</p>
+          </div>
+        } @else {
+          <div class="flex items-start gap-3 border-t border-slate-100 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-300">
+            <i class="fa-solid fa-ban mt-0.5 text-slate-400"></i>
+            <p>{{ f.patiente.prenom }} n’a pas donné son accord pour être contactée par message. Recueillez son consentement lors de la prochaine consultation pour pouvoir lui écrire.</p>
+          </div>
+        }
+      </section>
+    } @else {
+      <section class="hidden flex-col items-center justify-center gap-3 p-10 text-center md:flex">
+        <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 text-2xl text-brand-600 dark:bg-brand-500/10 dark:text-brand-400"><i class="fa-regular fa-comments"></i></div>
+        <p class="font-semibold text-slate-900 dark:text-white">Sélectionnez une conversation</p>
+        <p class="max-w-sm text-sm text-slate-500 dark:text-slate-400">Choisissez une patiente dans la liste pour lire ses messages et lui répondre.</p>
+      </section>
+    }
+  </div>
+</div>

@@ -1,0 +1,115 @@
+<div class="min-h-screen lg:flex">
+  <!-- Overlay mobile -->
+  @if (menuOpen) {
+    <div class="fixed inset-0 z-30 bg-slate-900/40 backdrop-blur-sm lg:hidden" (click)="menuOpen = false"></div>
+  }
+
+  <!-- Barre latérale -->
+  <aside
+    class="fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-brand-950 text-slate-300 transition-transform duration-200 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0"
+    [class.-translate-x-full]="!menuOpen">
+    <a routerLink="/admin/tableau-de-bord" class="logo-plate mb-4 ml-6 mt-5 block w-32 rounded-lg bg-white p-1.5 shadow-lg shadow-black/20">
+      <img src="images/logo-full.webp" alt="AMI Santé Connect — Des données fiables pour une meilleure santé" class="h-auto w-full" width="610" height="261">
+    </a>
+
+    <div class="mx-4 mb-4 rounded-xl bg-white/5 p-3 ring-1 ring-white/10">
+      <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{{ 'Structure' | t }}</p>
+      <p class="mt-1 text-sm font-medium leading-snug text-white">{{ structure.nom }}</p>
+      <p class="mt-0.5 text-xs text-slate-400">{{ structure.site }} · {{ structure.zone }}</p>
+    </div>
+
+    <nav class="flex-1 space-y-6 overflow-y-auto px-3 pb-6">
+      <div class="space-y-1">
+        <p class="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{{ 'Activité' | t }}</p>
+        @for (item of nav; track item.path) {
+          <a [routerLink]="item.path" routerLinkActive="!bg-white/10 !text-white" [routerLinkActiveOptions]="{ exact: true }"
+             (click)="menuOpen = false"
+             class="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition hover:bg-white/5 hover:text-white">
+            <i class="fa-solid {{ item.icon }} w-5 text-center text-slate-400 group-hover:text-white"></i>
+            <span class="flex-1">{{ item.label | t }}</span>
+            @if (badge(item)) {
+              <span class="rounded-full bg-accent-500 px-2 py-0.5 text-[11px] font-semibold text-white">{{ badge(item) }}</span>
+            }
+          </a>
+        }
+      </div>
+      <div class="space-y-1">
+        <p class="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{{ 'Données & sécurité' | t }}</p>
+        @for (item of navAdmin; track item.path) {
+          <a [routerLink]="item.path" routerLinkActive="!bg-white/10 !text-white"
+             (click)="menuOpen = false"
+             class="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition hover:bg-white/5 hover:text-white">
+            <i class="fa-solid {{ item.icon }} w-5 text-center text-slate-400 group-hover:text-white"></i>
+            <span class="flex-1">{{ item.label | t }}</span>
+            @if (item.badge) {
+              <span class="rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-semibold text-amber-950">{{ item.badge }}</span>
+            }
+          </a>
+        }
+      </div>
+    </nav>
+
+    <div class="border-t border-white/10 p-4">
+      <div class="flex items-center gap-3">
+        <div class="flex h-10 w-10 items-center justify-center rounded-full bg-brand-600 text-sm font-semibold text-white">{{ user.initiales }}</div>
+        <div class="min-w-0 flex-1">
+          <p class="truncate text-sm font-medium text-white">{{ user.nom }}</p>
+          <p class="truncate text-xs text-slate-400">{{ user.role }}</p>
+        </div>
+        <a routerLink="/admin/connexion" class="rounded-lg p-2 text-slate-400 transition hover:bg-white/10 hover:text-white" [title]="'Déconnexion sécurisée' | t">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Contenu -->
+  <div class="flex min-w-0 flex-1 flex-col">
+    <header class="sticky top-0 z-20 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur">
+      <div class="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8">
+        <button class="btn-ghost -ml-2 px-3 lg:hidden" (click)="menuOpen = true" [attr.aria-label]="'Ouvrir le menu' | t">
+          <i class="fa-solid fa-bars text-lg"></i>
+        </button>
+
+        <div class="relative hidden max-w-md flex-1 xl:block">
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-slate-400"></i>
+          <input type="search" class="input rounded-full bg-slate-50 dark:bg-slate-800/50 pl-10" [placeholder]="'Rechercher par identifiant, nom ou téléphone…' | t">
+        </div>
+
+        <div class="ml-auto flex items-center gap-2 sm:gap-3">
+          <app-langue-toggle />
+          <app-theme-toggle class="hidden sm:block" />
+          <a routerLink="/admin/synchronisation"
+             class="hidden items-center gap-2 whitespace-nowrap rounded-full border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-800 dark:text-amber-300 sm:inline-flex" [title]="pending + ' ' + ('opérations à synchroniser' | t)">
+            <span class="relative flex h-2 w-2">
+              <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"></span>
+              <span class="relative inline-flex h-2 w-2 rounded-full bg-amber-500"></span>
+            </span>
+            {{ pending }}<span class="hidden xl:inline"> {{ 'opérations à synchroniser' | t }}</span>
+          </a>
+          <span class="hidden items-center gap-1.5 whitespace-nowrap rounded-full bg-accent-50 dark:bg-accent-500/10 px-3 py-1.5 text-xs font-medium text-accent-700 dark:text-accent-300 ring-1 ring-accent-200 dark:ring-accent-500/30 sm:inline-flex" [title]="'En ligne' | t">
+            <i class="fa-solid fa-wifi"></i><span class="hidden xl:inline">{{ 'En ligne' | t }}</span>
+          </span>
+          <button class="relative rounded-full p-2.5 text-slate-500 dark:text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-800" [attr.aria-label]="'Notifications' | t">
+            <i class="fa-regular fa-bell"></i>
+            <span class="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900"></span>
+          </button>
+          <a routerLink="/admin/patientes/nouvelle" class="btn-primary hidden whitespace-nowrap sm:inline-flex" [title]="'Nouvelle patiente' | t">
+            <i class="fa-solid fa-plus"></i><span class="hidden lg:inline">{{ 'Nouvelle patiente' | t }}</span>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <main class="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+      <router-outlet />
+    </main>
+
+    <footer class="border-t border-slate-200 dark:border-slate-800 px-4 py-4 text-xs text-slate-500 dark:text-slate-400 sm:px-6 lg:px-8">
+      <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <span><i class="fa-solid fa-lock mr-1"></i> {{ 'Données confidentielles — accès journalisé. Les calculs sont des estimations à confirmer cliniquement.' | t }}</span>
+        <span>{{ 'Dernière synchronisation' | t }} : 18/10/2026 · 09:30</span>
+      </div>
+    </footer>
+  </div>
+</div>

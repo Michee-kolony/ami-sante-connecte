@@ -1,0 +1,318 @@
+<div class="mx-auto max-w-7xl space-y-6">
+  <!-- En-tête -->
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Agents de vaccination</h1>
+      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Comptes des vaccinateurs, superviseurs et relais communautaires. Chaque agent se connecte avec son e-mail et son mot de passe.</p>
+    </div>
+    <button type="button" class="btn-primary" (click)="ouvrir()"><i class="fa-solid fa-user-plus"></i> Ajouter un agent</button>
+  </div>
+
+  @if (notification) {
+    <div class="flex items-start gap-3 rounded-xl border border-accent-200 bg-accent-50 px-4 py-3 text-sm text-accent-900 dark:border-accent-500/30 dark:bg-accent-500/10 dark:text-accent-200" role="status">
+      <i class="fa-solid fa-circle-check mt-0.5 text-accent-600 dark:text-accent-400"></i>
+      <span class="flex-1">{{ notification }}</span>
+      <button type="button" class="text-accent-700 hover:text-accent-900 dark:text-accent-300" (click)="notification = null" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+  }
+
+  <!-- Statistiques -->
+  <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="card flex items-center gap-4 p-4">
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"><i class="fa-solid fa-users"></i></div>
+      <div><p class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats().total }}</p><p class="text-xs text-slate-500 dark:text-slate-400">Agents enregistrés</p></div>
+    </div>
+    <div class="card flex items-center gap-4 p-4">
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-accent-50 text-accent-600 dark:bg-accent-500/10 dark:text-accent-400"><i class="fa-solid fa-user-check"></i></div>
+      <div><p class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats().actifs }}</p><p class="text-xs text-slate-500 dark:text-slate-400">Comptes actifs</p></div>
+    </div>
+    <div class="card flex items-center gap-4 p-4">
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400"><i class="fa-solid fa-syringe"></i></div>
+      <div><p class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats().vaccinateurs }}</p><p class="text-xs text-slate-500 dark:text-slate-400">Vaccinateurs</p></div>
+    </div>
+    <div class="card flex items-center gap-4 p-4">
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400"><i class="fa-solid fa-chart-line"></i></div>
+      <div><p class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats().vaccinations }}</p><p class="text-xs text-slate-500 dark:text-slate-400">Vaccinations ce mois</p></div>
+    </div>
+  </div>
+
+  <!-- Liste -->
+  <div class="card overflow-hidden">
+    <div class="flex flex-col gap-3 border-b border-slate-100 p-4 dark:border-slate-800 sm:flex-row sm:items-center">
+      <div class="relative flex-1">
+        <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-slate-400"></i>
+        <input type="search" class="input pl-10" placeholder="Rechercher par nom, matricule, e-mail ou téléphone"
+               [value]="recherche()" (input)="recherche.set($any($event.target).value)">
+      </div>
+      <div class="relative sm:w-64">
+        <select class="input appearance-none pr-10" [value]="filtreFonction()" (change)="filtreFonction.set($any($event.target).value)">
+          <option value="Toutes">Toutes les fonctions</option>
+          @for (f of fonctions; track f) { <option [value]="f">{{ f }}</option> }
+        </select>
+        <i class="fa-solid fa-chevron-down pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
+        <thead class="bg-slate-50/70 dark:bg-slate-800/50">
+          <tr>
+            <th class="table-th">Agent</th>
+            <th class="table-th">Fonction</th>
+            <th class="table-th">Contact</th>
+            <th class="table-th hidden min-[1800px]:table-cell">Aire de santé</th>
+            <th class="table-th whitespace-nowrap">Vacc. / mois</th>
+            <th class="table-th hidden min-[1800px]:table-cell">Dernière connexion</th>
+            <th class="table-th">Statut</th>
+            <th class="table-th"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+          @for (a of filtres(); track a.id) {
+            <tr class="transition hover:bg-slate-50/70 dark:hover:bg-slate-800/50" [class.opacity-60]="a.statut === 'Suspendu'">
+              <td class="table-td">
+                <div class="flex items-center gap-3">
+                  <app-avatar [photo]="a.photo" [prenom]="a.prenom" [nomFamille]="a.nom" class="h-11 w-11 rounded-full text-sm ring-2 ring-white dark:ring-slate-900" />
+                  <div>
+                    <p class="whitespace-nowrap font-medium text-slate-900 dark:text-white">{{ a.prenom }} {{ a.nom }} <span class="text-slate-500 dark:text-slate-400">{{ a.postnom }}</span></p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400"><span class="font-mono">{{ a.matricule }}</span><span class="min-[1800px]:hidden"> · {{ a.aire }}</span></p>
+                  </div>
+                </div>
+              </td>
+              <td class="table-td whitespace-nowrap">
+                <span class="badge"
+                      [class]="a.fonction === 'Vaccinateur' ? 'bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300'
+                             : a.fonction === 'Superviseur vaccination' ? 'bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300'
+                             : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300'">
+                  {{ a.fonction }}
+                </span>
+              </td>
+              <td class="table-td">
+                <p class="whitespace-nowrap"><i class="fa-solid fa-envelope mr-1.5 w-3 text-slate-400"></i>{{ a.email }}</p>
+                <p class="whitespace-nowrap text-xs text-slate-500 dark:text-slate-400"><i class="fa-solid fa-phone mr-1.5 w-3 text-slate-400"></i>{{ a.telephone }}</p>
+              </td>
+              <td class="table-td hidden whitespace-nowrap min-[1800px]:table-cell">{{ a.aire }}</td>
+              <td class="table-td font-semibold text-slate-900 dark:text-white">{{ a.fonction === 'Vaccinateur' ? a.vaccinationsMois : '—' }}</td>
+              <td class="table-td hidden whitespace-nowrap min-[1800px]:table-cell">
+                @if (a.derniereConnexion) {
+                  {{ a.derniereConnexion }}
+                } @else {
+                  <span class="badge bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"><i class="fa-solid fa-hourglass-half"></i> Jamais connecté</span>
+                }
+              </td>
+              <td class="table-td">
+                @if (a.statut === 'Actif') {
+                  <span class="badge bg-accent-50 text-accent-700 ring-1 ring-accent-200 dark:bg-accent-500/10 dark:text-accent-300 dark:ring-accent-500/30">Actif</span>
+                } @else {
+                  <span class="badge bg-rose-50 text-rose-700 ring-1 ring-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/30">Suspendu</span>
+                }
+                @if (!a.derniereConnexion) {
+                  <p class="mt-1 whitespace-nowrap text-[11px] text-amber-600 min-[1800px]:hidden dark:text-amber-400"><i class="fa-solid fa-hourglass-half"></i> Jamais connecté</p>
+                }
+              </td>
+              <td class="table-td">
+                <div class="flex justify-end gap-1">
+                  <button type="button" class="btn-ghost px-2.5 py-1.5" title="Réinitialiser le mot de passe" (click)="reinitialiser(a)">
+                    <i class="fa-solid fa-key"></i><span class="sr-only">Réinitialiser le mot de passe</span>
+                  </button>
+                  <button type="button" class="btn-ghost px-2.5 py-1.5" [title]="a.statut === 'Actif' ? 'Suspendre l’accès' : 'Réactiver l’accès'" (click)="basculer(a)">
+                    <i class="fa-solid" [class]="a.statut === 'Actif' ? 'fa-user-lock text-rose-500' : 'fa-user-check text-accent-600'"></i>
+                    <span class="sr-only">{{ a.statut === 'Actif' ? 'Suspendre l’accès' : 'Réactiver l’accès' }}</span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="8" class="table-td py-10 text-center text-slate-500 dark:text-slate-400">Aucun agent ne correspond à la recherche.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Panneau d'ajout d'un agent -->
+@if (panneauOuvert) {
+  <div class="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-labelledby="titre-ajout">
+    <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" (click)="fermer()"></div>
+
+    <form #f="ngForm" (ngSubmit)="enregistrer(f)" novalidate
+          class="relative flex h-full w-full max-w-xl flex-col bg-white shadow-2xl dark:bg-slate-900">
+      <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800 sm:px-6">
+        <div>
+          <h2 id="titre-ajout" class="text-lg font-semibold text-slate-900 dark:text-white">Ajouter un agent</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Matricule attribué : <span class="font-mono font-semibold text-slate-700 dark:text-slate-200">{{ matriculePropose }}</span></p>
+        </div>
+        <button type="button" class="btn-ghost px-3" (click)="fermer()" aria-label="Fermer"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div class="flex-1 space-y-7 overflow-y-auto px-5 py-6 sm:px-6">
+        <!-- Photo d'identité -->
+        <section class="flex items-center gap-5">
+          <div class="relative h-24 w-24 flex-none overflow-hidden rounded-2xl bg-slate-100 ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+            @if (photoApercu) {
+              <img [src]="photoApercu" alt="Aperçu de la photo d’identité" class="h-full w-full object-cover">
+            } @else {
+              <div class="flex h-full w-full items-center justify-center text-3xl text-slate-300 dark:text-slate-600"><i class="fa-solid fa-user"></i></div>
+            }
+          </div>
+          <div class="space-y-2">
+            <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Photo d’identité</p>
+            <div class="flex flex-wrap gap-2">
+              <label class="btn-secondary cursor-pointer px-3 py-2 text-xs">
+                <i class="fa-solid fa-camera"></i> {{ photoApercu ? 'Changer' : 'Choisir une photo' }}
+                <input type="file" accept="image/jpeg,image/png,image/webp" capture="user" class="sr-only" (change)="choisirPhoto($event)">
+              </label>
+              @if (photoApercu) {
+                <button type="button" class="btn-ghost px-3 py-2 text-xs text-rose-600" (click)="retirerPhoto()"><i class="fa-solid fa-trash"></i> Retirer</button>
+              }
+            </div>
+            <p class="text-xs" [class]="photoErreur ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500 dark:text-slate-400'">
+              {{ photoErreur || 'Photo de face, fond neutre. JPG, PNG ou WebP, 2 Mo max.' }}
+            </p>
+          </div>
+        </section>
+
+        <!-- Identité -->
+        <section>
+          <h3 class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-id-card"></i> Identité</h3>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label class="label" for="ag-prenom">Prénom <span class="req">*</span></label>
+              <input id="ag-prenom" name="prenom" class="input" [(ngModel)]="form.prenom" #prenom="ngModel" required autocomplete="given-name"
+                     [class.border-rose-400]="prenom.invalid && (prenom.touched || f.submitted)">
+            </div>
+            <div>
+              <label class="label" for="ag-nom">Nom <span class="req">*</span></label>
+              <input id="ag-nom" name="nom" class="input uppercase" [(ngModel)]="form.nom" #nom="ngModel" required autocomplete="family-name"
+                     [class.border-rose-400]="nom.invalid && (nom.touched || f.submitted)">
+            </div>
+            <div>
+              <label class="label" for="ag-postnom">Postnom</label>
+              <input id="ag-postnom" name="postnom" class="input uppercase" [(ngModel)]="form.postnom">
+            </div>
+            <div>
+              <span class="label">Sexe</span>
+              <div class="grid grid-cols-2 gap-2">
+                @for (s of [{ v: 'F', l: 'Femme' }, { v: 'M', l: 'Homme' }]; track s.v) {
+                  <button type="button" class="rounded-xl border px-3 py-2.5 text-sm font-medium transition"
+                          [class]="form.sexe === s.v ? 'border-brand-600 bg-brand-50 text-brand-800 dark:border-brand-400 dark:bg-brand-500/10 dark:text-brand-200' : 'border-slate-300 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800'"
+                          (click)="form.sexe = $any(s.v)">{{ s.l }}</button>
+                }
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Affectation -->
+        <section>
+          <h3 class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-briefcase-medical"></i> Affectation</h3>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label class="label" for="ag-fonction">Fonction <span class="req">*</span></label>
+              <select id="ag-fonction" name="fonction" class="input" [(ngModel)]="form.fonction" required>
+                @for (fn of fonctions; track fn) { <option [ngValue]="fn">{{ fn }}</option> }
+              </select>
+            </div>
+            <div>
+              <label class="label" for="ag-aire">Aire de santé <span class="req">*</span></label>
+              <select id="ag-aire" name="aire" class="input" [(ngModel)]="form.aire" required>
+                @for (ai of aires; track ai) { <option [ngValue]="ai">{{ ai }}</option> }
+              </select>
+            </div>
+            <div class="sm:col-span-2">
+              <label class="label" for="ag-tel">Téléphone <span class="req">*</span></label>
+              <input id="ag-tel" name="telephone" type="tel" inputmode="tel" class="input" placeholder="+243 81 000 0000"
+                     [(ngModel)]="form.telephone" #tel="ngModel" required pattern="[+0-9 ().-]{9,20}"
+                     [class.border-rose-400]="tel.invalid && (tel.touched || f.submitted)">
+              @if (tel.invalid && (tel.touched || f.submitted)) {
+                <p class="mt-1.5 text-xs text-rose-600 dark:text-rose-400">Indiquez un numéro de téléphone valide.</p>
+              }
+            </div>
+          </div>
+        </section>
+
+        <!-- Accès -->
+        <section class="rounded-2xl border border-slate-200 p-4 dark:border-slate-800 sm:p-5">
+          <h3 class="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-lock"></i> Accès à l’espace agent</h3>
+          <p class="mb-4 text-xs text-slate-500 dark:text-slate-400">L’agent se connectera avec cet e-mail et ce mot de passe.</p>
+
+          <div class="space-y-4">
+            <div>
+              <label class="label" for="ag-email">E-mail <span class="req">*</span></label>
+              <div class="relative">
+                <i class="fa-solid fa-envelope pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input id="ag-email" name="email" type="email" class="input pl-10" placeholder="prenom.nom@amisante.cd" autocomplete="off"
+                       [(ngModel)]="form.email" #email="ngModel" required email
+                       [class.border-rose-400]="(email.invalid || emailDejaUtilise) && (email.touched || f.submitted)">
+              </div>
+              @if (emailDejaUtilise) {
+                <p class="mt-1.5 text-xs text-rose-600 dark:text-rose-400">Cet e-mail est déjà utilisé par un autre agent.</p>
+              } @else if (email.invalid && (email.touched || f.submitted)) {
+                <p class="mt-1.5 text-xs text-rose-600 dark:text-rose-400">Indiquez une adresse e-mail valide.</p>
+              }
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between">
+                <label class="label" for="ag-mdp">Mot de passe temporaire <span class="req">*</span></label>
+                <button type="button" class="mb-1.5 text-xs font-semibold text-brand-600 hover:text-brand-800 dark:text-brand-400 dark:hover:text-brand-300" (click)="genererMotDePasse()">
+                  <i class="fa-solid fa-wand-magic-sparkles"></i> Générer
+                </button>
+              </div>
+              <div class="relative">
+                <i class="fa-solid fa-key pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input id="ag-mdp" name="motDePasse" [type]="afficherMdp ? 'text' : 'password'" class="input px-10 font-mono" autocomplete="new-password"
+                       [(ngModel)]="form.motDePasse" #mdp="ngModel" required
+                       [class.border-rose-400]="!motDePasseValide && (mdp.touched || f.submitted)">
+                <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" (click)="afficherMdp = !afficherMdp"
+                        [attr.aria-label]="afficherMdp ? 'Masquer le mot de passe' : 'Afficher le mot de passe'">
+                  <i class="fa-regular" [class]="afficherMdp ? 'fa-eye-slash' : 'fa-eye'"></i>
+                </button>
+              </div>
+              <!-- Force -->
+              <div class="mt-2 grid grid-cols-4 gap-1.5" aria-hidden="true">
+                @for (i of [1, 2, 3, 4]; track i) {
+                  <div class="h-1.5 rounded-full transition"
+                       [class]="force >= i ? (force <= 1 ? 'bg-rose-500' : force <= 3 ? 'bg-amber-400' : 'bg-accent-500') : 'bg-slate-200 dark:bg-slate-700'"></div>
+                }
+              </div>
+              <ul class="mt-2 grid gap-1 text-xs sm:grid-cols-2">
+                @for (r of regles; track r.texte) {
+                  <li class="flex items-center gap-1.5" [class]="r.ok ? 'text-accent-700 dark:text-accent-400' : 'text-slate-500 dark:text-slate-400'">
+                    <i class="fa-solid text-[10px]" [class]="r.ok ? 'fa-circle-check' : 'fa-circle'"></i> {{ r.texte }}
+                  </li>
+                }
+              </ul>
+            </div>
+
+            <div>
+              <label class="label" for="ag-confirm">Confirmer le mot de passe <span class="req">*</span></label>
+              <input id="ag-confirm" name="confirmation" [type]="afficherMdp ? 'text' : 'password'" class="input font-mono" autocomplete="new-password"
+                     [(ngModel)]="form.confirmation" #conf="ngModel" required
+                     [class.border-rose-400]="!confirmationOk && (conf.touched || f.submitted)">
+              @if (!confirmationOk && (conf.touched || f.submitted)) {
+                <p class="mt-1.5 text-xs text-rose-600 dark:text-rose-400">Les deux mots de passe ne correspondent pas.</p>
+              }
+            </div>
+
+            <label class="flex items-start gap-3 text-sm text-slate-600 dark:text-slate-300">
+              <input type="checkbox" name="doitChanger" class="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-600" [(ngModel)]="form.doitChangerMotDePasse">
+              Obliger l’agent à changer ce mot de passe à sa première connexion (recommandé)
+            </label>
+          </div>
+        </section>
+
+        <p class="flex items-start gap-2 rounded-xl bg-slate-50 p-3 text-xs text-slate-600 dark:bg-slate-800/50 dark:text-slate-300">
+          <i class="fa-solid fa-shield-halved mt-0.5 text-brand-600 dark:text-brand-400"></i>
+          Communiquez le mot de passe à l’agent en personne ou par un canal sûr, jamais par SMS groupé ni affiché publiquement. La création du compte est enregistrée dans le journal d’audit.
+        </p>
+      </div>
+
+      <div class="flex flex-col-reverse gap-2 border-t border-slate-100 px-5 py-4 dark:border-slate-800 sm:flex-row sm:justify-end sm:px-6">
+        <button type="button" class="btn-secondary" (click)="fermer()">Annuler</button>
+        <button type="submit" class="btn-primary"><i class="fa-solid fa-user-plus"></i> Créer le compte</button>
+      </div>
+    </form>
+  </div>
+}

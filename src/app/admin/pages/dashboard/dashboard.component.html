@@ -1,0 +1,265 @@
+<div class="mx-auto max-w-7xl space-y-6">
+  <!-- En-tête -->
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <p class="text-sm font-medium text-brand-600 dark:text-brand-400">Samedi 18 octobre 2026</p>
+      <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">Bonjour, {{ user.nom }}</h1>
+      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Voici l’activité CPN de votre structure. Indicateurs agrégés.</p>
+    </div>
+    <div class="flex gap-2">
+      <a routerLink="/admin/patientes" class="btn-secondary"><i class="fa-solid fa-magnifying-glass"></i> Rechercher</a>
+      <a routerLink="/admin/patientes/nouvelle" class="btn-primary"><i class="fa-solid fa-plus"></i> Enregistrer</a>
+    </div>
+  </div>
+
+  <!-- KPI -->
+  <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    @for (k of kpis; track k.label) {
+      <div class="card p-5">
+        <div class="flex items-start justify-between">
+          <div class="flex h-11 w-11 items-center justify-center rounded-xl {{ k.color }}">
+            <i class="fa-solid {{ k.icon }} text-lg"></i>
+          </div>
+          <span class="badge" [class]="k.up ? 'bg-accent-50 dark:bg-accent-500/10 text-accent-700 dark:text-accent-300' : 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300'">
+            <i class="fa-solid text-[10px]" [class]="k.up ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down'"></i>{{ k.trend }}
+          </span>
+        </div>
+        <p class="mt-4 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ k.value }}</p>
+        <p class="mt-1 text-sm font-medium text-slate-700 dark:text-slate-200">{{ k.label }}</p>
+        <p class="text-xs text-slate-500 dark:text-slate-400">{{ k.sub }}</p>
+      </div>
+    }
+  </div>
+
+  <div class="grid gap-6 lg:grid-cols-3">
+    <!-- Graphique inscriptions -->
+    <div class="card lg:col-span-2">
+      <div class="card-header">
+        <h2 class="card-title"><i class="fa-solid fa-chart-column text-brand-600 dark:text-brand-400"></i> Inscriptions par semaine</h2>
+        <span class="text-xs text-slate-500 dark:text-slate-400">6 dernières semaines</span>
+      </div>
+      <div class="px-5 pb-5 pt-6">
+        <div class="flex h-56 items-end gap-3 sm:gap-6">
+          @for (w of weeks; track w.label; let last = $last) {
+            <div class="flex h-full flex-1 flex-col items-center justify-end gap-2">
+              <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">{{ w.value }}</span>
+              <div class="w-full max-w-14 rounded-t-lg transition-all"
+                   [class]="last ? 'bg-accent-600' : 'bg-brand-200 dark:bg-brand-800 hover:bg-brand-300 dark:hover:bg-brand-700'"
+                   [style.height.%]="(w.value / maxWeek) * 85"></div>
+              <span class="text-xs text-slate-500 dark:text-slate-400">{{ w.label }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Répartition -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title"><i class="fa-solid fa-person-pregnant text-accent-600 dark:text-accent-400"></i> Grossesses actives</h2>
+      </div>
+      <div class="space-y-5 p-5">
+        <div>
+          <p class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">126</p>
+          <p class="text-sm text-slate-500 dark:text-slate-400">dont <strong class="font-semibold text-rose-600 dark:text-rose-400">18</strong> signalées à risque</p>
+        </div>
+        <div class="flex h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+          @for (t of trimestres; track t.label) {
+            <div class="{{ t.color }}" [style.width.%]="t.value"></div>
+          }
+        </div>
+        <ul class="space-y-3">
+          @for (t of trimestres; track t.label) {
+            <li class="flex items-center justify-between text-sm">
+              <span class="flex items-center gap-2 text-slate-600 dark:text-slate-300"><span class="h-2.5 w-2.5 rounded-full {{ t.color }}"></span>{{ t.label }}</span>
+              <span class="font-semibold text-slate-900 dark:text-white">{{ t.value }} %</span>
+            </li>
+          }
+        </ul>
+        <div class="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-3 text-xs text-slate-600 dark:text-slate-300">
+          <i class="fa-solid fa-circle-info mr-1 text-brand-600 dark:text-brand-400"></i> Ventilation soumise aux seuils de confidentialité.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid gap-6 lg:grid-cols-5">
+    <!-- Dossiers récents -->
+    <div class="card overflow-hidden lg:col-span-3">
+      <div class="card-header">
+        <h2 class="card-title"><i class="fa-solid fa-folder-open text-brand-600 dark:text-brand-400"></i> Dossiers récents</h2>
+        <a routerLink="/admin/patientes" class="text-xs font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300">Voir tout <i class="fa-solid fa-arrow-right ml-0.5"></i></a>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
+          <thead class="bg-slate-50/70 dark:bg-slate-800/50">
+            <tr>
+              <th class="table-th">Patiente</th>
+              <th class="table-th">Âge gest.</th>
+              <th class="table-th">Statut</th>
+              <th class="table-th"></th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+            @for (p of recentes; track p.id) {
+              <tr class="transition hover:bg-slate-50/70 dark:hover:bg-slate-800/50">
+                <td class="table-td">
+                  <a [routerLink]="['/admin/patientes', p.id]" class="flex items-center gap-3">
+                    <app-avatar [photo]="p.photo" [prenom]="p.prenom" [nomFamille]="p.nom" class="h-9 w-9 rounded-full text-xs ring-2 ring-white dark:ring-slate-900" />
+                    <span>
+                      <span class="block font-medium text-slate-900 dark:text-white">{{ p.prenom }} {{ p.nom }}</span>
+                      <span class="block font-mono text-xs text-slate-500 dark:text-slate-400">{{ p.id }}</span>
+                    </span>
+                  </a>
+                </td>
+                <td class="table-td whitespace-nowrap">{{ p.ageGestationnel }}</td>
+                <td class="table-td"><span class="badge {{ statutClass(p.statut) }}">{{ p.statut }}</span></td>
+                <td class="table-td text-right">
+                  @if (p.sync === 'en attente') {
+                    <span class="badge bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300" title="Fiche locale non synchronisée"><i class="fa-solid fa-cloud-arrow-up"></i> Local</span>
+                  } @else if (p.sync === 'conflit') {
+                    <span class="badge bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300"><i class="fa-solid fa-triangle-exclamation"></i> Conflit</span>
+                  } @else {
+                    <i class="fa-solid fa-cloud text-slate-300" title="Synchronisé"></i>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Prochains RDV -->
+    <div class="card lg:col-span-2">
+      <div class="card-header">
+        <h2 class="card-title"><i class="fa-solid fa-calendar-days text-accent-600 dark:text-accent-400"></i> Prochains rendez-vous</h2>
+        <a routerLink="/admin/rendez-vous" class="text-xs font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300">Agenda</a>
+      </div>
+      <ul class="divide-y divide-slate-100 dark:divide-slate-800">
+        @for (r of rdvs; track r.patienteId + r.date) {
+          <li class="flex items-center gap-4 px-5 py-3.5">
+            <div class="flex h-12 w-12 flex-none flex-col items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-800/50 ring-1 ring-slate-200 dark:ring-slate-700">
+              <span class="text-base font-bold leading-none text-slate-900 dark:text-white">{{ r.date.slice(8) }}</span>
+              <span class="text-[10px] font-semibold uppercase text-slate-500 dark:text-slate-400">{{ r.date.slice(5, 7) === '10' ? 'oct' : 'nov' }}</span>
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-medium text-slate-900 dark:text-white">{{ r.patiente }}</p>
+              <p class="text-xs text-slate-500 dark:text-slate-400">{{ r.type }} · {{ r.heure }}</p>
+            </div>
+            <span class="badge {{ rdvClass(r.statut) }}">{{ r.statut }}</span>
+          </li>
+        }
+      </ul>
+    </div>
+  </div>
+
+  <!-- Vaccination des enfants -->
+  <div class="flex items-end justify-between pt-2">
+    <div>
+      <h2 class="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Vaccination des enfants</h2>
+      <p class="text-sm text-slate-500 dark:text-slate-400">Calendrier de routine (PEV) des enfants de moins de 2 ans.</p>
+    </div>
+    <a routerLink="/admin/enfants" class="text-xs font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300">Voir les enfants <i class="fa-solid fa-arrow-right ml-0.5"></i></a>
+  </div>
+
+  <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="card flex items-center gap-4 p-5">
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"><i class="fa-solid fa-baby text-lg"></i></div>
+      <div><p class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ vacc.enfants }}</p><p class="text-sm text-slate-500 dark:text-slate-400">Enfants suivis</p></div>
+    </div>
+    <div class="card flex items-center gap-4 p-5">
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-accent-50 text-accent-600 dark:bg-accent-500/10 dark:text-accent-400"><i class="fa-solid fa-shield-heart text-lg"></i></div>
+      <div><p class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ vacc.complets }}</p><p class="text-sm text-slate-500 dark:text-slate-400">Complètement vaccinés</p></div>
+    </div>
+    <div class="card flex items-center gap-4 p-5">
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400"><i class="fa-solid fa-syringe text-lg"></i></div>
+      <div><p class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ vacc.dosesMois }}</p><p class="text-sm text-slate-500 dark:text-slate-400">Doses ce mois</p></div>
+    </div>
+    <div class="card flex items-center gap-4 p-5">
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400"><i class="fa-solid fa-triangle-exclamation text-lg"></i></div>
+      <div><p class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ vacc.retard }}</p><p class="text-sm text-slate-500 dark:text-slate-400">En retard de vaccination</p></div>
+    </div>
+  </div>
+
+  <div class="grid gap-6 lg:grid-cols-5">
+    <!-- Couverture par antigène -->
+    <div class="card lg:col-span-3">
+      <div class="card-header">
+        <h2 class="card-title"><i class="fa-solid fa-chart-bar text-accent-600 dark:text-accent-400"></i> Couverture vaccinale par antigène</h2>
+        <span class="text-xs text-slate-500 dark:text-slate-400">Enfants en âge de l’avoir reçu</span>
+      </div>
+      <ul class="space-y-4 p-5">
+        @for (c of couvertures; track c.code) {
+          <li>
+            <div class="mb-1.5 flex items-baseline justify-between gap-3 text-sm">
+              <span class="font-medium text-slate-800 dark:text-slate-100">{{ c.nom }} <span class="text-xs font-normal text-slate-400">· {{ c.age }}</span></span>
+              <span class="tabular-nums text-slate-500 dark:text-slate-400"><strong class="text-slate-900 dark:text-white">{{ c.pct }} %</strong> · {{ c.recus }}/{{ c.eligibles }}</span>
+            </div>
+            <div class="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+              <div class="h-full rounded-full transition-all"
+                   [class]="c.pct >= 90 ? 'bg-accent-500' : c.pct >= 70 ? 'bg-amber-400' : 'bg-rose-500'"
+                   [style.width.%]="c.pct"></div>
+            </div>
+          </li>
+        }
+      </ul>
+      <p class="border-t border-slate-100 px-5 py-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
+        <span class="mr-3"><span class="mr-1 inline-block h-2 w-2 rounded-full bg-accent-500"></span>≥ 90 %</span>
+        <span class="mr-3"><span class="mr-1 inline-block h-2 w-2 rounded-full bg-amber-400"></span>70–89 %</span>
+        <span><span class="mr-1 inline-block h-2 w-2 rounded-full bg-rose-500"></span>&lt; 70 %</span>
+      </p>
+    </div>
+
+    <!-- Enfants en retard -->
+    <div class="card lg:col-span-2">
+      <div class="card-header">
+        <h2 class="card-title"><i class="fa-solid fa-bell text-rose-500"></i> À rattraper</h2>
+        <span class="badge bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">{{ enfantsEnRetard.length }}</span>
+      </div>
+      <ul class="divide-y divide-slate-100 dark:divide-slate-800">
+        @for (e of enfantsEnRetard; track e.id) {
+          <li class="flex items-center gap-3 px-5 py-3.5">
+            <span class="flex h-10 w-10 flex-none items-center justify-center rounded-full text-xs font-semibold"
+                  [class]="e.sexe === 'F' ? 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-300' : 'bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-300'">{{ e.prenom.charAt(0) }}{{ e.nom.charAt(0) }}</span>
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-medium text-slate-900 dark:text-white">{{ e.prenom }} {{ e.nom }} <span class="font-normal text-slate-500 dark:text-slate-400">· {{ ageEnfant(e) }}</span></p>
+              <p class="truncate text-xs text-rose-600 dark:text-rose-400">{{ prochaine(e)?.contact }} non reçu · prévu le {{ fmt(prochaine(e)?.date ?? null) }}</p>
+            </div>
+            <a [href]="telLien(e.telephone)" class="btn-ghost px-2.5 py-1.5" title="Appeler le parent"><i class="fa-solid fa-phone"></i></a>
+          </li>
+        } @empty {
+          <li class="px-5 py-8 text-center text-sm text-slate-500 dark:text-slate-400"><i class="fa-solid fa-circle-check mr-1 text-accent-500"></i>Aucun enfant en retard.</li>
+        }
+      </ul>
+    </div>
+  </div>
+
+  <!-- Qualité des données -->
+  <div class="grid gap-4 md:grid-cols-3">
+    <div class="card flex items-center gap-4 p-5">
+      <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400"><i class="fa-solid fa-clone text-lg"></i></div>
+      <div class="flex-1">
+        <p class="text-sm font-medium text-slate-900 dark:text-white">Doublons potentiels</p>
+        <p class="text-xs text-slate-500 dark:text-slate-400">9 détectés · 5 confirmés · 2 à résoudre</p>
+      </div>
+      <a routerLink="/admin/doublons" class="btn-ghost px-3"><i class="fa-solid fa-chevron-right"></i></a>
+    </div>
+    <div class="card flex items-center gap-4 p-5">
+      <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400"><i class="fa-solid fa-arrows-rotate text-lg"></i></div>
+      <div class="flex-1">
+        <p class="text-sm font-medium text-slate-900 dark:text-white">Synchronisation</p>
+        <p class="text-xs text-slate-500 dark:text-slate-400">2 en attente · 1 conflit · 0 erreur</p>
+      </div>
+      <a routerLink="/admin/synchronisation" class="btn-ghost px-3"><i class="fa-solid fa-chevron-right"></i></a>
+    </div>
+    <div class="card flex items-center gap-4 p-5">
+      <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400"><i class="fa-solid fa-list-check text-lg"></i></div>
+      <div class="flex-1">
+        <p class="text-sm font-medium text-slate-900 dark:text-white">Complétude</p>
+        <p class="text-xs text-slate-500 dark:text-slate-400">94 % des champs obligatoires renseignés</p>
+      </div>
+      <div class="h-2 w-16 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div class="h-full w-[94%] rounded-full bg-sky-500"></div></div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,117 @@
+<div class="mx-auto max-w-7xl space-y-6">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Patientes</h1>
+      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Recherchez toujours la patiente avant de créer un nouveau dossier.</p>
+    </div>
+    <button class="btn-secondary" disabled title="Export nominatif désactivé — autorisation requise">
+      <i class="fa-solid fa-file-export"></i> Exporter
+      <i class="fa-solid fa-lock text-xs"></i>
+    </button>
+  </div>
+
+  <!-- Recherche -->
+  <div class="card p-5">
+    <form class="grid gap-3 md:grid-cols-[1fr_200px_auto]" (ngSubmit)="search()">
+      <div class="relative">
+        <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+        <input class="input pl-10" name="q" [(ngModel)]="query" placeholder="Identifiant AMI, nom, postnom, prénom ou téléphone">
+      </div>
+      <div class="relative">
+        <select class="input appearance-none" name="statut" [(ngModel)]="statut">
+          @for (s of statuts; track s) { <option [value]="s">{{ s === 'Tous' ? 'Tous les statuts' : s }}</option> }
+        </select>
+        <i class="fa-solid fa-chevron-down pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
+      </div>
+      <button type="submit" class="btn-primary"><i class="fa-solid fa-magnifying-glass"></i> Rechercher</button>
+    </form>
+    <div class="mt-3 flex flex-wrap gap-2 text-xs">
+      <span class="text-slate-500 dark:text-slate-400">Critères avancés :</span>
+      <button class="badge bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"><i class="fa-solid fa-cake-candles"></i> Date de naissance / âge</button>
+      <button class="badge bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"><i class="fa-solid fa-location-dot"></i> Quartier</button>
+      <button class="badge bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"><i class="fa-solid fa-id-card"></i> Pièce d’identité</button>
+    </div>
+  </div>
+
+  @if (searched && query && results.length === 0) {
+    <div class="card flex flex-col items-center gap-4 p-10 text-center">
+      <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400"><i class="fa-solid fa-user-slash text-xl"></i></div>
+      <div>
+        <p class="font-semibold text-slate-900 dark:text-white">Aucun dossier correspondant</p>
+        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Vérifiez l’orthographe ou essayez le numéro de téléphone avant de créer un dossier.</p>
+      </div>
+      <a routerLink="/admin/patientes/nouvelle" class="btn-primary"><i class="fa-solid fa-file-circle-plus"></i> Créer un nouveau dossier</a>
+    </div>
+  } @else {
+    @if (searched && query) {
+      <div class="flex items-start gap-3 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-4 text-sm text-amber-900 dark:text-amber-300">
+        <i class="fa-solid fa-triangle-exclamation mt-0.5 text-amber-500"></i>
+        <p><strong class="font-semibold">{{ results.length }} correspondance(s) potentielle(s).</strong> Vérifiez qu’il ne s’agit pas de la même personne avant toute création. Un nom ou un téléphone identique ne suffit pas à conclure.</p>
+      </div>
+    }
+
+    <div class="card overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
+          <thead class="bg-slate-50/70 dark:bg-slate-800/50">
+            <tr>
+              <th class="table-th">Patiente</th>
+              <th class="table-th">Âge</th>
+              <th class="table-th">Téléphone</th>
+              <th class="table-th">Résidence</th>
+              <th class="table-th">Âge gestationnel</th>
+              <th class="table-th">Prochain RDV</th>
+              <th class="table-th">Statut</th>
+              <th class="table-th"></th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+            @for (p of results; track p.id) {
+              <tr class="transition hover:bg-slate-50/70 dark:hover:bg-slate-800/50">
+                <td class="table-td">
+                  <div class="flex items-center gap-3">
+                    <app-avatar [photo]="p.photo" [prenom]="p.prenom" [nomFamille]="p.nom" class="h-10 w-10 rounded-full text-sm ring-2 ring-white dark:ring-slate-900" />
+                    <div>
+                      <p class="font-medium text-slate-900 dark:text-white">
+                        {{ p.prenom }} {{ p.nom }} <span class="text-slate-500 dark:text-slate-400">{{ p.postnom }}</span>
+                        @if (p.risque) { <i class="fa-solid fa-circle-exclamation ml-1 text-rose-500" title="Grossesse à risque"></i> }
+                      </p>
+                      <p class="flex items-center gap-1.5 font-mono text-xs text-slate-500 dark:text-slate-400">
+                        {{ p.id }}
+                        @if (p.sync === 'en attente') { <span class="badge bg-amber-50 dark:bg-amber-500/10 px-1.5 font-sans text-[10px] text-amber-700 dark:text-amber-300">non synchronisée</span> }
+                      </p>
+                    </div>
+                  </div>
+                </td>
+                <td class="table-td">{{ p.age }} ans</td>
+                <td class="table-td whitespace-nowrap">{{ p.telephone }}</td>
+                <td class="table-td whitespace-nowrap">{{ p.quartier }}, {{ p.commune }}</td>
+                <td class="table-td whitespace-nowrap">{{ p.ageGestationnel }}</td>
+                <td class="table-td whitespace-nowrap">{{ fmt(p.prochainRdv) }}</td>
+                <td class="table-td"><span class="badge {{ statutClass(p.statut) }}">{{ p.statut }}</span></td>
+                <td class="table-td text-right">
+                  <a [routerLink]="['/admin/patientes', p.id]" class="btn-secondary px-3 py-1.5 text-xs">Ouvrir <i class="fa-solid fa-chevron-right text-[10px]"></i></a>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 px-5 py-3 text-xs text-slate-500 dark:text-slate-400">
+        <span>{{ results.length }} dossier(s)</span>
+        <div class="flex gap-1">
+          <button class="btn-ghost px-2.5 py-1.5" disabled><i class="fa-solid fa-chevron-left"></i></button>
+          <button class="btn-ghost bg-brand-50 dark:bg-brand-500/10 px-3 py-1.5 text-brand-700 dark:text-brand-300">1</button>
+          <button class="btn-ghost px-2.5 py-1.5" disabled><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+      </div>
+    </div>
+
+    @if (searched && query) {
+      <div class="flex flex-col items-center justify-between gap-3 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 sm:flex-row">
+        <p class="text-sm text-slate-600 dark:text-slate-300">Aucune de ces fiches ne correspond à la patiente ?</p>
+        <a routerLink="/admin/patientes/nouvelle" class="btn-primary"><i class="fa-solid fa-file-circle-plus"></i> Créer un nouveau dossier</a>
+      </div>
+    }
+  }
+</div>

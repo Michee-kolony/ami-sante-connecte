@@ -1,0 +1,292 @@
+<!-- Hero -->
+<section id="accueil" class="relative overflow-hidden bg-gradient-to-b from-brand-50/70 dark:from-slate-900 to-white dark:to-slate-950">
+  <div class="pointer-events-none absolute -right-40 -top-40 h-[30rem] w-[30rem] rounded-full bg-accent-200/40 dark:bg-accent-800/40 blur-3xl"></div>
+  <div class="pointer-events-none absolute -left-40 top-40 h-[26rem] w-[26rem] rounded-full bg-brand-200/40 dark:bg-brand-800/40 blur-3xl"></div>
+
+  <div class="relative mx-auto grid max-w-7xl items-center gap-10 px-4 pt-16 sm:px-6 lg:grid-cols-2 lg:gap-12 lg:px-8 lg:pt-0">
+    <div class="lg:py-28">
+      <span class="badge bg-accent-50 dark:bg-accent-500/10 py-1 text-accent-700 dark:text-accent-300 ring-1 ring-accent-200 dark:ring-accent-500/30"><i class="fa-solid fa-heart-pulse"></i> {{ 'Santé maternelle · RDC' | t }}</span>
+      <h1 class="mt-5 text-4xl font-extrabold leading-tight tracking-tight text-brand-900 dark:text-white sm:text-5xl">
+        {{ 'Chaque grossesse mérite un' | t }} <span class="text-accent-600 dark:text-accent-400">{{ 'suivi fiable' | t }}</span>.
+      </h1>
+      <p class="mt-5 max-w-xl text-lg leading-relaxed text-slate-600 dark:text-slate-300">
+        {{ 'AMI Santé Connect aide les équipes de santé à enregistrer et suivre les femmes enceintes lors des consultations prénatales (CPN), même là où la connexion internet est irrégulière.' | t }}
+      </p>
+      <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+        <a routerLink="/" fragment="cpn" class="btn-primary px-6 py-3"><i class="fa-solid fa-circle-info"></i> {{ 'Comment ça marche' | t }}</a>
+        <a routerLink="/" fragment="contact" class="btn-secondary px-6 py-3"><i class="fa-solid fa-location-dot"></i> {{ 'Où nous trouver' | t }}</a>
+      </div>
+    </div>
+
+    <div class="relative mx-auto w-full max-w-sm sm:max-w-md lg:mr-0 lg:max-w-lg lg:self-end">
+      @if (photoDocteur) {
+        <!-- Photo détourée (PNG/WebP transparent) posée sur une arche aux couleurs du logo -->
+        <div class="relative aspect-square w-full">
+          <div class="absolute inset-x-[8%] bottom-0 top-[4%] rounded-t-full border-2 border-dashed border-brand-200 dark:border-brand-500/30"></div>
+          <div class="absolute inset-x-[16%] bottom-0 top-[12%] rounded-t-full bg-gradient-to-br from-brand-600 via-brand-700 to-accent-600 shadow-2xl shadow-brand-900/20"></div>
+          <img src="images/docteur.png" [alt]="'Médecin AMI Santé Connect' | t" width="394" height="341"
+               class="absolute inset-x-0 bottom-0 h-auto w-full drop-shadow-xl"
+               (error)="photoDocteur = false">
+        </div>
+      } @else {
+        <div class="card relative overflow-hidden p-8 sm:p-10 lg:mb-24">
+          <img src="images/logo-icon.png" alt="" class="mx-auto h-56 w-56 sm:h-64 sm:w-64" width="256" height="256">
+          <p class="mt-6 text-center text-sm font-semibold uppercase tracking-[0.2em] text-brand-900 dark:text-white">{{ 'Mère · Enfant · Communauté · Avenir' | t }}</p>
+        </div>
+      }
+      <div class="card absolute bottom-10 -left-2 hidden items-center gap-3 px-4 py-3 sm:flex lg:-left-10">
+        <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-50 dark:bg-accent-500/10 text-accent-600 dark:text-accent-400"><i class="fa-solid fa-calendar-check"></i></span>
+        <div><p class="text-sm font-semibold text-slate-900 dark:text-white">{{ 'Rappels de rendez-vous' | t }}</p><p class="text-xs text-slate-500 dark:text-slate-400">{{ 'avec votre accord' | t }}</p></div>
+      </div>
+      <div class="card absolute -right-2 top-[22%] hidden items-center gap-3 px-4 py-3 sm:flex lg:-right-6">
+        <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-300"><i class="fa-solid fa-wifi"></i></span>
+        <div><p class="text-sm font-semibold text-slate-900 dark:text-white">{{ 'Fonctionne hors ligne' | t }}</p><p class="text-xs text-slate-500 dark:text-slate-400">{{ 'synchronisation sécurisée' | t }}</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Chiffres clés -->
+<section #stats id="chiffres" class="relative px-4 py-16 sm:px-6 lg:px-8">
+  <div class="relative mx-auto max-w-5xl overflow-hidden rounded-3xl bg-gradient-to-br from-brand-700 via-brand-800 to-brand-950 px-6 py-12 shadow-2xl shadow-brand-900/20 dark:shadow-black/40 sm:px-12 sm:py-14">
+    <div class="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-accent-500/25 blur-3xl"></div>
+    <div class="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-brand-400/20 blur-3xl"></div>
+    <i class="fa-solid fa-heart-pulse pointer-events-none absolute -bottom-6 right-6 text-[9rem] text-white/5"></i>
+
+    <div class="relative text-center">
+      <p class="text-sm font-semibold uppercase tracking-wider text-accent-300">{{ 'Notre impact' | t }}</p>
+      <h2 class="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">{{ 'Des milliers de mères et d’enfants accompagnés' | t }}</h2>
+    </div>
+
+    <div class="relative mt-10 grid gap-6 sm:grid-cols-2">
+      @for (s of statistiques; track s.libelle; let i = $index) {
+        <div class="rounded-2xl bg-white/5 p-6 text-center ring-1 ring-white/10 backdrop-blur-sm sm:p-8">
+          <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl text-2xl text-white"
+                [class]="s.accent ? 'bg-accent-600' : 'bg-brand-500'">
+            <i class="fa-solid {{ s.icon }}"></i>
+          </span>
+          <p class="mt-5 text-4xl font-extrabold tracking-tight text-white tabular-nums sm:text-5xl">
+            {{ s.prefixe }}{{ afficher(compteurs[i]) }}
+          </p>
+          <p class="mt-2 text-base font-semibold text-white">{{ s.libelle | t }}</p>
+          <p class="mt-1 text-sm text-brand-200">{{ s.texte | t }}</p>
+        </div>
+      }
+    </div>
+  </div>
+</section>
+
+<!-- Aperçu de la plateforme -->
+<section id="apercu" class="relative scroll-mt-24 overflow-hidden px-4 py-20 sm:px-6 lg:px-8">
+  <div class="mx-auto max-w-3xl text-center">
+    <p class="text-sm font-semibold uppercase tracking-wider text-accent-600 dark:text-accent-400">{{ 'Aperçu de la plateforme' | t }}</p>
+    <h2 class="mt-2 text-3xl font-bold tracking-tight text-brand-900 dark:text-white sm:text-4xl">{{ 'Un tableau de bord clair pour les équipes de santé' | t }}</h2>
+    <p class="mt-4 text-slate-600 dark:text-slate-300">{{ 'Inscriptions, rendez-vous, dossiers à compléter et synchronisation : l’essentiel de l’activité CPN en un coup d’œil.' | t }}</p>
+  </div>
+
+  <div class="relative mx-auto mt-12 max-w-4xl">
+    <!-- halo aux couleurs du logo -->
+    <div class="pointer-events-none absolute -inset-x-6 -inset-y-8 rounded-[3rem] bg-gradient-to-br from-brand-400/25 via-transparent to-accent-400/25 blur-2xl"></div>
+
+    <!-- cadre de navigateur -->
+    <figure class="relative overflow-hidden rounded-xl bg-white shadow-2xl shadow-brand-900/20 ring-1 ring-slate-900/10 dark:bg-slate-900 dark:shadow-black/40 dark:ring-white/10 sm:rounded-2xl">
+      <div class="flex items-center gap-3 border-b border-slate-200 bg-slate-100 px-3 py-2 dark:border-slate-800 dark:bg-slate-800 sm:px-4 sm:py-3">
+        <div class="flex gap-1.5">
+          <span class="h-2.5 w-2.5 rounded-full bg-rose-400 sm:h-3 sm:w-3"></span>
+          <span class="h-2.5 w-2.5 rounded-full bg-amber-400 sm:h-3 sm:w-3"></span>
+          <span class="h-2.5 w-2.5 rounded-full bg-accent-500 sm:h-3 sm:w-3"></span>
+        </div>
+        <div class="mx-auto flex min-w-0 max-w-md flex-1 items-center justify-center gap-2 rounded-md bg-white px-3 py-1 text-[11px] text-slate-500 dark:bg-slate-900 dark:text-slate-400 sm:text-xs">
+          <i class="fa-solid fa-lock text-[10px] text-accent-600"></i>
+          <span class="truncate">amisanteconnect · Tableau de bord</span>
+        </div>
+        <div class="hidden w-12 sm:block"></div>
+      </div>
+      <img src="images/apercu-dashboard-light.webp" [alt]="'Tableau de bord AMI Santé Connect : inscriptions, grossesses actives et rendez-vous' | t"
+           width="1600" height="1000" loading="lazy" class="block h-auto w-full dark:hidden">
+      <img src="images/apercu-dashboard-dark.webp" [alt]="'Tableau de bord AMI Santé Connect en mode sombre' | t"
+           width="1600" height="1000" loading="lazy" class="hidden h-auto w-full dark:block">
+    </figure>
+  </div>
+
+  <ul class="mx-auto mt-14 grid max-w-5xl gap-6 sm:grid-cols-3">
+    @for (a of atouts; track a.titre) {
+      <li class="flex gap-4">
+        <span class="flex h-11 w-11 flex-none items-center justify-center rounded-xl bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"><i class="fa-solid {{ a.icon }}"></i></span>
+        <div>
+          <p class="font-semibold text-slate-900 dark:text-white">{{ a.titre | t }}</p>
+          <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">{{ a.texte | t }}</p>
+        </div>
+      </li>
+    }
+  </ul>
+</section>
+
+<!-- Piliers -->
+<section id="projet" class="mx-auto max-w-7xl scroll-mt-24 px-4 py-20 sm:px-6 lg:px-8">
+  <div class="max-w-2xl">
+    <p class="text-sm font-semibold uppercase tracking-wider text-accent-600 dark:text-accent-400">{{ 'Le projet' | t }}</p>
+    <h2 class="mt-2 text-3xl font-bold tracking-tight text-brand-900 dark:text-white">{{ 'Des données fiables pour une meilleure santé' | t }}</h2>
+    <p class="mt-4 text-slate-600 dark:text-slate-300">{{ 'Un outil numérique au service des professionnels de santé et des relais communautaires. Il soutient leur travail, sans remplacer le jugement clinique.' | t }}</p>
+  </div>
+  <div class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+    @for (p of piliers; track p.titre) {
+      <div class="card p-6 transition hover:-translate-y-1 hover:shadow-lg">
+        <div class="flex h-12 w-12 items-center justify-center rounded-xl {{ p.color }}"><i class="fa-solid {{ p.icon }} text-xl"></i></div>
+        <h3 class="mt-5 text-lg font-semibold text-slate-900 dark:text-white">{{ p.titre | t }}</h3>
+        <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{{ p.texte | t }}</p>
+      </div>
+    }
+  </div>
+</section>
+
+<!-- Parcours CPN -->
+<section id="cpn" class="scroll-mt-20 bg-brand-950 py-20 text-white">
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <div class="max-w-2xl">
+      <p class="text-sm font-semibold uppercase tracking-wider text-accent-400">{{ 'Suivi prénatal' | t }}</p>
+      <h2 class="mt-2 text-3xl font-bold tracking-tight">{{ 'Votre parcours lors de la consultation prénatale' | t }}</h2>
+      <p class="mt-4 text-slate-300">{{ 'Venez en consultation dès que vous pensez être enceinte. Un suivi régulier permet de repérer tôt les complications.' | t }}</p>
+    </div>
+    <ol class="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      @for (e of etapes; track e.n) {
+        <li class="rounded-2xl bg-white/5 p-6 ring-1 ring-white/10">
+          <div class="flex items-center justify-between">
+            <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-accent-600 text-white"><i class="fa-solid {{ e.icon }}"></i></span>
+            <span class="text-3xl font-extrabold text-white/10">{{ e.n }}</span>
+          </div>
+          <h3 class="mt-5 font-semibold">{{ e.titre | t }}</h3>
+          <p class="mt-2 text-sm leading-relaxed text-slate-300">{{ e.texte | t }}</p>
+        </li>
+      }
+    </ol>
+  </div>
+</section>
+
+<!-- Galerie photo -->
+<app-galerie />
+
+<!-- Confidentialité -->
+<section id="confidentialite" class="mx-auto max-w-7xl scroll-mt-24 px-4 py-20 sm:px-6 lg:px-8">
+  <div class="grid gap-12 lg:grid-cols-5">
+    <div class="lg:col-span-2">
+      <p class="text-sm font-semibold uppercase tracking-wider text-accent-600 dark:text-accent-400">{{ 'Confidentialité' | t }}</p>
+      <h2 class="mt-2 text-3xl font-bold tracking-tight text-brand-900 dark:text-white">{{ 'Vos données sont protégées' | t }}</h2>
+      <p class="mt-4 text-slate-600 dark:text-slate-300">{{ 'Nous ne recueillons que les informations utiles à votre suivi. Vous gardez le contrôle sur la façon dont nous vous contactons.' | t }}</p>
+    </div>
+    <div class="grid gap-4 sm:grid-cols-2 lg:col-span-3">
+      @for (e of engagements; track e.titre) {
+        <div class="flex gap-4 rounded-2xl border border-slate-200 dark:border-slate-800 p-5">
+          <span class="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-300"><i class="fa-solid {{ e.icon }}"></i></span>
+          <div>
+            <h3 class="font-semibold text-slate-900 dark:text-white">{{ e.titre | t }}</h3>
+            <p class="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{{ e.texte | t }}</p>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+</section>
+
+<!-- Contact -->
+<section id="contact" class="scroll-mt-24 px-4 pb-20 sm:px-6 lg:px-8">
+  <div class="mx-auto max-w-7xl overflow-hidden rounded-3xl bg-gradient-to-br from-brand-700 to-brand-900">
+    <div class="grid gap-10 p-6 sm:p-12 lg:grid-cols-5">
+      <div class="text-white lg:col-span-2">
+        <h2 class="text-3xl font-bold tracking-tight">{{ 'Contactez-nous' | t }}</h2>
+        <p class="mt-3 text-brand-100">{{ 'Une question sur le projet, un partenariat ou le suivi prénatal ? Écrivez-nous, notre équipe vous répondra.' | t }}</p>
+        <ul class="mt-8 space-y-4">
+          <li class="flex gap-3"><i class="fa-solid fa-hospital mt-1 text-accent-300"></i><span>Hôpital Militaire de la Garde Républicaine<br><span class="text-brand-200">Camp Colonel Tshatshi</span></span></li>
+          <li class="flex gap-3"><i class="fa-solid fa-map-location-dot mt-1 text-accent-300"></i><span>Zone de Santé Militaire Kokolo<br><span class="text-brand-200">Kinshasa, République démocratique du Congo</span></span></li>
+        </ul>
+        <div class="mt-8 flex gap-3 rounded-2xl bg-white/10 p-4 text-sm ring-1 ring-white/15">
+          <i class="fa-solid fa-triangle-exclamation mt-0.5 text-amber-300"></i>
+          <p><strong class="font-semibold">{{ 'Urgence médicale ?' | t }}</strong> {{ 'N’utilisez pas ce formulaire : rendez-vous immédiatement à l’hôpital le plus proche.' | t }}</p>
+        </div>
+      </div>
+
+      <div class="rounded-2xl bg-white p-6 shadow-xl dark:bg-slate-900 sm:p-8 lg:col-span-3">
+        @if (contactEnvoye) {
+          <div class="flex flex-col items-center py-10 text-center" role="status">
+            <span class="flex h-16 w-16 items-center justify-center rounded-full bg-accent-50 text-2xl text-accent-600 dark:bg-accent-500/10 dark:text-accent-400"><i class="fa-solid fa-check"></i></span>
+            <h3 class="mt-5 text-xl font-semibold text-slate-900 dark:text-white">{{ 'Message envoyé, merci !' | t }}</h3>
+            <p class="mt-2 max-w-sm text-sm text-slate-600 dark:text-slate-300">{{ 'Nous avons bien reçu votre message et vous répondrons dans les meilleurs délais.' | t }}</p>
+            <button type="button" class="btn-secondary mt-6" (click)="nouveauMessage()"><i class="fa-solid fa-pen"></i> {{ 'Envoyer un autre message' | t }}</button>
+          </div>
+        } @else {
+          <form #contactForm="ngForm" (ngSubmit)="envoyerContact(contactForm)" novalidate class="space-y-5">
+            <div class="grid gap-5 sm:grid-cols-2">
+              <div>
+                <label class="label" for="c-nom">{{ 'Nom complet' | t }} <span class="req">*</span></label>
+                <input id="c-nom" name="nom" class="input" [(ngModel)]="contact.nom" #nom="ngModel" required minlength="2" autocomplete="name"
+                       [class.border-rose-400]="nom.invalid && (nom.touched || contactForm.submitted)">
+                @if (nom.invalid && (nom.touched || contactForm.submitted)) {
+                  <p class="mt-1.5 text-xs text-rose-600 dark:text-rose-400">{{ 'Indiquez votre nom.' | t }}</p>
+                }
+              </div>
+              <div>
+                <label class="label" for="c-tel">{{ 'Téléphone' | t }} <span class="req">*</span></label>
+                <input id="c-tel" name="telephone" type="tel" inputmode="tel" class="input" placeholder="+243 …" [(ngModel)]="contact.telephone" #tel="ngModel" required pattern="[+0-9 ().-]{9,20}" autocomplete="tel"
+                       [class.border-rose-400]="tel.invalid && (tel.touched || contactForm.submitted)">
+                @if (tel.invalid && (tel.touched || contactForm.submitted)) {
+                  <p class="mt-1.5 text-xs text-rose-600 dark:text-rose-400">{{ 'Indiquez un numéro de téléphone valide.' | t }}</p>
+                }
+              </div>
+            </div>
+
+            <div class="grid gap-5 sm:grid-cols-2">
+              <div>
+                <label class="label" for="c-email">{{ 'E-mail' | t }} <span class="text-xs font-normal text-slate-400">({{ 'facultatif' | t }})</span></label>
+                <input id="c-email" name="email" type="email" class="input" placeholder="nom@exemple.cd" [(ngModel)]="contact.email" #email="ngModel" email autocomplete="email"
+                       [class.border-rose-400]="email.invalid && (email.touched || contactForm.submitted)">
+                @if (email.invalid && (email.touched || contactForm.submitted)) {
+                  <p class="mt-1.5 text-xs text-rose-600 dark:text-rose-400">{{ 'Adresse e-mail invalide.' | t }}</p>
+                }
+              </div>
+              <div>
+                <label class="label" for="c-sujet">{{ 'Sujet' | t }}</label>
+                <div class="relative">
+                  <select id="c-sujet" name="sujet" class="input appearance-none pr-10" [(ngModel)]="contact.sujet">
+                    @for (s of sujets; track s) { <option [value]="s">{{ s | t }}</option> }
+                  </select>
+                  <i class="fa-solid fa-chevron-down pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label class="label" for="c-message">{{ 'Message' | t }} <span class="req">*</span></label>
+              <textarea id="c-message" name="message" rows="5" class="input resize-y" [(ngModel)]="contact.message" #message="ngModel" required minlength="10" maxlength="1000"
+                        [placeholder]="'Écrivez votre message…' | t"
+                        [class.border-rose-400]="message.invalid && (message.touched || contactForm.submitted)"></textarea>
+              <div class="mt-1.5 flex justify-between gap-3 text-xs">
+                @if (message.invalid && (message.touched || contactForm.submitted)) {
+                  <p class="text-rose-600 dark:text-rose-400">{{ 'Votre message doit contenir au moins 10 caractères.' | t }}</p>
+                } @else {
+                  <p class="text-slate-500 dark:text-slate-400">{{ 'Ne partagez pas d’informations médicales personnelles ici.' | t }}</p>
+                }
+                <span class="flex-none tabular-nums text-slate-400">{{ contact.message.length }}/1000</span>
+              </div>
+            </div>
+
+            <label class="flex items-start gap-3 text-sm text-slate-600 dark:text-slate-300">
+              <input type="checkbox" name="consentement" class="mt-0.5 h-4 w-4 flex-none rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-600" [(ngModel)]="contact.consentement" #consent="ngModel" required>
+              <span>{{ 'J’accepte que mes coordonnées soient utilisées uniquement pour répondre à ma demande.' | t }} <span class="req">*</span></span>
+            </label>
+            @if (consent.invalid && contactForm.submitted) {
+              <p class="-mt-3 text-xs text-rose-600 dark:text-rose-400">{{ 'Votre accord est nécessaire pour envoyer le message.' | t }}</p>
+            }
+
+            <button type="submit" class="btn-primary w-full py-3" [disabled]="envoiEnCours">
+              @if (envoiEnCours) {
+                <i class="fa-solid fa-spinner fa-spin"></i> {{ 'Envoi en cours…' | t }}
+              } @else {
+                <i class="fa-solid fa-paper-plane"></i> {{ 'Envoyer le message' | t }}
+              }
+            </button>
+          </form>
+        }
+      </div>
+    </div>
+  </div>
+</section>

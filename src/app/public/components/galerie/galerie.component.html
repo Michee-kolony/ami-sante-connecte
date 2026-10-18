@@ -1,0 +1,119 @@
+<section id="galerie" class="mx-auto max-w-7xl scroll-mt-24 px-4 py-20 sm:px-6 lg:px-8">
+  <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+    <div class="max-w-2xl">
+      <p class="text-sm font-semibold uppercase tracking-wider text-accent-600 dark:text-accent-400">{{ 'Galerie' | t }}</p>
+      <h2 class="mt-2 text-3xl font-bold tracking-tight text-brand-900 dark:text-white">{{ 'Le projet en images' | t }}</h2>
+      <p class="mt-4 text-slate-600 dark:text-slate-300">{{ 'Découvrez nos activités sur le terrain, auprès des mères, des enfants et des équipes de santé.' | t }}</p>
+    </div>
+
+    <!-- Filtres par thème -->
+    <div class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0" role="tablist" [attr.aria-label]="'Thèmes de la galerie' | t">
+      <button type="button" role="tab" [attr.aria-selected]="filtre === 'tous'" (click)="choisir('tous')"
+              class="flex flex-none items-center gap-2 rounded-full px-4 py-2 text-sm font-medium ring-1 transition"
+              [class]="filtre === 'tous'
+                ? 'bg-brand-700 text-white ring-brand-700 dark:bg-brand-600 dark:ring-brand-600'
+                : 'bg-white text-slate-600 ring-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-800'">
+        <i class="fa-solid fa-images"></i> {{ 'Tous' | t }}
+        <span class="rounded-full bg-black/10 px-1.5 text-xs dark:bg-white/10">{{ compte('tous') }}</span>
+      </button>
+      @for (th of themes; track th.id) {
+        <button type="button" role="tab" [attr.aria-selected]="filtre === th.id" (click)="choisir(th.id)"
+                class="flex flex-none items-center gap-2 rounded-full px-4 py-2 text-sm font-medium ring-1 transition"
+                [class]="filtre === th.id
+                  ? 'bg-brand-700 text-white ring-brand-700 dark:bg-brand-600 dark:ring-brand-600'
+                  : 'bg-white text-slate-600 ring-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-800'">
+          <i class="fa-solid {{ th.icon }}"></i> {{ th.nom | t }}
+          <span class="rounded-full bg-black/10 px-1.5 text-xs dark:bg-white/10">{{ compte(th.id) }}</span>
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Grille -->
+  <ul class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    @for (p of affichees; track p.src) {
+      <li>
+        <button type="button" (click)="ouvrir(p)" [disabled]="manquantes.has(p.src)"
+                class="group relative block aspect-[4/3] w-full overflow-hidden rounded-2xl bg-slate-100 text-left ring-1 ring-slate-200 focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/40 disabled:cursor-default dark:bg-slate-800 dark:ring-slate-800">
+          @if (!manquantes.has(p.src)) {
+            <img [src]="p.src" [alt]="p.legende | t" loading="lazy" (error)="absente(p)"
+                 class="h-full w-full object-cover transition duration-500 group-hover:scale-105 {{ p.cadrage ?? '' }}">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent opacity-90 transition group-hover:opacity-100"></div>
+            <span class="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-brand-800 opacity-0 shadow transition group-hover:opacity-100">
+              <i class="fa-solid fa-expand"></i>
+            </span>
+          } @else {
+            <!-- Vignette « Photo à venir » tant que le fichier n'est pas déposé -->
+            <div class="absolute inset-0 bg-gradient-to-br {{ theme(p.theme).degrade }}"></div>
+            <i class="fa-solid {{ theme(p.theme).icon }} absolute -right-4 -top-4 text-[8rem] text-white/10"></i>
+            <div class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white/80">
+              <i class="fa-regular fa-image text-3xl"></i>
+              <span class="text-xs font-medium uppercase tracking-wider">{{ 'Photo à venir' | t }}</span>
+            </div>
+            <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+          }
+          <div class="absolute inset-x-0 bottom-0 p-4">
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] font-medium text-white backdrop-blur">
+              <i class="fa-solid {{ theme(p.theme).icon }}"></i> {{ theme(p.theme).nom | t }}
+            </span>
+            <p class="mt-1.5 font-semibold text-white">{{ p.legende | t }}</p>
+          </div>
+        </button>
+      </li>
+    }
+  </ul>
+
+  @if (restantes > 0) {
+    <div class="mt-10 flex justify-center">
+      <button type="button" class="btn-secondary px-6 py-3" (click)="toutVoir = !toutVoir" [attr.aria-expanded]="toutVoir">
+        @if (toutVoir) {
+          <i class="fa-solid fa-chevron-up"></i> {{ 'Voir moins' | t }}
+        } @else {
+          <i class="fa-solid fa-images"></i> {{ 'Voir plus' | t }}
+          <span class="rounded-full bg-brand-50 px-2 text-xs text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">+{{ restantes }}</span>
+        }
+      </button>
+    </div>
+  }
+
+  <p class="mt-8 text-center text-xs text-slate-400">
+    <i class="fa-brands fa-creative-commons mr-1"></i>{{ 'Photos libres de droits issues de Wikimedia Commons. Auteurs et licences indiqués sur chaque photo agrandie.' | t }}
+  </p>
+</section>
+
+<!-- Visionneuse plein écran -->
+@if (ouverte !== null && disponibles[ouverte]; as photo) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 p-4 backdrop-blur-sm"
+       role="dialog" aria-modal="true" [attr.aria-label]="photo.legende | t" (click)="fermer()">
+    <button type="button" class="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
+            [attr.aria-label]="'Fermer' | t" (click)="fermer()">
+      <i class="fa-solid fa-xmark text-lg"></i>
+    </button>
+
+    @if (disponibles.length > 1) {
+      <button type="button" class="absolute left-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 sm:left-6"
+              [attr.aria-label]="'Photo précédente' | t" (click)="$event.stopPropagation(); suivante(-1)">
+        <i class="fa-solid fa-chevron-left"></i>
+      </button>
+      <button type="button" class="absolute right-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 sm:right-6"
+              [attr.aria-label]="'Photo suivante' | t" (click)="$event.stopPropagation(); suivante(1)">
+        <i class="fa-solid fa-chevron-right"></i>
+      </button>
+    }
+
+    <figure class="max-h-full max-w-5xl" (click)="$event.stopPropagation()">
+      <img [src]="photo.src" [alt]="photo.legende | t" class="max-h-[78vh] w-auto rounded-xl object-contain shadow-2xl">
+      <figcaption class="mt-4 flex flex-wrap items-center justify-center gap-3 text-center text-white">
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs">
+          <i class="fa-solid {{ theme(photo.theme).icon }}"></i> {{ theme(photo.theme).nom | t }}
+        </span>
+        <span class="font-medium">{{ photo.legende | t }}</span>
+        <span class="text-sm text-white/60">{{ ouverte + 1 }} / {{ disponibles.length }}</span>
+      </figcaption>
+      <p class="mt-2 text-center text-xs text-white/50">
+        {{ 'Photo' | t }} : {{ photo.auteur }} ·
+        <a [href]="photo.source" target="_blank" rel="noopener noreferrer" class="underline hover:text-white">{{ photo.licence }}</a>
+      </p>
+    </figure>
+  </div>
+}
