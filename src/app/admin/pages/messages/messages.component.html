@@ -1,11 +1,14 @@
-<div class="mx-auto max-w-7xl space-y-4">
+<!-- Pleine largeur ; la carte occupe toute la hauteur sous la barre du haut (4rem) et le titre -->
+<div class="flex flex-col gap-4">
   <div [class]="actif() ? 'hidden md:block' : ''">
     <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Messages</h1>
     <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Échangez avec les patientes que vous avez consultées, uniquement sur les canaux qu’elles ont acceptés.</p>
   </div>
 
-  <div class="card grid grid-cols-1 overflow-hidden md:grid-cols-[16rem_minmax(0,1fr)] xl:grid-cols-[20rem_minmax(0,1fr)]"
-       [class]="actif() ? 'h-[calc(100dvh-8.5rem)] md:h-[calc(100dvh-15rem)] md:min-h-[30rem]' : 'h-[calc(100dvh-15rem)] min-h-[26rem] md:min-h-[30rem]'">
+  <div class="card grid grid-cols-1 overflow-hidden md:grid-cols-[18rem_minmax(0,1fr)] xl:grid-cols-[22rem_minmax(0,1fr)] 2xl:grid-cols-[26rem_minmax(0,1fr)]"
+       [class]="actif()
+         ? '-mx-4 -my-6 h-[calc(100dvh-4rem)] rounded-none border-x-0 sm:-mx-6 md:m-0 md:h-[calc(100dvh-11.5rem)] md:min-h-[30rem] md:rounded-2xl md:border-x lg:h-[calc(100dvh-12.5rem)]'
+         : 'h-[calc(100dvh-11.5rem)] min-h-[26rem] md:min-h-[30rem] lg:h-[calc(100dvh-12.5rem)]'">
     <!-- Liste des conversations -->
     <aside class="min-h-0 flex-col border-slate-100 dark:border-slate-800 md:border-r" [class]="actif() ? 'hidden md:flex' : 'flex'">
       <div class="border-b border-slate-100 p-3 dark:border-slate-800">
@@ -79,7 +82,7 @@
               <div class="py-2 text-center"><span class="rounded-full bg-white px-3 py-1 text-[11px] font-medium text-slate-500 shadow-sm dark:bg-slate-800 dark:text-slate-400">{{ jour(m.date) }}</span></div>
             }
             <div class="flex" [class]="m.auteur === 'medecin' ? 'justify-end' : 'justify-start'">
-              <div class="max-w-[88%] rounded-2xl px-3.5 py-2 text-sm shadow-sm sm:max-w-[75%] xl:max-w-[65%]"
+              <div class="max-w-[88%] rounded-2xl px-3.5 py-2 text-sm shadow-sm sm:max-w-[75%] xl:max-w-[65%] 2xl:max-w-[55%]"
                    [class]="m.auteur === 'medecin'
                      ? 'rounded-br-md bg-brand-700 text-white dark:bg-brand-600'
                      : 'rounded-bl-md bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100'">

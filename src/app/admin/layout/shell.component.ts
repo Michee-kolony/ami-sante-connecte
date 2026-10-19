@@ -3,8 +3,6 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { STRUCTURE, SYNC_QUEUE, UTILISATEUR } from '../data/mock-data';
 import { MessagesService } from '../data/messages.service';
 import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
-import { LangueToggleComponent } from '../../shared/i18n/langue-toggle.component';
-import { TraduirePipe } from '../../shared/i18n/traduire.pipe';
 
 interface NavItem {
   label: string;
@@ -16,7 +14,7 @@ interface NavItem {
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ThemeToggleComponent, LangueToggleComponent, TraduirePipe],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ThemeToggleComponent],
   templateUrl: './shell.component.html',
 })
 export class ShellComponent {

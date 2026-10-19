@@ -54,4 +54,12 @@
   .table-td {
     @apply px-5 py-3.5 text-sm text-slate-700 dark:text-slate-300;
   }
+
+  /* Glassmorphisme léger, limité à l'espace administrateur (voir shell.component.html) */
+  .admin-glass .card {
+    @apply border-white/70 bg-white/50 shadow-[0_8px_32px_-12px_rgb(15_23_42/0.15)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/50 dark:shadow-[0_8px_32px_-12px_rgb(0_0_0/0.5)];
+  }
+  .admin-glass .card-header {
+    @apply border-slate-200/50 dark:border-white/10;
+  }
 }
