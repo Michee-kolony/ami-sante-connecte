@@ -1,13 +1,14 @@
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AvatarComponent } from '../../components/avatar.component';
+import { CarteRdcComponent } from '../../components/carte-rdc.component';
 import { formatDate, PATIENTES, RENDEZ_VOUS, UTILISATEUR } from '../../data/mock-data';
 import { ageLisible, couverture, dosesDuMois, ENFANTS, prochaineDose, statutVaccinal } from '../../data/vaccination';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [RouterLink, AvatarComponent],
+  imports: [RouterLink, AvatarComponent, CarteRdcComponent],
   templateUrl: './dashboard.component.html',
 })
 export class DashboardComponent {

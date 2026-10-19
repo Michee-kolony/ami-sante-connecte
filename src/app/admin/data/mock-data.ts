@@ -143,3 +143,39 @@ export function formatDate(iso: string | null): string {
   const [y, m, d] = iso.split('-');
   return `${d}/${m}/${y}`;
 }
+
+/** Patientes (femmes enceintes) et enfants suivis, agrégés par province de résidence. */
+export interface EffectifProvince {
+  province: string; // identifiant de PROVINCES_RDC (carte-rdc.ts)
+  femmes: number;
+  enfants: number;
+}
+
+export const EFFECTIFS_PROVINCES: EffectifProvince[] = [
+  { province: 'kinshasa', femmes: 412, enfants: 286 },
+  { province: 'nord-kivu', femmes: 167, enfants: 132 },
+  { province: 'haut-katanga', femmes: 156, enfants: 104 },
+  { province: 'kongo-central', femmes: 138, enfants: 97 },
+  { province: 'sud-kivu', femmes: 121, enfants: 88 },
+  { province: 'kasai-oriental', femmes: 87, enfants: 64 },
+  { province: 'ituri', femmes: 73, enfants: 61 },
+  { province: 'kwilu', femmes: 64, enfants: 41 },
+  { province: 'kasai-central', femmes: 58, enfants: 42 },
+  { province: 'tshopo', femmes: 54, enfants: 38 },
+  { province: 'lualaba', femmes: 47, enfants: 35 },
+  { province: 'equateur', femmes: 41, enfants: 30 },
+  { province: 'tanganyika', femmes: 30, enfants: 22 },
+  { province: 'kasai', femmes: 26, enfants: 19 },
+  { province: 'kwango', femmes: 22, enfants: 15 },
+  { province: 'lomami', femmes: 21, enfants: 14 },
+  { province: 'mai-ndombe', femmes: 18, enfants: 9 },
+  { province: 'maniema', femmes: 16, enfants: 10 },
+  { province: 'haut-lomami', femmes: 13, enfants: 8 },
+  { province: 'sud-ubangi', femmes: 12, enfants: 6 },
+  { province: 'haut-uele', femmes: 11, enfants: 7 },
+  { province: 'mongala', femmes: 9, enfants: 4 },
+  { province: 'tshuapa', femmes: 7, enfants: 2 },
+  { province: 'sankuru', femmes: 6, enfants: 3 },
+  { province: 'nord-ubangi', femmes: 5, enfants: 3 },
+  { province: 'bas-uele', femmes: 0, enfants: 0 },
+];
