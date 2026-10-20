@@ -1,6 +1,7 @@
-import { Component, inject } from '@angular/core';
+import { Component, afterNextRender, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { STRUCTURE, SYNC_QUEUE, UTILISATEUR } from '../data/mock-data';
+import { ALERTES } from '../data/urgences';
 import { MessagesService } from '../data/messages.service';
 import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
 
@@ -19,6 +20,26 @@ interface NavItem {
 })
 export class ShellComponent {
   messages = inject(MessagesService);
+
+  constructor() {
+    // Une fois l'écran affiché, on prépare la page Urgences en tâche de fond :
+    // code Leaflet téléchargé et connexions aux serveurs de tuiles déjà ouvertes.
+    afterNextRender(() => {
+      const prechargerCarte = () => {
+        import('../pages/urgences/urgences.component');
+        // Tuiles OSM chargées en <img> (sans CORS) ; TomTom aussi interrogé via fetch (CORS).
+        const hotes: [string, boolean][] = [['https://tile.openstreetmap.org', false], ['https://api.tomtom.com', true]];
+        for (const [hote, cors] of hotes) {
+          const lien = document.createElement('link');
+          lien.rel = 'preconnect';
+          lien.href = hote;
+          if (cors) lien.crossOrigin = '';
+          document.head.appendChild(lien);
+        }
+      };
+      'requestIdleCallback' in window ? requestIdleCallback(prechargerCarte) : setTimeout(prechargerCarte, 1500);
+    });
+  }
 
   /** Badge du menu : les messages non lus sont comptés en direct. */
   badge(item: NavItem): number | undefined {
@@ -39,6 +60,12 @@ export class ShellComponent {
     { label: 'Doublons', icon: 'fa-clone', path: '/admin/doublons', badge: 2 },
     { label: 'Enfants vaccinés', icon: 'fa-baby', path: '/admin/enfants' },
     { label: 'Agents de vaccination', icon: 'fa-user-nurse', path: '/admin/agents' },
+  ];
+
+  navSecours: NavItem[] = [
+    { label: 'Urgences', icon: 'fa-tower-broadcast', path: '/admin/urgences', badge: ALERTES.filter(a => a.etat === 'nouvelle').length },
+    { label: 'Ambulances', icon: 'fa-truck-medical', path: '/admin/ambulances' },
+    { label: 'Chauffeurs', icon: 'fa-id-card', path: '/admin/chauffeurs' },
   ];
 
   navAdmin: NavItem[] = [

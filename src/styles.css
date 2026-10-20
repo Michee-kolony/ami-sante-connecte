@@ -63,3 +63,64 @@
     @apply border-slate-200/50 dark:border-white/10;
   }
 }
+
+/* Carte Leaflet en mode sombre (page Urgences).
+   Les tuiles OSM n'existent qu'en clair : on les inverse en conservant les teintes. */
+.dark .leaflet-container {
+  background: theme('colors.slate.900');
+  color: theme('colors.slate.200');
+}
+.dark .tuiles-osm {
+  filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9) saturate(0.6);
+}
+.dark .leaflet-bar,
+.dark .leaflet-control-layers {
+  border-color: theme('colors.slate.700');
+}
+.dark .leaflet-bar a {
+  background-color: theme('colors.slate.800');
+  border-bottom-color: theme('colors.slate.700');
+  color: theme('colors.slate.200');
+}
+.dark .leaflet-bar a:hover,
+.dark .leaflet-bar a:focus {
+  background-color: theme('colors.slate.700');
+}
+.dark .leaflet-bar a.leaflet-disabled {
+  background-color: theme('colors.slate.900');
+  color: theme('colors.slate.600');
+}
+.dark .leaflet-control-layers {
+  background: theme('colors.slate.800');
+  color: theme('colors.slate.200');
+}
+.dark .leaflet-control-layers-toggle {
+  background-color: transparent;
+  filter: invert(1);
+}
+.dark .leaflet-control-layers-separator {
+  border-top-color: theme('colors.slate.700');
+}
+.dark .leaflet-control-attribution {
+  background: rgb(15 23 42 / 0.75) !important;
+  color: theme('colors.slate.400');
+}
+.dark .leaflet-control-attribution a {
+  color: theme('colors.brand.300');
+}
+.dark .leaflet-control-scale-line {
+  background: rgb(15 23 42 / 0.6);
+  border-color: theme('colors.slate.400');
+  color: theme('colors.slate.200');
+}
+.dark .leaflet-tooltip,
+.dark .leaflet-popup-content-wrapper,
+.dark .leaflet-popup-tip {
+  background: theme('colors.slate.800');
+  border-color: theme('colors.slate.700');
+  color: theme('colors.slate.100');
+}
+.dark .leaflet-tooltip-top::before { border-top-color: theme('colors.slate.800'); }
+.dark .leaflet-tooltip-bottom::before { border-bottom-color: theme('colors.slate.800'); }
+.dark .leaflet-tooltip-left::before { border-left-color: theme('colors.slate.800'); }
+.dark .leaflet-tooltip-right::before { border-right-color: theme('colors.slate.800'); }

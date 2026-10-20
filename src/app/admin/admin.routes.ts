@@ -12,6 +12,8 @@ import { AuditComponent } from './pages/audit/audit.component';
 import { AgentsComponent } from './pages/agents/agents.component';
 import { EnfantsComponent } from './pages/enfants/enfants.component';
 import { MessagesComponent } from './pages/messages/messages.component';
+import { AmbulancesComponent } from './pages/ambulances/ambulances.component';
+import { ChauffeursComponent } from './pages/chauffeurs/chauffeurs.component';
 
 /** Espace réservé au personnel et aux administrateurs — monté sous /admin. */
 export const ADMIN_ROUTES: Routes = [
@@ -26,6 +28,10 @@ export const ADMIN_ROUTES: Routes = [
       { path: 'patientes/nouvelle', component: PatientNewComponent, title: 'Enregistrement CPN · AMI Santé Connect' },
       { path: 'patientes/:id', component: PatientDetailComponent, title: 'Dossier patiente · AMI Santé Connect' },
       { path: 'rendez-vous', component: AppointmentsComponent, title: 'Rendez-vous · AMI Santé Connect' },
+      // Chargée à la demande : Leaflet n'alourdit pas les autres pages (préchargée par ShellComponent).
+      { path: 'urgences', loadComponent: () => import('./pages/urgences/urgences.component').then(m => m.UrgencesComponent), title: 'Urgences · AMI Santé Connect' },
+      { path: 'ambulances', component: AmbulancesComponent, title: 'Ambulances · AMI Santé Connect' },
+      { path: 'chauffeurs', component: ChauffeursComponent, title: 'Chauffeurs · AMI Santé Connect' },
       { path: 'messages', component: MessagesComponent, title: 'Messages · AMI Santé Connect' },
       { path: 'enfants', component: EnfantsComponent, title: 'Enfants vaccinés · AMI Santé Connect' },
       { path: 'agents', component: AgentsComponent, title: 'Agents de vaccination · AMI Santé Connect' },

@@ -12,6 +12,8 @@ const STORAGE_KEY = 'ami-theme';
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
   readonly mode = signal<ThemeMode>(this.read());
+  /** Thème réellement affiché (le mode « système » résolu). */
+  readonly sombre = signal(false);
   private media = window.matchMedia('(prefers-color-scheme: dark)');
 
   constructor() {
@@ -34,6 +36,7 @@ export class ThemeService {
   private apply(): void {
     const dark = this.mode() === 'dark' || (this.mode() === 'system' && this.media.matches);
     document.documentElement.classList.toggle('dark', dark);
+    this.sombre.set(dark);
   }
 
   private read(): ThemeMode {

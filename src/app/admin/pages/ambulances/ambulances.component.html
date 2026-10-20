@@ -1,0 +1,225 @@
+<div class="mx-auto max-w-7xl space-y-6">
+  <!-- En-tête -->
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Gestion des ambulances</h1>
+      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">État de la flotte, chauffeurs attitrés et entretien. Seules les ambulances disponibles avec un chauffeur actif sont envoyées sur les urgences.</p>
+    </div>
+    <button type="button" class="btn-primary" (click)="ouvrir()"><i class="fa-solid fa-plus"></i> Ajouter une ambulance</button>
+  </div>
+
+  @if (notification) {
+    <div class="flex items-start gap-3 rounded-xl border border-accent-200 bg-accent-50 px-4 py-3 text-sm text-accent-900 dark:border-accent-500/30 dark:bg-accent-500/10 dark:text-accent-200" role="status">
+      <i class="fa-solid fa-circle-check mt-0.5 text-accent-600 dark:text-accent-400"></i>
+      <span class="flex-1">{{ notification }}</span>
+      <button type="button" class="text-accent-700 hover:text-accent-900 dark:text-accent-300" (click)="notification = null" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+  }
+
+  <!-- Statistiques -->
+  <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="card flex items-center gap-4 p-4">
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"><i class="fa-solid fa-truck-medical"></i></div>
+      <div><p class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats().total }}</p><p class="text-xs text-slate-500 dark:text-slate-400">Ambulances</p></div>
+    </div>
+    <div class="card flex items-center gap-4 p-4">
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-accent-50 text-accent-600 dark:bg-accent-500/10 dark:text-accent-400"><i class="fa-solid fa-circle-check"></i></div>
+      <div><p class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats().disponibles }}</p><p class="text-xs text-slate-500 dark:text-slate-400">Disponibles</p></div>
+    </div>
+    <div class="card flex items-center gap-4 p-4">
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400"><i class="fa-solid fa-route"></i></div>
+      <div><p class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats().mission }}</p><p class="text-xs text-slate-500 dark:text-slate-400">En mission</p></div>
+    </div>
+    <div class="card flex items-center gap-4 p-4">
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+      <div><p class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats().atelier }}</p><p class="text-xs text-slate-500 dark:text-slate-400">À l’atelier / hors service</p></div>
+    </div>
+  </div>
+
+  <!-- Filtres -->
+  <div class="card flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+    <div class="relative flex-1">
+      <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-slate-400"></i>
+      <input type="search" class="input pl-10" placeholder="Rechercher par numéro, immatriculation, modèle ou chauffeur"
+             [value]="recherche()" (input)="recherche.set($any($event.target).value)">
+    </div>
+    <div class="relative sm:w-56">
+      <select class="input appearance-none pr-10" [value]="filtreStatut()" (change)="filtreStatut.set($any($event.target).value)">
+        <option value="Tous">Tous les statuts</option>
+        @for (s of statuts; track s) { <option [value]="s">{{ s }}</option> }
+      </select>
+      <i class="fa-solid fa-chevron-down pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
+    </div>
+  </div>
+
+  <!-- Fiches ambulances -->
+  <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+    @for (a of filtrees(); track a.id) {
+      @let c = flotte.chauffeur(a.chauffeurId);
+      @let jours = joursRevision(a);
+      <article class="card flex flex-col overflow-hidden" [class.opacity-70]="a.statut === 'Hors service'">
+        <div class="relative bg-gradient-to-br from-slate-100 to-white px-5 pb-3 pt-5 dark:from-slate-800/60 dark:to-slate-900/40">
+          <span class="badge absolute right-4 top-4 {{ classeStatut(a.statut) }}">{{ a.statut }}</span>
+          <img src="images/ambulance-carte.webp" alt="" width="320" height="155" loading="lazy" class="mx-auto h-24 w-auto drop-shadow-[0_6px_8px_rgb(0_0_0/0.18)]">
+        </div>
+
+        <div class="flex-1 space-y-4 p-5">
+          <div>
+            <div class="flex items-baseline justify-between gap-2">
+              <h2 class="text-lg font-bold text-slate-900 dark:text-white">{{ a.id }}</h2>
+              <span class="rounded-md bg-slate-900 px-2 py-0.5 font-mono text-xs font-semibold tracking-wider text-white dark:bg-white dark:text-slate-900">{{ a.immatriculation }}</span>
+            </div>
+            <p class="text-sm text-slate-500 dark:text-slate-400">{{ a.modele }} · {{ a.annee }} · {{ a.type }}</p>
+          </div>
+
+          @if (a.statut === 'En mission' && a.alerteId) {
+            <a routerLink="/admin/urgences" class="flex items-center gap-2 rounded-xl bg-sky-50 px-3 py-2 text-sm font-medium text-sky-800 transition hover:bg-sky-100 dark:bg-sky-500/10 dark:text-sky-200 dark:hover:bg-sky-500/20">
+              <i class="fa-solid fa-route"></i> En route vers l’alerte {{ a.alerteId }} <i class="fa-solid fa-arrow-right ml-auto text-xs"></i>
+            </a>
+          }
+
+          <!-- Équipage -->
+          <div class="flex items-center gap-3">
+            <app-avatar [photo]="c?.photo" [prenom]="c?.prenom ?? '?'" [nomFamille]="c?.nom ?? ''" class="h-11 w-11 rounded-full text-sm ring-2 ring-white dark:ring-slate-900" />
+            <div class="min-w-0 flex-1">
+              @if (c) {
+                <p class="truncate text-sm font-medium text-slate-900 dark:text-white">{{ c.prenom }} {{ c.nom }}</p>
+              } @else {
+                <p class="text-sm font-medium text-amber-700 dark:text-amber-300"><i class="fa-solid fa-triangle-exclamation"></i> Aucun chauffeur</p>
+              }
+              <p class="truncate text-xs text-slate-500 dark:text-slate-400">{{ a.infirmier || 'Pas d’infirmier affecté' }}</p>
+            </div>
+          </div>
+
+          <!-- Indicateurs -->
+          <dl class="grid grid-cols-3 gap-3 text-center">
+            <div class="rounded-xl bg-slate-50 p-2 dark:bg-slate-800/50">
+              <dt class="text-[11px] text-slate-500 dark:text-slate-400">Kilométrage</dt>
+              <dd class="text-sm font-semibold text-slate-900 dark:text-white">{{ (a.kilometrage / 1000).toFixed(0) }} k km</dd>
+            </div>
+            <div class="rounded-xl bg-slate-50 p-2 dark:bg-slate-800/50">
+              <dt class="text-[11px] text-slate-500 dark:text-slate-400">Carburant</dt>
+              <dd class="text-sm font-semibold" [class]="a.carburant < 25 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-white'">{{ a.carburant }} %</dd>
+              <div class="mx-auto mt-1 h-1 w-10/12 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                <div class="h-full rounded-full" [class]="a.carburant < 25 ? 'bg-rose-500' : a.carburant < 50 ? 'bg-amber-400' : 'bg-accent-500'" [style.width.%]="a.carburant"></div>
+              </div>
+            </div>
+            <div class="rounded-xl bg-slate-50 p-2 dark:bg-slate-800/50">
+              <dt class="text-[11px] text-slate-500 dark:text-slate-400">Révision</dt>
+              <dd class="text-sm font-semibold" [class]="jours < 0 ? 'text-rose-600 dark:text-rose-400' : jours <= 14 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-900 dark:text-white'">
+                {{ jours < 0 ? 'En retard' : jours === 0 ? 'Aujourd’hui' : 'J-' + jours }}
+              </dd>
+            </div>
+          </dl>
+        </div>
+
+        <!-- Actions -->
+        <div class="space-y-2 border-t border-slate-100 p-4 dark:border-slate-800">
+          <div class="relative">
+            <select class="input appearance-none py-2 pr-10 text-sm" [value]="a.chauffeurId ?? ''" [disabled]="a.statut === 'En mission'"
+                    (change)="affecter(a, $any($event.target).value)" [attr.aria-label]="'Chauffeur de ' + a.id">
+              <option value="">— Aucun chauffeur —</option>
+              @for (ch of chauffeursActifs(); track ch.id) {
+                <option [value]="ch.id">{{ ch.prenom }} {{ ch.nom }}{{ flotte.affectations().get(ch.id) && flotte.affectations().get(ch.id)!.id !== a.id ? ' (' + flotte.affectations().get(ch.id)!.id + ')' : '' }}</option>
+              }
+            </select>
+            <i class="fa-solid fa-chevron-down pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
+          </div>
+          @if (a.statut !== 'En mission') {
+            <div class="grid grid-cols-3 gap-1.5">
+              <button type="button" class="btn-ghost px-2 py-1.5 text-xs" [disabled]="a.statut === 'Disponible'" (click)="changerStatut(a, 'Disponible')"><i class="fa-solid fa-circle-check text-accent-600"></i> Disponible</button>
+              <button type="button" class="btn-ghost px-2 py-1.5 text-xs" [disabled]="a.statut === 'Maintenance'" (click)="changerStatut(a, 'Maintenance')"><i class="fa-solid fa-screwdriver-wrench text-amber-500"></i> Atelier</button>
+              <button type="button" class="btn-ghost px-2 py-1.5 text-xs" [disabled]="a.statut === 'Hors service'" (click)="changerStatut(a, 'Hors service')"><i class="fa-solid fa-ban text-rose-500"></i> Hors service</button>
+            </div>
+          } @else {
+            <p class="text-center text-xs text-slate-500 dark:text-slate-400"><i class="fa-solid fa-lock mr-1"></i>Modifiable à la fin de la mission</p>
+          }
+        </div>
+      </article>
+    } @empty {
+      <p class="card col-span-full p-10 text-center text-sm text-slate-500 dark:text-slate-400">Aucune ambulance ne correspond à la recherche.</p>
+    }
+  </div>
+</div>
+
+<!-- Panneau d'ajout d'une ambulance -->
+@if (panneauOuvert) {
+  <div class="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-labelledby="titre-ajout-amb">
+    <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" (click)="fermer()"></div>
+
+    <form #f="ngForm" (ngSubmit)="enregistrer(f)" novalidate
+          class="relative flex h-full w-full max-w-xl flex-col bg-white shadow-2xl dark:bg-slate-900">
+      <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800 sm:px-6">
+        <h2 id="titre-ajout-amb" class="text-lg font-semibold text-slate-900 dark:text-white">Ajouter une ambulance</h2>
+        <button type="button" class="btn-ghost px-3" (click)="fermer()" aria-label="Fermer"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div class="flex-1 space-y-7 overflow-y-auto px-5 py-6 sm:px-6">
+        <section>
+          <h3 class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-truck-medical"></i> Véhicule</h3>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label class="label" for="amb-immat">Immatriculation <span class="req">*</span></label>
+              <input id="amb-immat" name="immatriculation" class="input font-mono uppercase" placeholder="GR-0000-KN"
+                     [(ngModel)]="form.immatriculation" #immat="ngModel" required
+                     [class.border-rose-400]="(immat.invalid || immatriculationExiste) && (immat.touched || f.submitted)">
+              @if (immatriculationExiste) {
+                <p class="mt-1.5 text-xs text-rose-600 dark:text-rose-400">Cette immatriculation est déjà dans la flotte.</p>
+              }
+            </div>
+            <div>
+              <label class="label" for="amb-modele">Modèle <span class="req">*</span></label>
+              <input id="amb-modele" name="modele" class="input" placeholder="Toyota Land Cruiser 78"
+                     [(ngModel)]="form.modele" #modele="ngModel" required
+                     [class.border-rose-400]="modele.invalid && (modele.touched || f.submitted)">
+            </div>
+            <div>
+              <label class="label" for="amb-annee">Année</label>
+              <input id="amb-annee" name="annee" type="number" class="input" min="1990" max="2100" [(ngModel)]="form.annee">
+            </div>
+            <div>
+              <label class="label" for="amb-km">Kilométrage</label>
+              <input id="amb-km" name="kilometrage" type="number" class="input" min="0" [(ngModel)]="form.kilometrage">
+            </div>
+            <div class="sm:col-span-2">
+              <label class="label" for="amb-type">Type <span class="req">*</span></label>
+              <select id="amb-type" name="type" class="input" [(ngModel)]="form.type" required>
+                @for (t of types; track t) { <option [ngValue]="t">{{ t }}</option> }
+              </select>
+            </div>
+            <div class="sm:col-span-2">
+              <label class="label" for="amb-revision">Prochaine révision <span class="req">*</span></label>
+              <input id="amb-revision" name="prochaineRevision" type="date" class="input" [(ngModel)]="form.prochaineRevision" #rev="ngModel" required
+                     [class.border-rose-400]="rev.invalid && (rev.touched || f.submitted)">
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3 class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-users"></i> Équipage</h3>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label class="label" for="amb-chauffeur">Chauffeur attitré</label>
+              <select id="amb-chauffeur" name="chauffeurId" class="input" [(ngModel)]="form.chauffeurId">
+                <option [ngValue]="null">— Plus tard —</option>
+                @for (ch of chauffeursActifs(); track ch.id) {
+                  <option [ngValue]="ch.id">{{ ch.prenom }} {{ ch.nom }}{{ flotte.affectations().get(ch.id) ? ' (' + flotte.affectations().get(ch.id)!.id + ')' : '' }}</option>
+                }
+              </select>
+            </div>
+            <div>
+              <label class="label" for="amb-inf">Infirmier / secouriste</label>
+              <input id="amb-inf" name="infirmier" class="input" placeholder="Inf. Prénom Nom" [(ngModel)]="form.infirmier">
+            </div>
+          </div>
+          <p class="hint">Un chauffeur déjà affecté à une autre ambulance en sera retiré.</p>
+        </section>
+      </div>
+
+      <div class="flex flex-col-reverse gap-2 border-t border-slate-100 px-5 py-4 dark:border-slate-800 sm:flex-row sm:justify-end sm:px-6">
+        <button type="button" class="btn-secondary" (click)="fermer()">Annuler</button>
+        <button type="submit" class="btn-primary"><i class="fa-solid fa-plus"></i> Ajouter à la flotte</button>
+      </div>
+    </form>
+  </div>
+}

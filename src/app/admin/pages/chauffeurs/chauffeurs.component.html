@@ -1,0 +1,238 @@
+<div class="mx-auto max-w-7xl space-y-6">
+  <!-- En-tête -->
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Gestion des chauffeurs</h1>
+      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Chauffeurs d’ambulance, validité de leur permis et véhicule attitré.</p>
+    </div>
+    <button type="button" class="btn-primary" (click)="ouvrir()"><i class="fa-solid fa-user-plus"></i> Ajouter un chauffeur</button>
+  </div>
+
+  @if (notification) {
+    <div class="flex items-start gap-3 rounded-xl border border-accent-200 bg-accent-50 px-4 py-3 text-sm text-accent-900 dark:border-accent-500/30 dark:bg-accent-500/10 dark:text-accent-200" role="status">
+      <i class="fa-solid fa-circle-check mt-0.5 text-accent-600 dark:text-accent-400"></i>
+      <span class="flex-1">{{ notification }}</span>
+      <button type="button" class="text-accent-700 hover:text-accent-900 dark:text-accent-300" (click)="notification = null" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+  }
+
+  <!-- Statistiques -->
+  <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="card flex items-center gap-4 p-4">
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"><i class="fa-solid fa-id-card"></i></div>
+      <div><p class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats().total }}</p><p class="text-xs text-slate-500 dark:text-slate-400">Chauffeurs</p></div>
+    </div>
+    <div class="card flex items-center gap-4 p-4">
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-accent-50 text-accent-600 dark:bg-accent-500/10 dark:text-accent-400"><i class="fa-solid fa-user-check"></i></div>
+      <div><p class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats().actifs }}</p><p class="text-xs text-slate-500 dark:text-slate-400">Actifs</p></div>
+    </div>
+    <div class="card flex items-center gap-4 p-4">
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400"><i class="fa-solid fa-route"></i></div>
+      <div><p class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats().mission }}</p><p class="text-xs text-slate-500 dark:text-slate-400">En mission</p></div>
+    </div>
+    <div class="card flex items-center gap-4 p-4">
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400"><i class="fa-solid fa-triangle-exclamation"></i></div>
+      <div><p class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats().permis }}</p><p class="text-xs text-slate-500 dark:text-slate-400">Permis expiré ou à renouveler</p></div>
+    </div>
+  </div>
+
+  <!-- Liste -->
+  <div class="card overflow-hidden">
+    <div class="flex flex-col gap-3 border-b border-slate-100 p-4 dark:border-slate-800 sm:flex-row sm:items-center">
+      <div class="relative flex-1">
+        <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-slate-400"></i>
+        <input type="search" class="input pl-10" placeholder="Rechercher par nom, matricule, téléphone ou permis"
+               [value]="recherche()" (input)="recherche.set($any($event.target).value)">
+      </div>
+      <div class="relative sm:w-56">
+        <select class="input appearance-none pr-10" [value]="filtreStatut()" (change)="filtreStatut.set($any($event.target).value)">
+          <option value="Tous">Tous les statuts</option>
+          <option value="Actif">Actifs</option>
+          <option value="Suspendu">Suspendus</option>
+        </select>
+        <i class="fa-solid fa-chevron-down pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
+        <thead class="bg-slate-50/70 dark:bg-slate-800/50">
+          <tr>
+            <th class="table-th">Chauffeur</th>
+            <th class="table-th">Téléphone</th>
+            <th class="table-th">Permis</th>
+            <th class="table-th">Ambulance</th>
+            <th class="table-th whitespace-nowrap">Missions / mois</th>
+            <th class="table-th">Statut</th>
+            <th class="table-th"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+          @for (c of filtres(); track c.id) {
+            @let amb = flotte.affectations().get(c.id);
+            @let jours = joursPermis(c);
+            <tr class="transition hover:bg-slate-50/70 dark:hover:bg-slate-800/50" [class.opacity-60]="c.statut === 'Suspendu'">
+              <td class="table-td">
+                <div class="flex items-center gap-3">
+                  <app-avatar [photo]="c.photo" [prenom]="c.prenom" [nomFamille]="c.nom" class="h-12 w-12 rounded-full text-sm ring-2 ring-white dark:ring-slate-900" />
+                  <div>
+                    <p class="whitespace-nowrap font-medium text-slate-900 dark:text-white">{{ c.prenom }} {{ c.nom }} <span class="text-slate-500 dark:text-slate-400">{{ c.postnom }}</span></p>
+                    <p class="font-mono text-xs text-slate-500 dark:text-slate-400">{{ c.matricule }}</p>
+                  </div>
+                </div>
+              </td>
+              <td class="table-td whitespace-nowrap">
+                <a [href]="'tel:' + c.telephone.split(' ').join('')" class="hover:text-brand-700 dark:hover:text-brand-300"><i class="fa-solid fa-phone mr-1.5 w-3 text-slate-400"></i>{{ c.telephone }}</a>
+              </td>
+              <td class="table-td whitespace-nowrap">
+                <p class="font-mono text-xs">{{ c.permis }}</p>
+                @if (jours < 0) {
+                  <span class="badge mt-1 bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"><i class="fa-solid fa-circle-exclamation"></i> Expiré</span>
+                } @else if (jours <= 60) {
+                  <span class="badge mt-1 bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"><i class="fa-solid fa-hourglass-half"></i> Expire dans {{ jours }} j</span>
+                } @else {
+                  <p class="text-xs text-slate-500 dark:text-slate-400">Valide jusqu’au {{ c.permisExpire.split('-').reverse().join('/') }}</p>
+                }
+              </td>
+              <td class="table-td whitespace-nowrap">
+                @if (amb) {
+                  <p class="font-medium text-slate-900 dark:text-white"><i class="fa-solid fa-truck-medical mr-1.5 text-slate-400"></i>{{ amb.id }}</p>
+                  <p class="text-xs" [class]="amb.statut === 'En mission' ? 'text-sky-600 dark:text-sky-400' : 'text-slate-500 dark:text-slate-400'">
+                    {{ amb.immatriculation }} · {{ amb.statut === 'En mission' ? 'en mission' : amb.statut.toLowerCase() }}
+                  </p>
+                } @else {
+                  <span class="text-slate-400">—</span>
+                }
+              </td>
+              <td class="table-td font-semibold text-slate-900 dark:text-white">{{ c.missionsMois }}</td>
+              <td class="table-td">
+                @if (c.statut === 'Actif') {
+                  <span class="badge bg-accent-50 text-accent-700 ring-1 ring-accent-200 dark:bg-accent-500/10 dark:text-accent-300 dark:ring-accent-500/30">Actif</span>
+                } @else {
+                  <span class="badge bg-rose-50 text-rose-700 ring-1 ring-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/30">Suspendu</span>
+                }
+              </td>
+              <td class="table-td">
+                <div class="flex justify-end">
+                  <button type="button" class="btn-ghost px-2.5 py-1.5" [disabled]="amb?.statut === 'En mission'"
+                          [title]="amb?.statut === 'En mission' ? 'En mission : action impossible' : c.statut === 'Actif' ? 'Suspendre' : 'Réactiver'" (click)="basculer(c)">
+                    <i class="fa-solid" [class]="c.statut === 'Actif' ? 'fa-user-lock text-rose-500' : 'fa-user-check text-accent-600'"></i>
+                    <span class="sr-only">{{ c.statut === 'Actif' ? 'Suspendre' : 'Réactiver' }}</span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="7" class="table-td py-10 text-center text-slate-500 dark:text-slate-400">Aucun chauffeur ne correspond à la recherche.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Panneau d'ajout d'un chauffeur -->
+@if (panneauOuvert) {
+  <div class="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-labelledby="titre-ajout-ch">
+    <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" (click)="fermer()"></div>
+
+    <form #f="ngForm" (ngSubmit)="enregistrer(f)" novalidate
+          class="relative flex h-full w-full max-w-xl flex-col bg-white shadow-2xl dark:bg-slate-900">
+      <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800 sm:px-6">
+        <h2 id="titre-ajout-ch" class="text-lg font-semibold text-slate-900 dark:text-white">Ajouter un chauffeur</h2>
+        <button type="button" class="btn-ghost px-3" (click)="fermer()" aria-label="Fermer"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div class="flex-1 space-y-7 overflow-y-auto px-5 py-6 sm:px-6">
+        <!-- Photo -->
+        <section class="flex items-center gap-5">
+          <div class="relative h-24 w-24 flex-none overflow-hidden rounded-2xl bg-slate-100 ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+            @if (photoApercu) {
+              <img [src]="photoApercu" alt="Aperçu de la photo du chauffeur" class="h-full w-full object-cover">
+            } @else {
+              <div class="flex h-full w-full items-center justify-center text-3xl text-slate-300 dark:text-slate-600"><i class="fa-solid fa-user"></i></div>
+            }
+          </div>
+          <div class="space-y-2">
+            <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Photo d’identité</p>
+            <div class="flex flex-wrap gap-2">
+              <label class="btn-secondary cursor-pointer px-3 py-2 text-xs">
+                <i class="fa-solid fa-camera"></i> {{ photoApercu ? 'Changer' : 'Choisir une photo' }}
+                <input type="file" accept="image/jpeg,image/png,image/webp" capture="user" class="sr-only" (change)="choisirPhoto($event)">
+              </label>
+              @if (photoApercu) {
+                <button type="button" class="btn-ghost px-3 py-2 text-xs text-rose-600" (click)="retirerPhoto()"><i class="fa-solid fa-trash"></i> Retirer</button>
+              }
+            </div>
+            <p class="text-xs" [class]="photoErreur ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500 dark:text-slate-400'">
+              {{ photoErreur || 'Photo de face, fond neutre. JPG, PNG ou WebP, 2 Mo max.' }}
+            </p>
+          </div>
+        </section>
+
+        <!-- Identité -->
+        <section>
+          <h3 class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-id-card"></i> Identité</h3>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label class="label" for="ch-prenom">Prénom <span class="req">*</span></label>
+              <input id="ch-prenom" name="prenom" class="input" [(ngModel)]="form.prenom" #prenom="ngModel" required autocomplete="given-name"
+                     [class.border-rose-400]="prenom.invalid && (prenom.touched || f.submitted)">
+            </div>
+            <div>
+              <label class="label" for="ch-nom">Nom <span class="req">*</span></label>
+              <input id="ch-nom" name="nom" class="input uppercase" [(ngModel)]="form.nom" #nom="ngModel" required autocomplete="family-name"
+                     [class.border-rose-400]="nom.invalid && (nom.touched || f.submitted)">
+            </div>
+            <div>
+              <label class="label" for="ch-postnom">Postnom</label>
+              <input id="ch-postnom" name="postnom" class="input uppercase" [(ngModel)]="form.postnom">
+            </div>
+            <div>
+              <label class="label" for="ch-tel">Téléphone <span class="req">*</span></label>
+              <input id="ch-tel" name="telephone" type="tel" inputmode="tel" class="input" placeholder="+243 81 000 0000"
+                     [(ngModel)]="form.telephone" #tel="ngModel" required pattern="[+0-9 ().-]{9,20}"
+                     [class.border-rose-400]="tel.invalid && (tel.touched || f.submitted)">
+            </div>
+          </div>
+        </section>
+
+        <!-- Permis et affectation -->
+        <section>
+          <h3 class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-truck-medical"></i> Permis et affectation</h3>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label class="label" for="ch-permis">N° de permis <span class="req">*</span></label>
+              <input id="ch-permis" name="permis" class="input font-mono uppercase" placeholder="KIN-C-000000"
+                     [(ngModel)]="form.permis" #permis="ngModel" required
+                     [class.border-rose-400]="(permis.invalid || permisExiste) && (permis.touched || f.submitted)">
+              @if (permisExiste) {
+                <p class="mt-1.5 text-xs text-rose-600 dark:text-rose-400">Ce permis est déjà enregistré.</p>
+              }
+            </div>
+            <div>
+              <label class="label" for="ch-expire">Expiration du permis <span class="req">*</span></label>
+              <input id="ch-expire" name="permisExpire" type="date" class="input" [(ngModel)]="form.permisExpire" #exp="ngModel" required
+                     [class.border-rose-400]="exp.invalid && (exp.touched || f.submitted)">
+            </div>
+            <div class="sm:col-span-2">
+              <label class="label" for="ch-amb">Ambulance attitrée</label>
+              <select id="ch-amb" name="ambulanceId" class="input" [(ngModel)]="form.ambulanceId">
+                <option [ngValue]="null">— Plus tard —</option>
+                @for (a of ambulancesAffectables(); track a.id) {
+                  @let actuel = flotte.chauffeur(a.chauffeurId);
+                  <option [ngValue]="a.id">{{ a.id }} · {{ a.immatriculation }}{{ actuel ? ' (remplace ' + actuel.prenom + ' ' + actuel.nom + ')' : '' }}</option>
+                }
+              </select>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="flex flex-col-reverse gap-2 border-t border-slate-100 px-5 py-4 dark:border-slate-800 sm:flex-row sm:justify-end sm:px-6">
+        <button type="button" class="btn-secondary" (click)="fermer()">Annuler</button>
+        <button type="submit" class="btn-primary"><i class="fa-solid fa-user-plus"></i> Ajouter le chauffeur</button>
+      </div>
+    </form>
+  </div>
+}

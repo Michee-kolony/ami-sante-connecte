@@ -41,6 +41,20 @@
         }
       </div>
       <div class="space-y-1">
+        <p class="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Urgences & secours</p>
+        @for (item of navSecours; track item.path) {
+          <a [routerLink]="item.path" routerLinkActive="!bg-white/10 !text-white"
+             (click)="menuOpen = false"
+             class="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition hover:bg-white/5 hover:text-white">
+            <i class="fa-solid {{ item.icon }} w-5 text-center text-slate-400 group-hover:text-white"></i>
+            <span class="flex-1">{{ item.label }}</span>
+            @if (item.badge) {
+              <span class="rounded-full bg-rose-500 px-2 py-0.5 text-[11px] font-semibold text-white">{{ item.badge }}</span>
+            }
+          </a>
+        }
+      </div>
+      <div class="space-y-1">
         <p class="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Données & sécurité</p>
         @for (item of navAdmin; track item.path) {
           <a [routerLink]="item.path" routerLinkActive="!bg-white/10 !text-white"
