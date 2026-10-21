@@ -1,0 +1,317 @@
+<div class="mx-auto max-w-5xl space-y-6">
+  <a routerLink="/admin/soignants" class="inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition hover:text-brand-700 dark:text-slate-400 dark:hover:text-brand-300">
+    <i class="fa-solid fa-arrow-left"></i> Médecins et infirmiers
+  </a>
+
+  @if (chargement) {
+    <p class="sr-only" role="status">Chargement du profil…</p>
+    <div class="space-y-6" aria-hidden="true">
+      <div class="card flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:p-6">
+        <div class="skeleton h-28 w-28 flex-none rounded-2xl"></div>
+        <div class="flex-1 space-y-3">
+          <div class="flex items-center gap-2"><div class="skeleton h-7 w-64 max-w-full"></div><div class="skeleton h-5 w-14 rounded-full"></div></div>
+          <div class="flex items-center gap-2"><div class="skeleton h-5 w-40 rounded-full"></div><div class="skeleton h-4 w-24"></div></div>
+          <div class="skeleton h-4 w-52"></div>
+        </div>
+      </div>
+      <div class="grid gap-6 lg:grid-cols-2">
+        @for (bloc of [1, 2]; track bloc) {
+          <div class="card p-5 sm:p-6">
+            <div class="skeleton mb-5 h-3 w-28"></div>
+            <div class="grid gap-x-4 gap-y-4 sm:grid-cols-2">
+              @for (champ of [1, 2, 3, 4, 5, 6]; track champ) {
+                <div class="space-y-1.5"><div class="skeleton h-2.5 w-20"></div><div class="skeleton h-4 w-32"></div></div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  } @else if (erreur || !soignant) {
+    <div class="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200" role="alert">
+      <i class="fa-solid fa-circle-exclamation mt-0.5"></i> {{ erreur || 'Soignant introuvable.' }}
+    </div>
+  } @else {
+    @let s = soignant;
+    @if (notification) {
+      <div class="flex items-start gap-3 rounded-xl border border-accent-200 bg-accent-50 px-4 py-3 text-sm text-accent-900 dark:border-accent-500/30 dark:bg-accent-500/10 dark:text-accent-200" role="status">
+        <i class="fa-solid fa-circle-check mt-0.5 text-accent-600 dark:text-accent-400"></i>
+        <span class="flex-1">{{ notification }}</span>
+        <button type="button" (click)="notification = ''" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    }
+    <!-- En-tête -->
+    <div class="card flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:p-6">
+      <button type="button" class="flex-none rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500" (click)="s.photo && (photoAgrandie = true)"
+              [class.cursor-zoom-in]="!!s.photo" [attr.aria-label]="s.photo ? 'Agrandir la photo' : null">
+        <app-avatar [photo]="s.photo" [prenom]="s.prenom" [nomFamille]="s.nom" class="h-28 w-28 rounded-2xl text-3xl ring-1 ring-slate-200 dark:ring-slate-700" />
+      </button>
+      <div class="min-w-0 flex-1">
+        <div class="flex flex-wrap items-center gap-2">
+          <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ estMedecin ? 'Dr ' : '' }}{{ s.prenom }} {{ s.nom }} <span class="font-normal text-slate-500 dark:text-slate-400">{{ s.postnom }}</span></h1>
+          @if (s.statut === 'Actif') {
+            <span class="badge bg-accent-50 text-accent-700 ring-1 ring-accent-200 dark:bg-accent-500/10 dark:text-accent-300 dark:ring-accent-500/30">Actif</span>
+          } @else {
+            <span class="badge bg-rose-50 text-rose-700 ring-1 ring-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/30">Suspendu</span>
+          }
+        </div>
+        <p class="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+          <span class="badge" [class]="estMedecin ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300' : 'bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300'">
+            <i class="fa-solid" [class]="estMedecin ? 'fa-user-doctor' : 'fa-user-nurse'"></i> {{ s.role }}
+          </span>
+          <span class="font-mono">{{ s.matricule }}</span>
+        </p>
+        <p class="mt-2 text-sm text-slate-700 dark:text-slate-300">{{ s.specialite }} · {{ s.grade }}</p>
+      </div>
+      @if (!estMoi && s.statut === 'Actif') {
+        <a routerLink="/admin/discussions" [queryParams]="{ avec: s.id }" class="btn-secondary self-start"><i class="fa-solid fa-comment-medical"></i> Écrire</a>
+      }
+      @if (estMoi) {
+        <a routerLink="/admin/profil" class="btn-secondary self-start"><i class="fa-solid fa-pen"></i> Modifier mon profil</a>
+      } @else if (peutGerer()) {
+        <button type="button" class="btn-primary self-start" (click)="ouvrirModification()"><i class="fa-solid fa-user-pen"></i> Modifier le profil</button>
+      }
+    </div>
+
+    <div class="grid gap-6 lg:grid-cols-2">
+      <!-- Identité -->
+      <section class="card p-5 sm:p-6">
+        <h2 class="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-id-card"></i> Identité</h2>
+        <dl class="grid gap-x-4 gap-y-3 text-sm sm:grid-cols-2">
+          <div><dt class="text-xs text-slate-500 dark:text-slate-400">Sexe</dt><dd class="text-slate-900 dark:text-white">{{ s.sexe === 'F' ? 'Femme' : 'Homme' }}</dd></div>
+          <div><dt class="text-xs text-slate-500 dark:text-slate-400">Date de naissance</dt><dd class="text-slate-900 dark:text-white">{{ s.dateNaissance }}@if (age !== null) { <span class="text-slate-500 dark:text-slate-400"> ({{ age }} ans)</span> }</dd></div>
+          <div><dt class="text-xs text-slate-500 dark:text-slate-400">Lieu de naissance</dt><dd class="text-slate-900 dark:text-white">{{ s.lieuNaissance }}</dd></div>
+          <div><dt class="text-xs text-slate-500 dark:text-slate-400">Nationalité</dt><dd class="text-slate-900 dark:text-white">{{ s.nationalite }}</dd></div>
+          <div><dt class="text-xs text-slate-500 dark:text-slate-400">Pièce d’identité</dt><dd class="text-slate-900 dark:text-white">{{ s.pieceType }}</dd></div>
+          <div><dt class="text-xs text-slate-500 dark:text-slate-400">N° de la pièce</dt><dd class="font-mono text-slate-900 dark:text-white">{{ s.pieceNumero || '—' }}</dd></div>
+          <div class="sm:col-span-2"><dt class="text-xs text-slate-500 dark:text-slate-400">Adresse</dt><dd class="text-slate-900 dark:text-white">{{ s.adresse }}</dd></div>
+        </dl>
+      </section>
+
+      <!-- Contact et accès -->
+      <section class="card p-5 sm:p-6">
+        <h2 class="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-address-book"></i> Contact et accès</h2>
+        <dl class="grid gap-y-3 text-sm">
+          <div>
+            <dt class="text-xs text-slate-500 dark:text-slate-400">Téléphone</dt>
+            <dd><a [href]="'tel:' + s.telephone.split(' ').join('')" class="text-brand-700 hover:underline dark:text-brand-300"><i class="fa-solid fa-phone mr-1.5"></i>{{ s.telephone }}</a></dd>
+          </div>
+          <div>
+            <dt class="text-xs text-slate-500 dark:text-slate-400">E-mail (identifiant de connexion)</dt>
+            <dd><a [href]="'mailto:' + s.email" class="text-brand-700 hover:underline dark:text-brand-300"><i class="fa-solid fa-envelope mr-1.5"></i>{{ s.email }}</a></dd>
+          </div>
+          <div>
+            <dt class="text-xs text-slate-500 dark:text-slate-400">Dernière connexion</dt>
+            <dd class="text-slate-900 dark:text-white">
+              @if (s.derniereConnexion) { {{ s.derniereConnexion }} } @else { <span class="text-amber-600 dark:text-amber-400">Jamais connecté</span> }
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs text-slate-500 dark:text-slate-400">Compte ajouté par</dt>
+            <dd class="text-slate-900 dark:text-white">
+              @if (s.ajoutePar; as a) {
+                <i class="fa-solid fa-user-plus mr-1.5 text-slate-400"></i>
+                @if (a.id) {
+                  <a [routerLink]="['/admin/soignants', a.id]" class="font-medium text-brand-700 hover:underline dark:text-brand-300">{{ auteur(a) }}</a>
+                } @else {
+                  <span class="font-medium">{{ auteur(a) }}</span>
+                }
+                <span class="text-slate-500 dark:text-slate-400"> · {{ a.role }} · <span class="font-mono text-xs">{{ a.matricule }}</span></span>
+              } @else {
+                <span class="text-slate-500 dark:text-slate-400">Initialisation du système</span>
+              }
+              @if (s.creeLe) { <p class="text-xs text-slate-500 dark:text-slate-400">le {{ s.creeLe }}</p> }
+            </dd>
+          </div>
+          @if (s.doitChangerMotDePasse) {
+            <div class="flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
+              <i class="fa-solid fa-key mt-0.5"></i> Doit choisir son propre mot de passe à la prochaine connexion.
+            </div>
+          }
+        </dl>
+      </section>
+
+      <!-- Profession -->
+      <section class="card p-5 sm:p-6 lg:col-span-2">
+        <h2 class="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-briefcase-medical"></i> Profession et affectations</h2>
+        <dl class="grid gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
+          <div><dt class="text-xs text-slate-500 dark:text-slate-400">N° d’Ordre ({{ ordre }})</dt><dd class="font-mono text-slate-900 dark:text-white">{{ s.numeroOrdre || '—' }}</dd></div>
+          <div><dt class="text-xs text-slate-500 dark:text-slate-400">Grade</dt><dd class="text-slate-900 dark:text-white">{{ s.grade }}</dd></div>
+          <div><dt class="text-xs text-slate-500 dark:text-slate-400">Spécialité</dt><dd class="text-slate-900 dark:text-white">{{ s.specialite }}</dd></div>
+        </dl>
+        <ul class="mt-5 grid gap-3 sm:grid-cols-2">
+          @for (a of s.affectations; track a.etablissementId; let premier = $first) {
+            <li class="flex items-start gap-3 rounded-xl border border-slate-200 p-3 dark:border-slate-800">
+              <i class="fa-solid fa-hospital mt-0.5 text-brand-600 dark:text-brand-400"></i>
+              <div>
+                <p class="font-medium text-slate-900 dark:text-white">
+                  {{ nomEtablissement(a.etablissementId) }}
+                  @if (premier) { <span class="badge ml-1 bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"><i class="fa-solid fa-star"></i> Principal</span> }
+                </p>
+                <p class="text-xs text-slate-500 dark:text-slate-400">{{ a.service || 'Service non précisé' }}</p>
+              </div>
+            </li>
+          }
+        </ul>
+      </section>
+    </div>
+
+    <!-- Photo agrandie -->
+    @if (photoAgrandie && s.photo) {
+      <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Photo du soignant" (click)="photoAgrandie = false">
+        <img [src]="s.photo" [alt]="'Photo de ' + s.prenom + ' ' + s.nom" class="max-h-[85vh] max-w-full rounded-2xl shadow-2xl">
+        <button type="button" class="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20" aria-label="Fermer"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+    }
+
+    <!-- Modification du profil par le médecin chef -->
+    @if (panneauOuvert) {
+      <div class="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-labelledby="titre-modif-sg">
+        <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" (click)="fermerModification()"></div>
+        <form #f="ngForm" (ngSubmit)="enregistrer(f)" novalidate class="relative flex h-full w-full max-w-2xl flex-col bg-white shadow-2xl dark:bg-slate-900">
+          <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800 sm:px-6">
+            <div>
+              <h2 id="titre-modif-sg" class="text-lg font-semibold text-slate-900 dark:text-white">Modifier le profil</h2>
+              <p class="text-xs text-slate-500 dark:text-slate-400">{{ s.prenom }} {{ s.nom }} · <span class="font-mono">{{ s.matricule }}</span></p>
+            </div>
+            <button type="button" class="btn-ghost px-3" (click)="fermerModification()" aria-label="Fermer"><i class="fa-solid fa-xmark text-lg"></i></button>
+          </div>
+
+          <div class="flex-1 space-y-7 overflow-y-auto px-5 py-6 sm:px-6">
+            <!-- Photo -->
+            <section class="flex items-center gap-4">
+              @if (photoApercu) {
+                <img [src]="photoApercu" alt="Nouvelle photo" class="h-20 w-20 rounded-2xl object-cover ring-1 ring-slate-200 dark:ring-slate-700">
+              } @else {
+                <app-avatar [photo]="s.photo" [prenom]="s.prenom" [nomFamille]="s.nom" class="h-20 w-20 rounded-2xl text-2xl ring-1 ring-slate-200 dark:ring-slate-700" />
+              }
+              <div>
+                <label class="btn-secondary cursor-pointer py-2 text-xs">
+                  <i class="fa-solid fa-camera"></i> {{ photoApercu ? 'Changer' : 'Nouvelle photo' }}
+                  <input type="file" accept="image/jpeg,image/png,image/webp" class="sr-only" (change)="choisirPhoto($event)">
+                </label>
+                @if (photoApercu) { <button type="button" class="btn-ghost ml-1 py-2 text-xs" (click)="retirerPhoto()">Garder l’actuelle</button> }
+                <p class="mt-1.5 text-xs" [class]="photoErreur ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500 dark:text-slate-400'">{{ photoErreur || 'Facultatif · JPG, PNG ou WebP, 2 Mo max.' }}</p>
+              </div>
+            </section>
+
+            <!-- Rôle -->
+            <section class="rounded-2xl bg-brand-50/60 p-4 ring-1 ring-brand-100 dark:bg-brand-500/5 dark:ring-brand-500/20 sm:p-5">
+              <label class="label" for="m-role">Rôle dans le système</label>
+              <select id="m-role" name="role" class="input" [ngModel]="form.role" (ngModelChange)="changerRole($event)" [disabled]="estMoi">
+                @for (g of rolesParCategorie; track g.categorie) {
+                  <optgroup [label]="g.categorie === 'Médecin' ? 'Médecins' : 'Infirmiers et infirmières'">
+                    @for (r of g.roles; track r) { <option [ngValue]="r">{{ r }}</option> }
+                  </optgroup>
+                }
+              </select>
+              <p class="hint">Le rôle définit les droits : seuls les médecins accèdent au dossier médical. Le matricule ne change pas.</p>
+            </section>
+
+            <!-- Identité -->
+            <section>
+              <h3 class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-id-card"></i> Identité</h3>
+              <div class="grid gap-4 sm:grid-cols-3">
+                <div><label class="label" for="m-prenom">Prénom <span class="req">*</span></label><input id="m-prenom" name="prenom" class="input" [(ngModel)]="form.prenom" required></div>
+                <div><label class="label" for="m-nom">Nom <span class="req">*</span></label><input id="m-nom" name="nom" class="input uppercase" [(ngModel)]="form.nom" required></div>
+                <div><label class="label" for="m-postnom">Postnom</label><input id="m-postnom" name="postnom" class="input uppercase" [(ngModel)]="form.postnom"></div>
+                <div>
+                  <label class="label" for="m-sexe">Sexe</label>
+                  <select id="m-sexe" name="sexe" class="input" [(ngModel)]="form.sexe"><option value="F">Femme</option><option value="M">Homme</option></select>
+                </div>
+                <div><label class="label" for="m-ddn">Date de naissance <span class="req">*</span></label><input id="m-ddn" type="date" name="dateNaissance" class="input" [(ngModel)]="form.dateNaissance" [max]="dateMax" required></div>
+                <div><label class="label" for="m-lieu">Lieu de naissance <span class="req">*</span></label><input id="m-lieu" name="lieuNaissance" class="input" [(ngModel)]="form.lieuNaissance" required></div>
+                <div><label class="label" for="m-nat">Nationalité <span class="req">*</span></label><input id="m-nat" name="nationalite" class="input" [(ngModel)]="form.nationalite" required></div>
+                <div>
+                  <label class="label" for="m-piece">Pièce d’identité</label>
+                  <select id="m-piece" name="pieceType" class="input" [(ngModel)]="form.pieceType">@for (p of pieces; track p) { <option>{{ p }}</option> }</select>
+                </div>
+                <div><label class="label" for="m-pnum">N° de la pièce</label><input id="m-pnum" name="pieceNumero" class="input uppercase" [(ngModel)]="form.pieceNumero"></div>
+                <div class="sm:col-span-3"><label class="label" for="m-adr">Adresse <span class="req">*</span></label><input id="m-adr" name="adresse" class="input" [(ngModel)]="form.adresse" required></div>
+              </div>
+            </section>
+
+            <!-- Contact et profession -->
+            <section>
+              <h3 class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-briefcase-medical"></i> Contact et profession</h3>
+              <div class="grid gap-4 sm:grid-cols-2">
+                <div><label class="label" for="m-tel">Téléphone <span class="req">*</span></label><input id="m-tel" name="telephone" class="input" [(ngModel)]="form.telephone" required inputmode="tel"></div>
+                <div><label class="label" for="m-mail">E-mail (identifiant de connexion) <span class="req">*</span></label><input id="m-mail" type="email" name="email" class="input" [(ngModel)]="form.email" required email></div>
+                <div><label class="label" for="m-ordre">N° d’Ordre ({{ categorieForm === 'Médecin' ? 'CNOM' : 'CNOI' }})</label><input id="m-ordre" name="numeroOrdre" class="input uppercase" [(ngModel)]="form.numeroOrdre"></div>
+                <div>
+                  <label class="label" for="m-grade">Grade</label>
+                  <select id="m-grade" name="grade" class="input" [(ngModel)]="form.grade">@for (g of grades; track g) { <option>{{ g }}</option> }</select>
+                </div>
+                <div class="sm:col-span-2">
+                  <label class="label" for="m-spec">Spécialité</label>
+                  <select id="m-spec" name="specialite" class="input" [(ngModel)]="form.specialite">@for (sp of specialites; track sp) { <option>{{ sp }}</option> }</select>
+                </div>
+              </div>
+            </section>
+
+            <!-- Établissements -->
+            <section>
+              <h3 class="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-hospital"></i> Établissements d’affectation</h3>
+              <p class="mb-3 text-xs text-slate-500 dark:text-slate-400">Seuls les établissements actifs sont proposés. Le premier est l’établissement principal ; avec plusieurs, le soignant choisit à chaque connexion.</p>
+              @if (affectationsRetirees.length) {
+                <p class="mb-3 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
+                  <i class="fa-solid fa-triangle-exclamation mr-1"></i>Affectation(s) vers un établissement suspendu ou supprimé, retirée(s) à l’enregistrement : {{ affectationsRetirees.join(', ') }}.
+                </p>
+              }
+              @if (etablissementsActifs().length) {
+                <div class="space-y-2">
+                  @for (e of etablissementsActifs(); track e.id) {
+                    @let coche = estAffecte(e.id);
+                    <div class="rounded-xl border transition" [class]="coche ? 'border-brand-600 bg-brand-50 dark:border-brand-400 dark:bg-brand-500/10' : 'border-slate-200 dark:border-slate-700'">
+                      <button type="button" (click)="basculerEtablissement(e.id)" [attr.aria-pressed]="coche" class="flex w-full items-center gap-3 p-2.5 text-left">
+                        @if (e.photos.length) {
+                          <img [src]="e.photos[0]" alt="" class="h-10 w-12 flex-none rounded-lg object-cover">
+                        } @else {
+                          <span class="flex h-10 w-12 flex-none items-center justify-center rounded-lg bg-slate-100 text-slate-400 dark:bg-slate-800"><i class="fa-solid fa-hospital"></i></span>
+                        }
+                        <span class="min-w-0 flex-1">
+                          <span class="block truncate text-sm font-medium text-slate-900 dark:text-white">{{ e.nom }}</span>
+                          <span class="block truncate text-xs text-slate-500 dark:text-slate-400"><span class="font-mono">{{ e.code }}</span> · {{ e.province }}</span>
+                        </span>
+                        @if (coche && affectations[0].etablissementId === e.id) {
+                          <span class="badge bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"><i class="fa-solid fa-star"></i> Principal</span>
+                        }
+                        <i class="fa-solid text-lg" [class]="coche ? 'fa-square-check text-brand-600 dark:text-brand-400' : 'fa-square text-slate-300 dark:text-slate-600'"></i>
+                      </button>
+                      @if (coche) {
+                        @for (a of affectations; track a.etablissementId) {
+                          @if (a.etablissementId === e.id) {
+                            <div class="flex flex-wrap items-center gap-2 border-t border-brand-100 px-2.5 py-2 dark:border-brand-500/20">
+                              <input class="input flex-1 py-1.5 text-sm" [(ngModel)]="a.service" [name]="'service-' + e.id" placeholder="Service (facultatif) : Maternité, CPN…" [attr.aria-label]="'Service à ' + e.nom">
+                              @if (affectations[0] !== a) {
+                                <button type="button" class="btn-ghost px-2 py-1 text-xs" (click)="definirPrincipal(a)"><i class="fa-regular fa-star"></i> Principal</button>
+                              }
+                            </div>
+                          }
+                        }
+                      }
+                    </div>
+                  }
+                </div>
+              } @else {
+                <p class="rounded-xl border border-dashed border-slate-300 p-3 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">Aucun établissement actif. Créez-en ou réactivez-en un dans <a routerLink="/admin/etablissements" class="font-medium text-brand-700 underline dark:text-brand-300">Établissements sanitaires</a>.</p>
+              }
+            </section>
+          </div>
+
+          <div class="space-y-3 border-t border-slate-100 px-5 py-4 dark:border-slate-800 sm:px-6">
+            @if (erreurPanneau) {
+              <p class="flex items-start gap-2 rounded-xl bg-rose-50 px-3 py-2.5 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300" role="alert"><i class="fa-solid fa-circle-exclamation mt-0.5"></i> {{ erreurPanneau }}</p>
+            }
+            <div class="flex justify-end gap-2">
+              <button type="button" class="btn-ghost" (click)="fermerModification()">Annuler</button>
+              <button type="submit" class="btn-primary" [disabled]="enregistrement">
+                <i class="fa-solid" [class]="enregistrement ? 'fa-spinner fa-spin' : 'fa-floppy-disk'"></i> Enregistrer les modifications
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    }
+  }
+</div>

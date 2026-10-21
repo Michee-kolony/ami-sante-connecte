@@ -2,89 +2,160 @@
   <!-- En-tête -->
   <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
     <div>
-      <p class="text-sm font-medium text-brand-600 dark:text-brand-400">Samedi 18 octobre 2026</p>
-      <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">Bonjour, {{ user.nom }}</h1>
-      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Voici l’activité CPN de votre structure. Indicateurs agrégés.</p>
+      <p class="text-sm font-medium text-brand-600 dark:text-brand-400">{{ dateDuJour }}</p>
+      <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">Bonjour, {{ nomUtilisateur }}</h1>
+      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Activité du suivi prénatal · {{ structure }}. Indicateurs calculés sur les dossiers enregistrés.</p>
     </div>
     <div class="flex gap-2">
       <a routerLink="/admin/patientes" class="btn-secondary"><i class="fa-solid fa-magnifying-glass"></i> Rechercher</a>
-      <a routerLink="/admin/patientes/nouvelle" class="btn-primary"><i class="fa-solid fa-plus"></i> Enregistrer</a>
+      @if (session.estMedecin()) {
+        <a routerLink="/admin/patientes/nouvelle" class="btn-primary"><i class="fa-solid fa-plus"></i> Enregistrer</a>
+      }
     </div>
   </div>
 
-  <!-- KPI -->
+  @if (!session.connecte()) {
+    <div class="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+      <i class="fa-solid fa-plug-circle-xmark mt-0.5"></i>
+      <span class="flex-1">Connectez-vous au serveur pour afficher les indicateurs réels du suivi prénatal.</span>
+      <a routerLink="/admin/connexion" class="font-semibold underline">Se connecter</a>
+    </div>
+  } @else if (statsErreur()) {
+    <div class="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200" role="alert">
+      <i class="fa-solid fa-circle-exclamation mt-0.5"></i>
+      <span class="flex-1">Indicateurs indisponibles pour le moment.</span>
+      <button type="button" class="font-semibold underline" (click)="chargerStatistiques()">Réessayer</button>
+    </div>
+  }
+
+  <!-- KPI du suivi prénatal -->
   <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-    @for (k of kpis; track k.label) {
-      <div class="card p-5">
-        <div class="flex items-start justify-between">
-          <div class="flex h-11 w-11 items-center justify-center rounded-xl {{ k.color }}">
-            <i class="fa-solid {{ k.icon }} text-lg"></i>
+    @for (k of kpis(); track k.label) {
+      <a [routerLink]="k.lien" class="card group p-5 transition hover:-translate-y-0.5 hover:shadow-lg">
+        <div class="flex items-start justify-between gap-2">
+          <div class="flex h-11 w-11 items-center justify-center rounded-xl {{ k.couleur }}">
+            <i class="fa-solid {{ k.icone }} text-lg"></i>
           </div>
-          <span class="badge" [class]="k.up ? 'bg-accent-50 dark:bg-accent-500/10 text-accent-700 dark:text-accent-300' : 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300'">
-            <i class="fa-solid text-[10px]" [class]="k.up ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down'"></i>{{ k.trend }}
-          </span>
+          @if (k.tendance && stats()) {
+            <span class="badge" [class]="k.hausse ? 'bg-accent-50 dark:bg-accent-500/10 text-accent-700 dark:text-accent-300' : 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300'">
+              <i class="fa-solid text-[10px]" [class]="k.hausse ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down'"></i>{{ k.tendance }}
+            </span>
+          }
         </div>
-        <p class="mt-4 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ k.value }}</p>
-        <p class="mt-1 text-sm font-medium text-slate-700 dark:text-slate-200">{{ k.label }}</p>
-        <p class="text-xs text-slate-500 dark:text-slate-400">{{ k.sub }}</p>
-      </div>
+        @if (statsAttente()) {
+          <div class="skeleton mt-4 h-9 w-16"></div>
+          <div class="skeleton mt-2 h-4 w-32"></div>
+          <div class="skeleton mt-1.5 h-3 w-40"></div>
+        } @else {
+          <p class="mt-4 text-3xl font-bold tracking-tight tabular-nums text-slate-900 dark:text-white">{{ stats() ? k.valeur : '—' }}</p>
+          <p class="mt-1 text-sm font-medium text-slate-700 dark:text-slate-200">{{ k.label }}</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400">{{ k.sous }}</p>
+        }
+      </a>
+    }
+  </div>
+
+  <!-- Personnel connecté à l'instant -->
+  <app-en-ligne />
+
+  <!-- Chiffres du système (serveur) -->
+  <div class="grid gap-4 sm:grid-cols-3">
+    @for (t of tuilesSysteme(); track t.label) {
+      <a [routerLink]="t.lien" class="card group flex items-center gap-4 p-5 transition hover:-translate-y-0.5 hover:shadow-lg">
+        <div class="flex h-12 w-12 flex-none items-center justify-center rounded-2xl text-lg {{ t.couleur }}">
+          <i class="fa-solid {{ t.icone }}"></i>
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-medium text-slate-500 dark:text-slate-400">{{ t.label }}</p>
+          @if (!session.connecte()) {
+            <p class="mt-0.5 text-3xl font-bold tracking-tight text-slate-300 dark:text-slate-600">—</p>
+            <p class="text-xs text-slate-400">Connexion au serveur requise</p>
+          } @else if (systemeEnChargement()) {
+            <div class="skeleton mt-1.5 h-8 w-16"></div>
+            <div class="skeleton mt-2 h-3 w-32"></div>
+          } @else if (systemeErreur()) {
+            <p class="mt-0.5 text-3xl font-bold tracking-tight text-slate-300 dark:text-slate-600">—</p>
+            <p class="text-xs text-rose-600 dark:text-rose-400">Données indisponibles</p>
+          } @else {
+            <p class="mt-0.5 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ t.valeur }}</p>
+            <p class="truncate text-xs text-slate-500 dark:text-slate-400">{{ t.detail }}</p>
+          }
+        </div>
+        <i class="fa-solid fa-arrow-right text-xs text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-brand-600 dark:text-slate-600 dark:group-hover:text-brand-400"></i>
+      </a>
     }
   </div>
 
   <div class="grid gap-6 lg:grid-cols-3">
-    <!-- Graphique inscriptions -->
+    <!-- Inscriptions par semaine -->
     <div class="card lg:col-span-2">
       <div class="card-header">
         <h2 class="card-title"><i class="fa-solid fa-chart-column text-brand-600 dark:text-brand-400"></i> Inscriptions par semaine</h2>
-        <span class="text-xs text-slate-500 dark:text-slate-400">6 dernières semaines</span>
+        <span class="text-xs text-slate-500 dark:text-slate-400">8 dernières semaines</span>
       </div>
       <div class="px-5 pb-5 pt-6">
-        <div class="flex h-56 items-end gap-3 sm:gap-6">
-          @for (w of weeks; track w.label; let last = $last) {
-            <div class="flex h-full flex-1 flex-col items-center justify-end gap-2">
-              <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">{{ w.value }}</span>
-              <div class="w-full max-w-14 rounded-t-lg transition-all"
-                   [class]="last ? 'bg-accent-600' : 'bg-brand-200 dark:bg-brand-800 hover:bg-brand-300 dark:hover:bg-brand-700'"
-                   [style.height.%]="(w.value / maxWeek) * 85"></div>
-              <span class="text-xs text-slate-500 dark:text-slate-400">{{ w.label }}</span>
-            </div>
-          }
-        </div>
+        @if (statsAttente()) {
+          <div class="flex h-56 items-end gap-3 sm:gap-5" aria-hidden="true">
+            @for (h of [40, 65, 50, 80, 55, 70, 45, 90]; track $index) { <div class="skeleton flex-1 rounded-t-lg" [style.height.%]="h"></div> }
+          </div>
+        } @else if (semaines().length) {
+          <div class="flex h-56 items-end gap-3 sm:gap-5" role="img" [attr.aria-label]="'Inscriptions des 8 dernières semaines'">
+            @for (w of semaines(); track w.debut; let last = $last) {
+              <div class="flex h-full flex-1 flex-col items-center justify-end gap-2" [title]="w.inscriptions + ' inscription(s) — semaine ' + w.label">
+                <span class="text-xs font-semibold tabular-nums text-slate-700 dark:text-slate-200">{{ w.inscriptions }}</span>
+                <div class="w-full max-w-14 rounded-t-lg transition-all"
+                     [class]="last ? 'bg-accent-600' : 'bg-brand-200 dark:bg-brand-800 hover:bg-brand-300 dark:hover:bg-brand-700'"
+                     [style.height.%]="w.inscriptions ? (w.inscriptions / maxSemaine()) * 85 : 2"></div>
+                <span class="text-xs text-slate-500 dark:text-slate-400">{{ w.label }}</span>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="flex h-56 items-center justify-center text-sm text-slate-500 dark:text-slate-400">Aucune donnée.</p>
+        }
       </div>
     </div>
 
-    <!-- Répartition -->
+    <!-- Grossesses en cours par trimestre -->
     <div class="card">
       <div class="card-header">
-        <h2 class="card-title"><i class="fa-solid fa-person-pregnant text-accent-600 dark:text-accent-400"></i> Grossesses actives</h2>
+        <h2 class="card-title"><i class="fa-solid fa-person-pregnant text-accent-600 dark:text-accent-400"></i> Grossesses en cours</h2>
       </div>
       <div class="space-y-5 p-5">
-        <div>
-          <p class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">126</p>
-          <p class="text-sm text-slate-500 dark:text-slate-400">dont <strong class="font-semibold text-rose-600 dark:text-rose-400">18</strong> signalées à risque</p>
-        </div>
-        <div class="flex h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-          @for (t of trimestres; track t.label) {
-            <div class="{{ t.color }}" [style.width.%]="t.value"></div>
+        @if (statsAttente()) {
+          <div class="space-y-3" aria-hidden="true"><div class="skeleton h-9 w-20"></div><div class="skeleton h-3 w-full rounded-full"></div>@for (i of [1, 2, 3]; track i) { <div class="skeleton h-4 w-full"></div> }</div>
+        } @else {
+          <div>
+            <p class="text-3xl font-bold tracking-tight tabular-nums text-slate-900 dark:text-white">{{ stats()?.totaux?.grossessesEnCours ?? '—' }}</p>
+            <p class="text-sm text-slate-500 dark:text-slate-400">
+              @if (stats()?.totaux?.grossessesARisque != null) {
+                dont <strong class="font-semibold text-rose-600 dark:text-rose-400">{{ stats()!.totaux.grossessesARisque }}</strong> avec facteur(s) de risque
+              } @else { grossesses suivies }
+            </p>
+          </div>
+          <div class="flex h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+            @for (t of trimestres(); track t.label) { <div class="{{ t.couleur }}" [style.width.%]="t.pct"></div> }
+          </div>
+          <ul class="space-y-3">
+            @for (t of trimestres(); track t.label) {
+              <li class="flex items-center justify-between text-sm">
+                <span class="flex items-center gap-2 text-slate-600 dark:text-slate-300"><span class="h-2.5 w-2.5 rounded-full {{ t.couleur }}"></span>{{ t.label }} <span class="text-xs text-slate-400">{{ t.sous }}</span></span>
+                <span class="tabular-nums"><strong class="font-semibold text-slate-900 dark:text-white">{{ t.pct }} %</strong> <span class="text-xs text-slate-400">({{ t.n }})</span></span>
+              </li>
+            }
+          </ul>
+          @if (stats()?.trimestres?.nonDatees) {
+            <div class="rounded-xl bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
+              <i class="fa-solid fa-circle-info mr-1"></i>{{ stats()!.trimestres.nonDatees }} grossesse(s) non datée(s), hors répartition.
+            </div>
           }
-        </div>
-        <ul class="space-y-3">
-          @for (t of trimestres; track t.label) {
-            <li class="flex items-center justify-between text-sm">
-              <span class="flex items-center gap-2 text-slate-600 dark:text-slate-300"><span class="h-2.5 w-2.5 rounded-full {{ t.color }}"></span>{{ t.label }}</span>
-              <span class="font-semibold text-slate-900 dark:text-white">{{ t.value }} %</span>
-            </li>
-          }
-        </ul>
-        <div class="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-3 text-xs text-slate-600 dark:text-slate-300">
-          <i class="fa-solid fa-circle-info mr-1 text-brand-600 dark:text-brand-400"></i> Ventilation soumise aux seuils de confidentialité.
-        </div>
+        }
       </div>
     </div>
   </div>
 
-  <!-- Carte de la RDC : concentration des patients par province -->
-  <app-carte-rdc class="block" />
+  <!-- Carte de la RDC : patientes par province de résidence -->
+  <app-carte-rdc class="block" [effectifs]="stats()?.provinces ?? null" [chargement]="statsAttente()" [sansProvince]="stats()?.sansProvince ?? 0" />
 
   <div class="grid gap-6 lg:grid-cols-5">
     <!-- Dossiers récents -->
@@ -100,33 +171,34 @@
               <th class="table-th">Patiente</th>
               <th class="table-th">Âge gest.</th>
               <th class="table-th">Statut</th>
-              <th class="table-th"></th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-            @for (p of recentes; track p.id) {
+            @if (statsAttente()) {
+              @for (i of [1, 2, 3, 4, 5]; track i) {
+                <tr aria-hidden="true"><td class="table-td"><div class="flex items-center gap-3"><div class="skeleton h-9 w-9 rounded-full"></div><div class="space-y-1.5"><div class="skeleton h-3.5 w-32"></div><div class="skeleton h-3 w-24"></div></div></div></td><td class="table-td"><div class="skeleton h-3.5 w-20"></div></td><td class="table-td"><div class="skeleton h-5 w-24 rounded-full"></div></td></tr>
+              }
+            }
+            @for (p of stats()?.recentes ?? []; track p.id) {
               <tr class="transition hover:bg-slate-50/70 dark:hover:bg-slate-800/50">
                 <td class="table-td">
-                  <a [routerLink]="['/admin/patientes', p.id]" class="flex items-center gap-3">
-                    <app-avatar [photo]="p.photo" [prenom]="p.prenom" [nomFamille]="p.nom" class="h-9 w-9 rounded-full text-xs ring-2 ring-white dark:ring-slate-900" />
+                  <a [routerLink]="['/admin/patientes', p.numero]" class="flex items-center gap-3">
+                    <app-avatar [photo]="p.photoUrl ?? undefined" [prenom]="p.prenom || p.nom" [nomFamille]="p.nom" class="h-9 w-9 rounded-full text-xs ring-2 ring-white dark:ring-slate-900" />
                     <span>
-                      <span class="block font-medium text-slate-900 dark:text-white">{{ p.prenom }} {{ p.nom }}</span>
-                      <span class="block font-mono text-xs text-slate-500 dark:text-slate-400">{{ p.id }}</span>
+                      <span class="block font-medium text-slate-900 dark:text-white">{{ p.prenom }} {{ p.nom }}
+                        @if (p.aRisque) { <i class="fa-solid fa-circle-exclamation ml-1 text-rose-500" title="Facteur(s) de risque"></i> }
+                      </span>
+                      <span class="block font-mono text-xs text-slate-500 dark:text-slate-400">{{ p.numero }}</span>
                     </span>
                   </a>
                 </td>
-                <td class="table-td whitespace-nowrap">{{ p.ageGestationnel }}</td>
+                <td class="table-td whitespace-nowrap">{{ p.statut === 'Suivi prénatal' ? ag(p.agJours) : '—' }}</td>
                 <td class="table-td"><span class="badge {{ statutClass(p.statut) }}">{{ p.statut }}</span></td>
-                <td class="table-td text-right">
-                  @if (p.sync === 'en attente') {
-                    <span class="badge bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300" title="Fiche locale non synchronisée"><i class="fa-solid fa-cloud-arrow-up"></i> Local</span>
-                  } @else if (p.sync === 'conflit') {
-                    <span class="badge bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300"><i class="fa-solid fa-triangle-exclamation"></i> Conflit</span>
-                  } @else {
-                    <i class="fa-solid fa-cloud text-slate-300" title="Synchronisé"></i>
-                  }
-                </td>
               </tr>
+            } @empty {
+              @if (stats()) {
+                <tr><td colspan="3" class="table-td py-8 text-center text-slate-500 dark:text-slate-400">Aucun dossier pour l’instant.</td></tr>
+              }
             }
           </tbody>
         </table>
@@ -140,18 +212,29 @@
         <a routerLink="/admin/rendez-vous" class="text-xs font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300">Agenda</a>
       </div>
       <ul class="divide-y divide-slate-100 dark:divide-slate-800">
-        @for (r of rdvs; track r.patienteId + r.date) {
-          <li class="flex items-center gap-4 px-5 py-3.5">
-            <div class="flex h-12 w-12 flex-none flex-col items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-800/50 ring-1 ring-slate-200 dark:ring-slate-700">
-              <span class="text-base font-bold leading-none text-slate-900 dark:text-white">{{ r.date.slice(8) }}</span>
-              <span class="text-[10px] font-semibold uppercase text-slate-500 dark:text-slate-400">{{ r.date.slice(5, 7) === '10' ? 'oct' : 'nov' }}</span>
-            </div>
-            <div class="min-w-0 flex-1">
-              <p class="truncate text-sm font-medium text-slate-900 dark:text-white">{{ r.patiente }}</p>
-              <p class="text-xs text-slate-500 dark:text-slate-400">{{ r.type }} · {{ r.heure }}</p>
-            </div>
-            <span class="badge {{ rdvClass(r.statut) }}">{{ r.statut }}</span>
+        @if (statsAttente()) {
+          @for (i of [1, 2, 3, 4]; track i) {
+            <li class="flex items-center gap-4 px-5 py-3.5" aria-hidden="true"><div class="skeleton h-12 w-12 rounded-xl"></div><div class="flex-1 space-y-1.5"><div class="skeleton h-3.5 w-36"></div><div class="skeleton h-3 w-24"></div></div></li>
+          }
+        }
+        @for (r of stats()?.prochainsRdv ?? []; track r.id) {
+          <li>
+            <a [routerLink]="r.patiente ? ['/admin/patientes', r.patiente.numero] : null" class="flex items-center gap-4 px-5 py-3.5 transition hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+              <div class="flex h-12 w-12 flex-none flex-col items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-800/50 ring-1 ring-slate-200 dark:ring-slate-700">
+                <span class="text-base font-bold leading-none text-slate-900 dark:text-white">{{ jourRdv(r.date) }}</span>
+                <span class="text-[10px] font-semibold uppercase text-slate-500 dark:text-slate-400">{{ moisRdv(r.date) }}</span>
+              </div>
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-sm font-medium text-slate-900 dark:text-white">{{ r.patiente ? r.patiente.prenom + ' ' + r.patiente.nom : 'Patiente' }}</p>
+                <p class="truncate text-xs text-slate-500 dark:text-slate-400">{{ r.motif }} · {{ heure(r.date) }}</p>
+              </div>
+              <span class="badge {{ rdvClass(r.statut) }}">{{ r.statut }}</span>
+            </a>
           </li>
+        } @empty {
+          @if (stats()) {
+            <li class="px-5 py-8 text-center text-sm text-slate-500 dark:text-slate-400"><i class="fa-solid fa-calendar-check mr-1 text-accent-500"></i>Aucun rendez-vous à venir.</li>
+          }
         }
       </ul>
     </div>
@@ -160,8 +243,8 @@
   <!-- Vaccination des enfants -->
   <div class="flex items-end justify-between pt-2">
     <div>
-      <h2 class="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Vaccination des enfants</h2>
-      <p class="text-sm text-slate-500 dark:text-slate-400">Calendrier de routine (PEV) des enfants de moins de 2 ans.</p>
+      <h2 class="flex items-center gap-2 text-lg font-bold tracking-tight text-slate-900 dark:text-white">Vaccination des enfants <span class="badge bg-slate-100 text-xs font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">Données de démonstration</span></h2>
+      <p class="text-sm text-slate-500 dark:text-slate-400">Calendrier de routine (PEV) des enfants de moins de 2 ans. Module serveur à venir.</p>
     </div>
     <a routerLink="/admin/enfants" class="text-xs font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300">Voir les enfants <i class="fa-solid fa-arrow-right ml-0.5"></i></a>
   </div>
@@ -238,31 +321,35 @@
     </div>
   </div>
 
-  <!-- Qualité des données -->
+  <!-- Qualité des données (dossiers réels) -->
   <div class="grid gap-4 md:grid-cols-3">
-    <div class="card flex items-center gap-4 p-5">
-      <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400"><i class="fa-solid fa-clone text-lg"></i></div>
+    <a routerLink="/admin/patientes" class="card flex items-center gap-4 p-5 transition hover:shadow-lg">
+      <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400"><i class="fa-solid fa-calendar-days text-lg"></i></div>
       <div class="flex-1">
-        <p class="text-sm font-medium text-slate-900 dark:text-white">Doublons potentiels</p>
-        <p class="text-xs text-slate-500 dark:text-slate-400">9 détectés · 5 confirmés · 2 à résoudre</p>
+        <p class="text-sm font-medium text-slate-900 dark:text-white">Grossesses à dater</p>
+        @if (statsAttente()) { <div class="skeleton mt-1 h-3 w-32"></div> }
+        @else { <p class="text-xs text-slate-500 dark:text-slate-400">{{ stats() ? stats()!.qualite.grossessesNonDatees + ' sans DDR ni échographie' : '—' }}</p> }
       </div>
-      <a routerLink="/admin/doublons" class="btn-ghost px-3"><i class="fa-solid fa-chevron-right"></i></a>
-    </div>
-    <div class="card flex items-center gap-4 p-5">
-      <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400"><i class="fa-solid fa-arrows-rotate text-lg"></i></div>
+      <i class="fa-solid fa-chevron-right text-xs text-slate-300"></i>
+    </a>
+    <a routerLink="/admin/patientes" class="card flex items-center gap-4 p-5 transition hover:shadow-lg">
+      <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400"><i class="fa-solid fa-phone-slash text-lg"></i></div>
       <div class="flex-1">
-        <p class="text-sm font-medium text-slate-900 dark:text-white">Synchronisation</p>
-        <p class="text-xs text-slate-500 dark:text-slate-400">2 en attente · 1 conflit · 0 erreur</p>
+        <p class="text-sm font-medium text-slate-900 dark:text-white">Sans numéro de téléphone</p>
+        @if (statsAttente()) { <div class="skeleton mt-1 h-3 w-32"></div> }
+        @else { <p class="text-xs text-slate-500 dark:text-slate-400">{{ stats() ? stats()!.qualite.sansTelephone + ' dossier(s) à compléter' : '—' }}</p> }
       </div>
-      <a routerLink="/admin/synchronisation" class="btn-ghost px-3"><i class="fa-solid fa-chevron-right"></i></a>
-    </div>
+      <i class="fa-solid fa-chevron-right text-xs text-slate-300"></i>
+    </a>
     <div class="card flex items-center gap-4 p-5">
       <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400"><i class="fa-solid fa-list-check text-lg"></i></div>
       <div class="flex-1">
         <p class="text-sm font-medium text-slate-900 dark:text-white">Complétude</p>
-        <p class="text-xs text-slate-500 dark:text-slate-400">94 % des champs obligatoires renseignés</p>
+        <p class="text-xs text-slate-500 dark:text-slate-400">
+          @if (stats()?.qualite?.completude != null) { {{ stats()!.qualite.completude }} % (téléphone, date de naissance, datation) } @else { — }
+        </p>
       </div>
-      <div class="h-2 w-16 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div class="h-full w-[94%] rounded-full bg-sky-500"></div></div>
+      <div class="h-2 w-16 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div class="h-full rounded-full bg-sky-500 transition-all" [style.width.%]="stats()?.qualite?.completude ?? 0"></div></div>
     </div>
   </div>
 </div>

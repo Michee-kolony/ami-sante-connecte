@@ -48,8 +48,8 @@
              class="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition hover:bg-white/5 hover:text-white">
             <i class="fa-solid {{ item.icon }} w-5 text-center text-slate-400 group-hover:text-white"></i>
             <span class="flex-1">{{ item.label }}</span>
-            @if (item.badge) {
-              <span class="rounded-full bg-rose-500 px-2 py-0.5 text-[11px] font-semibold text-white">{{ item.badge }}</span>
+            @if (badge(item)) {
+              <span class="rounded-full bg-rose-500 px-2 py-0.5 text-[11px] font-semibold text-white">{{ badge(item) }}</span>
             }
           </a>
         }
@@ -68,16 +68,35 @@
           </a>
         }
       </div>
+      @if (navSuperAdmin.length) {
+        <div class="space-y-1">
+          <p class="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Super administration</p>
+          @for (item of navSuperAdmin; track item.path) {
+            <a [routerLink]="item.path" routerLinkActive="!bg-white/10 !text-white"
+               (click)="menuOpen = false"
+               class="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition hover:bg-white/5 hover:text-white">
+              <i class="fa-solid {{ item.icon }} w-5 text-center text-slate-400 group-hover:text-white"></i>
+              <span class="flex-1">{{ item.label }}</span>
+            </a>
+          }
+        </div>
+      }
     </nav>
 
     <div class="border-t border-white/10 p-4">
       <div class="flex items-center gap-3">
-        <div class="flex h-10 w-10 items-center justify-center rounded-full bg-brand-600 text-sm font-semibold text-white">{{ user.initiales }}</div>
-        <div class="min-w-0 flex-1">
-          <p class="truncate text-sm font-medium text-white">{{ user.nom }}</p>
-          <p class="truncate text-xs text-slate-400">{{ user.role }}</p>
-        </div>
-        <a routerLink="/admin/connexion" class="rounded-lg p-2 text-slate-400 transition hover:bg-white/10 hover:text-white" title="Déconnexion sécurisée">
+        <a routerLink="/admin/profil" class="flex min-w-0 flex-1 items-center gap-3 rounded-lg transition hover:opacity-80" title="Mon profil">
+          @if (session.soignant()?.photo; as photo) {
+            <img [src]="photo" alt="" class="h-10 w-10 flex-none rounded-full object-cover">
+          } @else {
+            <div class="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-brand-600 text-sm font-semibold text-white">{{ user.initiales }}</div>
+          }
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-sm font-medium text-white">{{ user.nom }}</p>
+            <p class="truncate text-xs text-slate-400">{{ user.role }}</p>
+          </div>
+        </a>
+        <a routerLink="/admin/connexion" (click)="session.deconnecter()" class="rounded-lg p-2 text-slate-400 transition hover:bg-white/10 hover:text-white" title="Déconnexion sécurisée">
           <i class="fa-solid fa-right-from-bracket"></i>
         </a>
       </div>
@@ -92,10 +111,22 @@
           <i class="fa-solid fa-bars text-lg"></i>
         </button>
 
-        <div class="relative hidden max-w-md flex-1 xl:block">
-          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-slate-400"></i>
-          <input type="search" class="input rounded-full border-slate-200/70 bg-white/60 pl-10 dark:border-white/10 dark:bg-slate-800/40" placeholder="Rechercher par identifiant, nom ou téléphone…">
-        </div>
+        <!-- Soignant connecté -->
+        <a [routerLink]="session.connecte() ? '/admin/profil' : '/admin/connexion'"
+           class="group flex min-w-0 items-center gap-3 rounded-full py-1 pl-1 pr-4 transition hover:bg-white/70 dark:hover:bg-slate-800/60"
+           [title]="session.connecte() ? 'Mon profil' : 'Se connecter'">
+          <span class="relative flex-none">
+            <app-avatar [photo]="session.soignant()?.photo" [prenom]="session.soignant()?.prenom ?? user.initiales.charAt(0)" [nomFamille]="session.soignant()?.nom ?? user.initiales.charAt(1)"
+                        class="h-10 w-10 rounded-full text-sm shadow-sm ring-2 ring-white dark:ring-slate-900" />
+            @if (session.connecte()) {
+              <span class="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-accent-500 ring-2 ring-white dark:ring-slate-900" title="En ligne"></span>
+            }
+          </span>
+          <span class="min-w-0 leading-tight">
+            <span class="block truncate text-sm font-semibold text-slate-900 group-hover:text-brand-700 dark:text-white dark:group-hover:text-brand-300">{{ nomAffiche }}</span>
+            <span class="block truncate text-xs text-slate-500 dark:text-slate-400">{{ user.role }}</span>
+          </span>
+        </a>
 
         <div class="ml-auto flex items-center gap-2 sm:gap-3">
           <app-theme-toggle class="hidden sm:block" />
@@ -114,9 +145,11 @@
             <i class="fa-regular fa-bell"></i>
             <span class="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900"></span>
           </button>
-          <a routerLink="/admin/patientes/nouvelle" class="btn-primary hidden whitespace-nowrap sm:inline-flex" title="Nouvelle patiente">
-            <i class="fa-solid fa-plus"></i><span class="hidden lg:inline">Nouvelle patiente</span>
-          </a>
+          @if (!session.estInfirmier()) {
+            <a routerLink="/admin/patientes/nouvelle" class="btn-primary hidden whitespace-nowrap sm:inline-flex" title="Nouvelle patiente">
+              <i class="fa-solid fa-plus"></i><span class="hidden lg:inline">Nouvelle patiente</span>
+            </a>
+          }
         </div>
       </div>
     </header>
@@ -124,6 +157,9 @@
     <main class="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
       <router-outlet />
     </main>
+
+    <!-- Popups de nouveaux messages (discussions entre soignants), sur toutes les pages -->
+    @if (session.connecte()) { <app-notifications-messages /> }
 
     <footer class="border-t border-white/60 bg-white/30 backdrop-blur-md dark:border-white/10 dark:bg-slate-900/30 px-4 py-4 text-xs text-slate-500 dark:text-slate-400 sm:px-6 lg:px-8">
       <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">

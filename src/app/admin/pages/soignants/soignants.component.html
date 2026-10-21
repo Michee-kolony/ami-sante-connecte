@@ -1,0 +1,643 @@
+<div class="mx-auto max-w-7xl space-y-6">
+  <!-- En-tête -->
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Médecins et infirmiers</h1>
+      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Identité, inscription à l’Ordre et établissement du personnel soignant. Chacun se connecte à l’espace administrateur avec son e-mail et son mot de passe ; son rôle définit ses droits.</p>
+    </div>
+    @if (peutGerer()) {
+      <button type="button" class="btn-primary" (click)="ouvrir()"><i class="fa-solid fa-user-plus"></i> Ajouter un soignant</button>
+    }
+  </div>
+
+  @if (erreurChargement) {
+    <div class="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200" role="alert">
+      <i class="fa-solid fa-circle-exclamation mt-0.5"></i>
+      <span class="flex-1">Impossible de charger le personnel : {{ erreurChargement }}</span>
+    </div>
+  }
+
+  @if (notification) {
+    <div class="flex items-start gap-3 rounded-xl border border-accent-200 bg-accent-50 px-4 py-3 text-sm text-accent-900 dark:border-accent-500/30 dark:bg-accent-500/10 dark:text-accent-200" role="status">
+      <i class="fa-solid fa-circle-check mt-0.5 text-accent-600 dark:text-accent-400"></i>
+      <span class="flex-1">{{ notification }}</span>
+      <button type="button" class="text-accent-700 hover:text-accent-900 dark:text-accent-300" (click)="notification = null" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+  }
+
+  <!-- Statistiques -->
+  <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="card flex items-center gap-4 p-4">
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"><i class="fa-solid fa-user-doctor"></i></div>
+      <div>@if (enChargement()) { <div class="skeleton mb-1.5 h-7 w-12"></div> } @else { <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats().total }}</p> }<p class="text-xs text-slate-500 dark:text-slate-400">Soignants</p></div>
+    </div>
+    <div class="card flex items-center gap-4 p-4">
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-accent-50 text-accent-600 dark:bg-accent-500/10 dark:text-accent-400"><i class="fa-solid fa-user-doctor"></i></div>
+      <div>@if (enChargement()) { <div class="skeleton mb-1.5 h-7 w-12"></div> } @else { <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats().medecins }}</p> }<p class="text-xs text-slate-500 dark:text-slate-400">Médecins</p></div>
+    </div>
+    <div class="card flex items-center gap-4 p-4">
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400"><i class="fa-solid fa-user-nurse"></i></div>
+      <div>@if (enChargement()) { <div class="skeleton mb-1.5 h-7 w-12"></div> } @else { <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats().infirmiers }}</p> }<p class="text-xs text-slate-500 dark:text-slate-400">Infirmiers et infirmières</p></div>
+    </div>
+    <div class="card flex items-center gap-4 p-4">
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400"><i class="fa-solid fa-hospital"></i></div>
+      <div>@if (enChargement()) { <div class="skeleton mb-1.5 h-7 w-12"></div> } @else { <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats().multiSites }}</p> }<p class="text-xs text-slate-500 dark:text-slate-400">Exercent dans plusieurs établissements</p></div>
+    </div>
+  </div>
+
+  <!-- Personnel connecté à l'instant -->
+  <app-en-ligne />
+
+  <!-- Onglets : liste du personnel / historique des ajouts -->
+  <div class="inline-flex rounded-xl bg-slate-100 p-1 text-sm font-semibold dark:bg-slate-800" role="tablist" aria-label="Vue">
+    @for (o of onglets; track o.id) {
+      <button type="button" role="tab" (click)="onglet.set(o.id)" [attr.aria-selected]="onglet() === o.id"
+              class="flex items-center gap-2 rounded-lg px-4 py-2 transition"
+              [class]="onglet() === o.id ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'">
+        <i class="fa-solid {{ o.icon }}"></i> {{ o.label }}
+        @if (o.id === 'historique' && historique().length) {
+          <span class="rounded-full bg-slate-200 px-1.5 text-[11px] text-slate-600 dark:bg-slate-600 dark:text-slate-200">{{ historique().length }}</span>
+        }
+      </button>
+    }
+  </div>
+
+  @if (onglet() === 'liste') {
+  <!-- Liste -->
+  <div class="card overflow-hidden">
+    <div class="flex flex-col gap-3 border-b border-slate-100 p-4 dark:border-slate-800 sm:flex-row sm:items-center">
+      <div class="relative flex-1">
+        <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-slate-400"></i>
+        <input type="search" class="input pl-10" placeholder="Rechercher par nom, matricule, n° d’Ordre, e-mail, rôle ou spécialité"
+               [value]="recherche()" (input)="recherche.set($any($event.target).value)">
+      </div>
+      <div class="relative sm:w-48">
+        <select class="input appearance-none pr-10" [value]="filtreCategorie()" (change)="filtreCategorie.set($any($event.target).value)">
+          <option value="Toutes">Toutes catégories</option>
+          <option value="Médecin">Médecins</option>
+          <option value="Infirmier">Infirmiers</option>
+        </select>
+        <i class="fa-solid fa-chevron-down pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
+      </div>
+      <div class="relative sm:w-48">
+        <select class="input appearance-none pr-10" [value]="filtreStatut()" (change)="filtreStatut.set($any($event.target).value)">
+          <option value="Tous">Tous les statuts</option>
+          <option value="Actif">Actifs</option>
+          <option value="Suspendu">Suspendus</option>
+        </select>
+        <i class="fa-solid fa-chevron-down pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
+        <thead class="bg-slate-50/70 dark:bg-slate-800/50">
+          <tr>
+            <th class="table-th">Soignant</th>
+            <th class="table-th">Profession</th>
+            <th class="table-th">Établissements</th>
+            <th class="table-th">Accès</th>
+            <th class="table-th">Statut</th>
+            <th class="table-th"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+          @for (m of filtres(); track m.id) {
+            @let estMedecin = categorie(m) === 'Médecin';
+            <tr class="transition hover:bg-slate-50/70 dark:hover:bg-slate-800/50" [class.opacity-60]="m.statut === 'Suspendu'">
+              <td class="table-td">
+                <div class="flex items-center gap-3">
+                  <a [routerLink]="['/admin/soignants', m.id]" class="relative flex-none rounded-full transition hover:ring-2 hover:ring-brand-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500" [title]="'Voir le profil de ' + nomComplet(m)">
+                    <app-avatar [photo]="m.photo" [prenom]="m.prenom" [nomFamille]="m.nom" class="h-12 w-12 rounded-full text-sm ring-2 ring-white dark:ring-slate-900" />
+                    @if (presence.estEnLigne(m.id)) {
+                      <span class="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full bg-accent-500 ring-2 ring-white dark:ring-slate-900" title="En ligne"></span>
+                    }
+                  </a>
+                  <div>
+                    <a [routerLink]="['/admin/soignants', m.id]" class="whitespace-nowrap font-medium text-slate-900 hover:text-brand-700 dark:text-white dark:hover:text-brand-300">{{ nomComplet(m) }} <span class="text-slate-500 dark:text-slate-400">{{ m.postnom }}</span></a>
+                    <p class="flex items-center gap-1.5">
+                      <span class="font-mono text-xs text-slate-500 dark:text-slate-400">{{ m.matricule }}</span>
+                      <span class="badge" [class]="estMedecin ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300' : 'bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300'">
+                        <i class="fa-solid" [class]="estMedecin ? 'fa-user-doctor' : 'fa-user-nurse'"></i> {{ estMedecin ? 'Médecin' : 'Infirmier' }}
+                      </span>
+                    </p>
+                    <a [href]="'tel:' + m.telephone.split(' ').join('')" class="whitespace-nowrap text-[11px] text-slate-400 hover:text-brand-700 dark:hover:text-brand-300"><i class="fa-solid fa-phone mr-1"></i>{{ m.telephone }}</a>
+                  </div>
+                </div>
+              </td>
+              <td class="table-td">
+                <p class="whitespace-nowrap text-slate-900 dark:text-white">{{ m.specialite }}</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400">{{ m.grade }}</p>
+                <p class="font-mono text-[11px] text-slate-400">{{ m.numeroOrdre }}</p>
+              </td>
+              <td class="table-td">
+                <ul class="space-y-1.5">
+                  @for (a of m.affectations; track a.etablissementId; let premier = $first) {
+                    <li>
+                      <p class="text-slate-900 dark:text-white">
+                        {{ nomEtablissement(a.etablissementId) }}
+                        @if (premier && m.affectations.length > 1) {
+                          <span class="badge ml-1 bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">Principal</span>
+                        }
+                      </p>
+                      <p class="text-xs text-slate-500 dark:text-slate-400">{{ a.service || '—' }}</p>
+                    </li>
+                  }
+                </ul>
+              </td>
+              <td class="table-td">
+                <p class="whitespace-nowrap"><i class="fa-solid fa-envelope mr-1.5 w-3 text-slate-400"></i>{{ m.email }}</p>
+                <p class="text-xs font-medium text-slate-700 dark:text-slate-300">{{ m.role }}</p>
+                @if (m.derniereConnexion) {
+                  <p class="whitespace-nowrap text-[11px] text-slate-400"><i class="fa-solid fa-right-to-bracket mr-1"></i>Connecté le {{ m.derniereConnexion }}</p>
+                } @else {
+                  <p class="whitespace-nowrap text-[11px] text-amber-600 dark:text-amber-400"><i class="fa-solid fa-hourglass-half mr-1"></i>Jamais connecté</p>
+                }
+                <p class="whitespace-nowrap text-[11px] text-slate-400" [title]="m.ajoutePar ? m.ajoutePar.role + ' · ' + m.ajoutePar.matricule : ''">
+                  <i class="fa-solid fa-user-plus mr-1"></i>Ajouté{{ m.sexe === 'F' ? 'e' : '' }} par {{ m.ajoutePar ? auteur(m.ajoutePar) : 'l’initialisation du système' }}
+                </p>
+              </td>
+              <td class="table-td">
+                @if (m.statut === 'Actif') {
+                  <span class="badge bg-accent-50 text-accent-700 ring-1 ring-accent-200 dark:bg-accent-500/10 dark:text-accent-300 dark:ring-accent-500/30">Actif</span>
+                } @else {
+                  <span class="badge bg-rose-50 text-rose-700 ring-1 ring-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/30">Suspendu</span>
+                }
+              </td>
+              <td class="table-td">
+                @if (peutGerer()) {
+                <div class="flex justify-end gap-1">
+                  <button type="button" class="btn-ghost px-2.5 py-1.5" title="Réinitialiser le mot de passe" (click)="reinitialiser(m)">
+                    <i class="fa-solid fa-key"></i><span class="sr-only">Réinitialiser le mot de passe</span>
+                  </button>
+                  <button type="button" class="btn-ghost px-2.5 py-1.5" [title]="m.statut === 'Actif' ? 'Suspendre' : 'Réactiver'" (click)="basculer(m)">
+                    <i class="fa-solid" [class]="m.statut === 'Actif' ? 'fa-user-lock text-rose-500' : 'fa-user-check text-accent-600'"></i>
+                    <span class="sr-only">{{ m.statut === 'Actif' ? 'Suspendre' : 'Réactiver' }}</span>
+                  </button>
+                  @if (!estMoi(m)) {
+                    <button type="button" class="btn-ghost px-2.5 py-1.5" title="Supprimer du système" (click)="demanderSuppression(m)">
+                      <i class="fa-solid fa-trash text-rose-500"></i><span class="sr-only">Supprimer du système</span>
+                    </button>
+                  }
+                </div>
+                }
+              </td>
+            </tr>
+          } @empty {
+            @if (enChargement()) {
+              @for (i of lignesSquelette; track i) {
+                <tr aria-hidden="true">
+                  <td class="table-td">
+                    <div class="flex items-center gap-3">
+                      <div class="skeleton h-12 w-12 flex-none rounded-full"></div>
+                      <div class="space-y-2"><div class="skeleton h-3.5 w-36"></div><div class="skeleton h-3 w-28"></div><div class="skeleton h-2.5 w-24"></div></div>
+                    </div>
+                  </td>
+                  <td class="table-td"><div class="space-y-2"><div class="skeleton h-3.5 w-28"></div><div class="skeleton h-3 w-20"></div><div class="skeleton h-2.5 w-16"></div></div></td>
+                  <td class="table-td"><div class="space-y-2"><div class="skeleton h-3.5 w-40"></div><div class="skeleton h-3 w-20"></div></div></td>
+                  <td class="table-td"><div class="space-y-2"><div class="skeleton h-3.5 w-44"></div><div class="skeleton h-3 w-32"></div><div class="skeleton h-2.5 w-28"></div></div></td>
+                  <td class="table-td"><div class="skeleton h-5 w-14 rounded-full"></div></td>
+                  <td class="table-td"><div class="flex justify-end gap-2"><div class="skeleton h-7 w-7 rounded-lg"></div><div class="skeleton h-7 w-7 rounded-lg"></div></div></td>
+                </tr>
+              }
+              <tr class="sr-only"><td colspan="6" role="status">Chargement du personnel…</td></tr>
+            } @else {
+              <tr><td colspan="6" class="table-td py-10 text-center text-slate-500 dark:text-slate-400">Aucun soignant ne correspond à la recherche.</td></tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  } @else {
+    <!-- Historique des ajouts : qui a ajouté quel soignant, et quand -->
+    <div class="card overflow-hidden">
+      <div class="card-header">
+        <h2 class="card-title"><i class="fa-solid fa-clock-rotate-left text-brand-600 dark:text-brand-400"></i> Historique des ajouts</h2>
+        <span class="text-xs text-slate-500 dark:text-slate-400">{{ historique().length }} compte{{ historique().length > 1 ? 's' : '' }}</span>
+      </div>
+      <ol class="divide-y divide-slate-100 dark:divide-slate-800">
+        @if (enChargement()) {
+          @for (i of lignesSquelette; track i) {
+            <li class="flex items-start gap-3 px-5 py-3.5" aria-hidden="true">
+              <div class="skeleton h-8 w-8 flex-none rounded-full"></div>
+              <div class="flex-1 space-y-2"><div class="skeleton h-3.5 w-3/4 max-w-xl"></div><div class="skeleton h-2.5 w-40"></div></div>
+            </li>
+          }
+        }
+        @for (h of historique(); track h.id) {
+          @let estMedecin = categorie(h) === 'Médecin';
+          <li class="flex items-start gap-3 px-5 py-3.5">
+            <span class="mt-0.5 flex h-8 w-8 flex-none items-center justify-center rounded-full text-sm"
+                  [class]="estMedecin ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300' : 'bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300'">
+              <i class="fa-solid" [class]="estMedecin ? 'fa-user-doctor' : 'fa-user-nurse'"></i>
+            </span>
+            <div class="min-w-0 flex-1 text-sm">
+              <p class="text-slate-700 dark:text-slate-300">
+                <span class="text-slate-500 dark:text-slate-400">{{ h.role }}</span>
+                <a [routerLink]="['/admin/soignants', h.id]" class="font-semibold text-slate-900 hover:text-brand-700 dark:text-white dark:hover:text-brand-300">{{ nomComplet(h) }}</a>
+                a été ajouté{{ h.sexe === 'F' ? 'e' : '' }} par
+                @if (h.ajoutePar; as a) {
+                  @if (a.id && existe(a.id)) {
+                    <a [routerLink]="['/admin/soignants', a.id]" class="font-semibold text-slate-900 hover:text-brand-700 dark:text-white dark:hover:text-brand-300">{{ auteur(a) }}</a>
+                  } @else {
+                    <span class="font-semibold text-slate-900 dark:text-white">{{ auteur(a) }}</span>
+                  }
+                  <span class="text-slate-500 dark:text-slate-400">({{ a.role }} · <span class="font-mono text-xs">{{ a.matricule }}</span>)</span>
+                } @else {
+                  <span class="font-semibold text-slate-900 dark:text-white">l’initialisation du système</span>
+                }
+              </p>
+              <p class="mt-0.5 font-mono text-[11px] text-slate-400">{{ h.matricule }}@if (h.creeLe) { · le {{ h.creeLe }} }</p>
+            </div>
+          </li>
+        } @empty {
+          @if (!enChargement()) {
+            <li class="px-5 py-10 text-center text-sm text-slate-500 dark:text-slate-400">Aucun ajout enregistré pour l’instant.</li>
+          }
+        }
+      </ol>
+    </div>
+  }
+</div>
+
+<!-- Panneau d'ajout d'un médecin -->
+@if (panneauOuvert) {
+  <div class="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-labelledby="titre-ajout-sg">
+    <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" (click)="fermer()"></div>
+
+    <form #f="ngForm" (ngSubmit)="enregistrer(f)" novalidate
+          class="relative flex h-full w-full max-w-2xl flex-col bg-white shadow-2xl dark:bg-slate-900">
+      <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800 sm:px-6">
+        <div>
+          <h2 id="titre-ajout-sg" class="text-lg font-semibold text-slate-900 dark:text-white">Ajouter un médecin ou un infirmier</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Matricule attribué : <span class="font-mono font-semibold text-slate-700 dark:text-slate-200">{{ matriculePropose }}</span></p>
+        </div>
+        <button type="button" class="btn-ghost px-3" (click)="fermer()" aria-label="Fermer"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div class="flex-1 space-y-7 overflow-y-auto px-5 py-6 sm:px-6">
+        <!-- Rôle : seule différence entre médecins et infirmiers -->
+        <section class="rounded-2xl bg-brand-50/60 p-4 ring-1 ring-brand-100 dark:bg-brand-500/5 dark:ring-brand-500/20 sm:p-5">
+          <label class="label" for="sg-role">Rôle dans le système <span class="req">*</span></label>
+          <select id="sg-role" name="role" class="input" [ngModel]="form.role" (ngModelChange)="changerRole($event)" required>
+            @for (g of rolesParCategorie; track g.categorie) {
+              <optgroup [label]="g.categorie === 'Médecin' ? 'Médecins' : 'Infirmiers et infirmières'">
+                @for (r of g.roles; track r) { <option [ngValue]="r">{{ r }}</option> }
+              </optgroup>
+            }
+          </select>
+          <p class="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+            <i class="fa-solid" [class]="categorieForm === 'Médecin' ? 'fa-user-doctor' : 'fa-user-nurse'"></i>
+            Catégorie : <span class="font-semibold text-slate-700 dark:text-slate-200">{{ categorieForm === 'Médecin' ? 'médecin' : 'infirmier·ère' }}</span>
+            · inscription au {{ ordre }} · matricule <span class="font-mono font-semibold text-slate-700 dark:text-slate-200">{{ matriculePropose }}</span>
+          </p>
+        </section>
+
+        <!-- Photo -->
+        <section class="flex items-center gap-5">
+          <div class="relative h-24 w-24 flex-none overflow-hidden rounded-2xl bg-slate-100 ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+            @if (photoApercu) {
+              <img [src]="photoApercu" alt="Aperçu de la photo du soignant" class="h-full w-full object-cover">
+            } @else {
+              <div class="flex h-full w-full items-center justify-center text-3xl text-slate-300 dark:text-slate-600"><i class="fa-solid" [class]="categorieForm === 'Médecin' ? 'fa-user-doctor' : 'fa-user-nurse'"></i></div>
+            }
+          </div>
+          <div class="space-y-2">
+            <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Photo d’identité <span class="req">*</span></p>
+            <div class="flex flex-wrap gap-2">
+              <label class="btn-secondary cursor-pointer px-3 py-2 text-xs">
+                <i class="fa-solid fa-camera"></i> {{ photoApercu ? 'Changer' : 'Choisir une photo' }}
+                <input type="file" accept="image/jpeg,image/png,image/webp" capture="user" class="sr-only" (change)="choisirPhoto($event)">
+              </label>
+              @if (photoApercu) {
+                <button type="button" class="btn-ghost px-3 py-2 text-xs text-rose-600" (click)="retirerPhoto()"><i class="fa-solid fa-trash"></i> Retirer</button>
+              }
+            </div>
+            <p class="text-xs" [class]="photoErreur ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500 dark:text-slate-400'">
+              {{ photoErreur || 'Photo de face, fond neutre. JPG, PNG ou WebP, 2 Mo max.' }}
+            </p>
+          </div>
+        </section>
+
+        <!-- Identité -->
+        <section>
+          <h3 class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-id-card"></i> Identité</h3>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label class="label" for="sg-prenom">Prénom <span class="req">*</span></label>
+              <input id="sg-prenom" name="prenom" class="input" [(ngModel)]="form.prenom" #prenom="ngModel" required autocomplete="given-name"
+                     [class.border-rose-400]="prenom.invalid && (prenom.touched || f.submitted)">
+            </div>
+            <div>
+              <label class="label" for="sg-nom">Nom <span class="req">*</span></label>
+              <input id="sg-nom" name="nom" class="input uppercase" [(ngModel)]="form.nom" #nom="ngModel" required autocomplete="family-name"
+                     [class.border-rose-400]="nom.invalid && (nom.touched || f.submitted)">
+            </div>
+            <div>
+              <label class="label" for="sg-postnom">Postnom</label>
+              <input id="sg-postnom" name="postnom" class="input uppercase" [(ngModel)]="form.postnom">
+            </div>
+            <div>
+              <span class="label">Sexe <span class="req">*</span></span>
+              <div class="grid grid-cols-2 gap-2">
+                @for (s of [{ v: 'F', l: 'Femme' }, { v: 'M', l: 'Homme' }]; track s.v) {
+                  <button type="button" class="rounded-xl border px-3 py-2.5 text-sm font-medium transition"
+                          [class]="form.sexe === s.v ? 'border-brand-600 bg-brand-50 text-brand-800 dark:border-brand-400 dark:bg-brand-500/10 dark:text-brand-200' : 'border-slate-300 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800'"
+                          (click)="form.sexe = $any(s.v)">{{ s.l }}</button>
+                }
+              </div>
+            </div>
+            <div>
+              <label class="label" for="sg-naissance">Date de naissance <span class="req">*</span></label>
+              <input id="sg-naissance" name="dateNaissance" type="date" class="input" [max]="dateMax" [(ngModel)]="form.dateNaissance" #naiss="ngModel" required
+                     [class.border-rose-400]="(naiss.invalid || !ageValide) && (naiss.touched || f.submitted)">
+              @if (!ageValide) {
+                <p class="mt-1.5 text-xs text-rose-600 dark:text-rose-400">Vérifiez la date de naissance.</p>
+              }
+            </div>
+            <div>
+              <label class="label" for="sg-lieu">Lieu de naissance <span class="req">*</span></label>
+              <input id="sg-lieu" name="lieuNaissance" class="input" placeholder="Ville" [(ngModel)]="form.lieuNaissance" #lieu="ngModel" required
+                     [class.border-rose-400]="lieu.invalid && (lieu.touched || f.submitted)">
+            </div>
+            <div>
+              <label class="label" for="sg-nationalite">Nationalité <span class="req">*</span></label>
+              <input id="sg-nationalite" name="nationalite" class="input" [(ngModel)]="form.nationalite" #nat="ngModel" required
+                     [class.border-rose-400]="nat.invalid && (nat.touched || f.submitted)">
+            </div>
+            <div>
+              <label class="label" for="sg-tel">Téléphone <span class="req">*</span></label>
+              <input id="sg-tel" name="telephone" type="tel" inputmode="tel" class="input" placeholder="+243 81 000 0000"
+                     [(ngModel)]="form.telephone" #tel="ngModel" required pattern="[+0-9 ().-]{9,20}"
+                     [class.border-rose-400]="tel.invalid && (tel.touched || f.submitted)">
+            </div>
+            <div>
+              <label class="label" for="sg-piece">Pièce d’identité <span class="req">*</span></label>
+              <select id="sg-piece" name="pieceType" class="input" [(ngModel)]="form.pieceType" required>
+                @for (p of pieces; track p) { <option [ngValue]="p">{{ p }}</option> }
+              </select>
+            </div>
+            <div>
+              <label class="label" for="sg-piece-num">N° de la pièce</label>
+              <input id="sg-piece-num" name="pieceNumero" class="input font-mono uppercase" [(ngModel)]="form.pieceNumero">
+            </div>
+            <div class="sm:col-span-2">
+              <label class="label" for="sg-adresse">Adresse de résidence <span class="req">*</span></label>
+              <input id="sg-adresse" name="adresse" class="input" placeholder="Avenue, numéro, quartier, commune" [(ngModel)]="form.adresse" #adr="ngModel" required autocomplete="street-address"
+                     [class.border-rose-400]="adr.invalid && (adr.touched || f.submitted)">
+            </div>
+          </div>
+        </section>
+
+        <!-- Profession -->
+        <section>
+          <h3 class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-briefcase-medical"></i> Profession et affectation</h3>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label class="label" for="sg-ordre">N° d’inscription à l’Ordre ({{ ordre }})</label>
+              <input id="sg-ordre" name="numeroOrdre" class="input font-mono uppercase" [placeholder]="ordre + '-KIN-00000'"
+                     [(ngModel)]="form.numeroOrdre"
+                     [class.border-rose-400]="numeroOrdreDejaUtilise">
+              @if (numeroOrdreDejaUtilise) {
+                <p class="mt-1.5 text-xs text-rose-600 dark:text-rose-400">Ce numéro d’Ordre est déjà enregistré.</p>
+              }
+            </div>
+            <div>
+              <label class="label" for="sg-grade">Grade <span class="req">*</span></label>
+              <select id="sg-grade" name="grade" class="input" [(ngModel)]="form.grade" required>
+                @for (g of grades; track g) { <option [value]="g">{{ g }}</option> }
+              </select>
+            </div>
+            <div>
+              <label class="label" for="sg-specialite">Spécialité <span class="req">*</span></label>
+              <select id="sg-specialite" name="specialite" class="input" [(ngModel)]="form.specialite" required>
+                @for (s of specialites; track s) { <option [value]="s">{{ s }}</option> }
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <!-- Établissements d'exercice -->
+        <section>
+          <div class="mb-1 flex items-center justify-between gap-3">
+            <h3 class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-hospital"></i> Établissements d’exercice <span class="req">*</span></h3>
+            <button type="button" class="text-xs font-semibold text-brand-600 hover:text-brand-800 disabled:cursor-not-allowed disabled:opacity-40 dark:text-brand-400 dark:hover:text-brand-300"
+                    (click)="ajouterAffectation()" [disabled]="!peutAjouterAffectation">
+              <i class="fa-solid fa-plus"></i> Ajouter un établissement
+            </button>
+          </div>
+          <p class="mb-3 text-xs text-slate-500 dark:text-slate-400">Une même personne peut exercer dans plusieurs établissements. Le premier de la liste est son établissement principal ; elle aura accès aux données de chacun.</p>
+
+          <ul class="space-y-3">
+            @for (a of form.affectations; track a; let i = $index, premier = $first) {
+              <li class="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
+                <div class="mb-2 flex items-center justify-between">
+                  <span class="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                    @if (premier) { <i class="fa-solid fa-star mr-1 text-amber-500"></i>Établissement principal } @else { Établissement {{ i + 1 }} }
+                  </span>
+                  @if (!premier) {
+                    <button type="button" class="btn-ghost px-2 py-1 text-xs text-rose-600" (click)="retirerAffectation(a)" [attr.aria-label]="'Retirer l’établissement ' + (i + 1)">
+                      <i class="fa-solid fa-trash"></i> Retirer
+                    </button>
+                  }
+                </div>
+                <div class="grid gap-3 sm:grid-cols-5">
+                  <div class="sm:col-span-3">
+                    <label class="label" [for]="'sg-etab-' + i">Établissement</label>
+                    <select [id]="'sg-etab-' + i" [name]="'etablissement-' + i" class="input" [(ngModel)]="a.etablissementId" required>
+                      @for (e of etablissementsDisponibles(a); track e.id) { <option [ngValue]="e.id">{{ e.nom }} · {{ e.province }}</option> }
+                    </select>
+                  </div>
+                  <div class="sm:col-span-2">
+                    <label class="label" [for]="'sg-service-' + i">Service</label>
+                    <input [id]="'sg-service-' + i" [name]="'service-' + i" class="input" placeholder="Maternité, urgences…" [(ngModel)]="a.service">
+                  </div>
+                </div>
+              </li>
+            }
+          </ul>
+          @if (!etablissementsActifs().length) {
+            <p class="mt-1.5 text-xs text-rose-600 dark:text-rose-400">Aucun établissement actif : <a routerLink="/admin/etablissements" class="font-semibold underline" (click)="fermer()">ajoutez-en un d’abord</a>.</p>
+          }
+        </section>
+
+        <!-- Accès au système -->
+        <section class="rounded-2xl border border-slate-200 p-4 dark:border-slate-800 sm:p-5">
+          <h3 class="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-lock"></i> Accès au système</h3>
+          <p class="mb-4 text-xs text-slate-500 dark:text-slate-400">Identifiants de connexion. Le rôle choisi plus haut ({{ form.role }}) détermine ce que la personne peut voir et modifier dans son établissement.</p>
+
+          <div class="space-y-4">
+            <div>
+              <div>
+                <label class="label" for="sg-email">E-mail <span class="req">*</span></label>
+                <div class="relative">
+                  <i class="fa-solid fa-envelope pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                  <input id="sg-email" name="email" type="email" class="input pl-10" placeholder="prenom.nom@amisante.cd" autocomplete="off"
+                         [(ngModel)]="form.email" #email="ngModel" required email
+                         [class.border-rose-400]="(email.invalid || emailDejaUtilise) && (email.touched || f.submitted)">
+                </div>
+                @if (emailDejaUtilise) {
+                  <p class="mt-1.5 text-xs text-rose-600 dark:text-rose-400">Cet e-mail est déjà utilisé par un autre compte.</p>
+                } @else if (email.invalid && (email.touched || f.submitted)) {
+                  <p class="mt-1.5 text-xs text-rose-600 dark:text-rose-400">Indiquez une adresse e-mail valide.</p>
+                }
+              </div>
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between">
+                <label class="label" for="sg-mdp">Mot de passe temporaire <span class="req">*</span></label>
+                <button type="button" class="mb-1.5 text-xs font-semibold text-brand-600 hover:text-brand-800 dark:text-brand-400 dark:hover:text-brand-300" (click)="genererMotDePasse()">
+                  <i class="fa-solid fa-wand-magic-sparkles"></i> Générer
+                </button>
+              </div>
+              <div class="relative">
+                <i class="fa-solid fa-key pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input id="sg-mdp" name="motDePasse" [type]="afficherMdp ? 'text' : 'password'" class="input px-10 font-mono" autocomplete="new-password"
+                       [(ngModel)]="form.motDePasse" #mdp="ngModel" required
+                       [class.border-rose-400]="!motDePasseValide && (mdp.touched || f.submitted)">
+                <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" (click)="afficherMdp = !afficherMdp"
+                        [attr.aria-label]="afficherMdp ? 'Masquer le mot de passe' : 'Afficher le mot de passe'">
+                  <i class="fa-regular" [class]="afficherMdp ? 'fa-eye-slash' : 'fa-eye'"></i>
+                </button>
+              </div>
+              <div class="mt-2 grid grid-cols-4 gap-1.5" aria-hidden="true">
+                @for (i of [1, 2, 3, 4]; track i) {
+                  <div class="h-1.5 rounded-full transition"
+                       [class]="force >= i ? (force <= 1 ? 'bg-rose-500' : force <= 3 ? 'bg-amber-400' : 'bg-accent-500') : 'bg-slate-200 dark:bg-slate-700'"></div>
+                }
+              </div>
+              <ul class="mt-2 grid gap-1 text-xs sm:grid-cols-2">
+                @for (r of regles; track r.texte) {
+                  <li class="flex items-center gap-1.5" [class]="r.ok ? 'text-accent-700 dark:text-accent-400' : 'text-slate-500 dark:text-slate-400'">
+                    <i class="fa-solid text-[10px]" [class]="r.ok ? 'fa-circle-check' : 'fa-circle'"></i> {{ r.texte }}
+                  </li>
+                }
+              </ul>
+            </div>
+
+            <div>
+              <label class="label" for="sg-confirm">Confirmer le mot de passe <span class="req">*</span></label>
+              <input id="sg-confirm" name="confirmation" [type]="afficherMdp ? 'text' : 'password'" class="input font-mono" autocomplete="new-password"
+                     [(ngModel)]="form.confirmation" #conf="ngModel" required
+                     [class.border-rose-400]="!confirmationOk && (conf.touched || f.submitted)">
+              @if (!confirmationOk && (conf.touched || f.submitted)) {
+                <p class="mt-1.5 text-xs text-rose-600 dark:text-rose-400">Les deux mots de passe ne correspondent pas.</p>
+              }
+            </div>
+
+            <label class="flex items-start gap-3 text-sm text-slate-600 dark:text-slate-300">
+              <input type="checkbox" name="doitChanger" class="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-600" [(ngModel)]="form.doitChangerMotDePasse">
+              Obliger la personne à changer ce mot de passe à sa première connexion (recommandé)
+            </label>
+          </div>
+        </section>
+
+        <p class="flex items-start gap-2 rounded-xl bg-slate-50 p-3 text-xs text-slate-600 dark:bg-slate-800/50 dark:text-slate-300">
+          <i class="fa-solid fa-shield-halved mt-0.5 text-brand-600 dark:text-brand-400"></i>
+          Remettez le mot de passe en personne, jamais par e-mail ni par SMS. La création du compte est inscrite au journal d’audit.
+        </p>
+      </div>
+
+      @if (erreurEnregistrement || photoErreur) {
+        <p class="flex items-start gap-2 border-t border-rose-100 bg-rose-50 px-5 py-3 text-sm text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300 sm:px-6" role="alert">
+          <i class="fa-solid fa-circle-exclamation mt-0.5"></i> {{ erreurEnregistrement || photoErreur }}
+        </p>
+      }
+      <div class="flex flex-col-reverse gap-2 border-t border-slate-100 px-5 py-4 dark:border-slate-800 sm:flex-row sm:justify-end sm:px-6">
+        <button type="button" class="btn-secondary" (click)="fermer()">Annuler</button>
+        <button type="submit" class="btn-primary" [disabled]="enregistrement">
+          <i class="fa-solid" [class]="enregistrement ? 'fa-spinner fa-spin' : 'fa-user-plus'"></i> Créer le compte
+        </button>
+      </div>
+    </form>
+  </div>
+}
+
+<!-- Confirmation de suppression -->
+@if (aSupprimer; as s) {
+  <div class="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center" role="alertdialog" aria-modal="true"
+       aria-labelledby="titre-suppression-sg" aria-describedby="texte-suppression-sg" (keydown.escape)="annulerSuppression()">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" (click)="annulerSuppression()"></div>
+
+    <div class="relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 dark:bg-slate-900 dark:ring-white/10">
+      <div class="h-1.5 bg-gradient-to-r from-rose-500 via-rose-600 to-rose-500"></div>
+
+      <div class="p-6">
+        <div class="flex items-start gap-4">
+          <div class="flex h-12 w-12 flex-none items-center justify-center rounded-full bg-rose-100 ring-8 ring-rose-50 dark:bg-rose-500/15 dark:ring-rose-500/5">
+            <i class="fa-solid fa-triangle-exclamation text-xl text-rose-600 dark:text-rose-400"></i>
+          </div>
+          <div class="min-w-0 flex-1">
+            <h2 id="titre-suppression-sg" class="text-lg font-semibold text-slate-900 dark:text-white">Supprimer ce soignant ?</h2>
+            <p id="texte-suppression-sg" class="mt-1 text-sm text-slate-500 dark:text-slate-400">Cette action est définitive et ne peut pas être annulée.</p>
+          </div>
+          <button type="button" class="-mr-2 -mt-2 rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                  (click)="annulerSuppression()" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="mt-5 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-800/50">
+          <app-avatar [photo]="s.photo" [prenom]="s.prenom" [nomFamille]="s.nom" class="h-12 w-12 rounded-full text-sm ring-2 ring-white dark:ring-slate-900" />
+          <div class="min-w-0">
+            <p class="truncate font-medium text-slate-900 dark:text-white">{{ nomComplet(s) }}</p>
+            <p class="truncate text-xs text-slate-500 dark:text-slate-400">{{ s.role }} · <span class="font-mono font-semibold text-slate-700 dark:text-slate-200">{{ s.matricule }}</span></p>
+          </div>
+        </div>
+
+        <ul class="mt-4 space-y-1.5 text-sm text-slate-600 dark:text-slate-300">
+          <li class="flex items-start gap-2"><i class="fa-solid fa-user-xmark mt-0.5 w-4 text-rose-500"></i> Le compte est effacé : plus aucune connexion possible.</li>
+          <li class="flex items-start gap-2"><i class="fa-solid fa-image mt-0.5 w-4 text-rose-500"></i> La photo est supprimée du stockage.</li>
+          <li class="flex items-start gap-2"><i class="fa-solid fa-lightbulb mt-0.5 w-4 text-amber-500"></i> Pour un retrait temporaire, préférez la suspension.</li>
+        </ul>
+
+        <div class="mt-5">
+          <label class="label" for="confirm-suppression">Tapez <span class="font-mono font-semibold text-rose-600 dark:text-rose-400">{{ s.matricule }}</span> pour confirmer</label>
+          <input id="confirm-suppression" class="input font-mono uppercase" autocomplete="off" [placeholder]="s.matricule" autofocus
+                 [value]="saisieConfirmation" (input)="saisieConfirmation = $any($event.target).value"
+                 (keydown.enter)="confirmerSuppression()"
+                 [class.border-accent-500]="suppressionConfirmee">
+        </div>
+
+        @if (erreurSuppression) {
+          <p class="mt-4 flex items-start gap-2 rounded-xl bg-rose-50 px-3 py-2.5 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300" role="alert">
+            <i class="fa-solid fa-circle-exclamation mt-0.5"></i> {{ erreurSuppression }}
+          </p>
+        }
+      </div>
+
+      <div class="flex flex-col-reverse gap-2 border-t border-slate-100 bg-slate-50/60 px-6 py-4 dark:border-slate-800 dark:bg-slate-900/60 sm:flex-row sm:justify-end">
+        <button type="button" class="btn-secondary" (click)="annulerSuppression()" [disabled]="suppression">Annuler</button>
+        <button type="button"
+                class="btn bg-rose-600 text-white shadow-sm hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-rose-600 dark:hover:bg-rose-500"
+                [disabled]="!suppressionConfirmee || suppression" (click)="confirmerSuppression()">
+          <i class="fa-solid" [class]="suppression ? 'fa-spinner fa-spin' : 'fa-trash'"></i> {{ suppression ? 'Suppression…' : 'Supprimer définitivement' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Identifiants après réinitialisation : affichés une seule fois -->
+@if (identifiants; as id) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="titre-identifiants-sg">
+    <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" (click)="identifiants = null"></div>
+    <div class="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
+      <h2 id="titre-identifiants-sg" class="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-white"><i class="fa-solid fa-key text-brand-600 dark:text-brand-400"></i> Nouveau mot de passe</h2>
+      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Remettez ces identifiants à {{ id.nom }} en personne. Ils ne seront plus affichés ; la personne devra choisir son propre mot de passe à la connexion.</p>
+      <dl class="mt-5 space-y-3">
+        @for (l of [{ k: 'E-mail', v: id.email }, { k: 'Mot de passe temporaire', v: id.motDePasse }]; track l.k) {
+          <div class="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-800/60">
+            <div class="min-w-0">
+              <dt class="text-xs text-slate-500 dark:text-slate-400">{{ l.k }}</dt>
+              <dd class="truncate font-mono text-base font-semibold text-slate-900 dark:text-white">{{ l.v }}</dd>
+            </div>
+            <button type="button" class="btn-ghost px-2.5 py-1.5" (click)="copier(l.v)" [attr.aria-label]="'Copier ' + l.k"><i class="fa-regular fa-copy"></i></button>
+          </div>
+        }
+      </dl>
+      <button type="button" class="btn-primary mt-6 w-full" (click)="identifiants = null">C’est noté</button>
+    </div>
+  </div>
+}

@@ -55,6 +55,16 @@
     @apply px-5 py-3.5 text-sm text-slate-700 dark:text-slate-300;
   }
 
+  /* Squelette de chargement : reflet dégradé qui balaie le bloc (façon Shein / Alibaba). */
+  .skeleton {
+    @apply relative overflow-hidden rounded-md bg-slate-200/80 dark:bg-slate-800;
+  }
+  .skeleton::after {
+    content: '';
+    @apply absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/70 to-transparent dark:via-slate-600/40;
+    animation: reflet-squelette 1.4s ease-in-out infinite;
+  }
+
   /* Glassmorphisme léger, limité à l'espace administrateur (voir shell.component.html) */
   .admin-glass .card {
     @apply border-white/70 bg-white/50 shadow-[0_8px_32px_-12px_rgb(15_23_42/0.15)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/50 dark:shadow-[0_8px_32px_-12px_rgb(0_0_0/0.5)];
@@ -62,6 +72,23 @@
   .admin-glass .card-header {
     @apply border-slate-200/50 dark:border-white/10;
   }
+}
+
+/* Popups de nouveaux messages (app-notifications-messages) */
+@keyframes entree-bulle {
+  from { transform: translateY(1rem) scale(.95); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes barre-bulle {
+  from { width: 100%; }
+  to { width: 0; }
+}
+
+@keyframes reflet-squelette {
+  100% { transform: translateX(100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after { animation: none; }
 }
 
 /* Carte Leaflet en mode sombre (page Urgences).
@@ -124,3 +151,33 @@
 .dark .leaflet-tooltip-bottom::before { border-bottom-color: theme('colors.slate.800'); }
 .dark .leaflet-tooltip-left::before { border-left-color: theme('colors.slate.800'); }
 .dark .leaflet-tooltip-right::before { border-right-color: theme('colors.slate.800'); }
+
+/* Mentions de la carte réduites à un bouton « i » (voir creerCarte dans carte.ts). */
+.leaflet-control-attribution.attribution-compacte {
+  margin: 0 6px 6px 0;
+  height: 20px;
+  width: 20px;
+  cursor: pointer;
+  overflow: hidden;
+  border-radius: 9999px;
+  padding: 0;
+  font-size: 0;
+  opacity: 0.7;
+}
+.attribution-compacte::before {
+  content: 'i';
+  display: block;
+  font: italic 700 12px/20px Georgia, serif;
+  text-align: center;
+}
+.leaflet-control-attribution.attribution-compacte.ouverte {
+  height: auto;
+  width: auto;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 11px;
+  opacity: 1;
+}
+.attribution-compacte.ouverte::before {
+  content: none;
+}

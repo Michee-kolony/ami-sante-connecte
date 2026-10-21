@@ -1,4 +1,5 @@
 import { Injectable, computed, signal } from '@angular/core';
+import { Empreinte, hacherMotDePasse, verifierMotDePasse } from '../../shared/mot-de-passe';
 
 export type StatutAmbulance = 'Disponible' | 'En mission' | 'Maintenance' | 'Hors service';
 export type TypeAmbulance = 'Type A — transport' | 'Type B — soins d’urgence' | 'Type C — réanimation';
@@ -35,10 +36,20 @@ export interface Chauffeur {
   permisExpire: string;
   statut: StatutChauffeur;
   missionsMois: number;
+  /** Empreinte du mot de passe de l'application ambulance (jamais le mot de passe lui-même). */
+  empreinte?: Empreinte;
+  /** Le mot de passe temporaire devra être changé à la première connexion. */
+  doitChangerMotDePasse: boolean;
+  derniereConnexion: string | null;
 }
 
+/** Mot de passe des chauffeurs de démonstration (à supprimer avec les données fictives). */
+export const MOT_DE_PASSE_DEMO = 'Ambulance@2026';
+
+export type ResultatConnexion = { chauffeur: Chauffeur } | { erreur: string };
+
 /** Données fictives — photos libres de droits (Pexels), personnes sans lien avec le projet. */
-const CHAUFFEURS_INITIAUX: Chauffeur[] = [
+const CHAUFFEURS_INITIAUX: Omit<Chauffeur, 'doitChangerMotDePasse' | 'derniereConnexion'>[] = [
   { id: 'CH-001', matricule: 'CHF-0011', prenom: 'Bienvenu', nom: 'LEMA', postnom: 'NDONGALA', telephone: '+243 81 556 2201', photo: 'images/chauffeurs/chauffeur-1.webp', permis: 'KIN-C-448120', permisExpire: '2028-03-14', statut: 'Actif', missionsMois: 23 },
   { id: 'CH-002', matricule: 'CHF-0014', prenom: 'Dieudonné', nom: 'MPIA', postnom: 'BOKETSHU', telephone: '+243 99 812 4410', photo: 'images/chauffeurs/chauffeur-2.webp', permis: 'KIN-C-390877', permisExpire: '2026-11-30', statut: 'Actif', missionsMois: 19 },
   { id: 'CH-003', matricule: 'CHF-0017', prenom: 'Jonathan', nom: 'TSHALA', postnom: 'MULUMBA', telephone: '+243 82 304 7756', photo: 'images/chauffeurs/chauffeur-3.webp', permis: 'KIN-C-512043', permisExpire: '2029-07-02', statut: 'Actif', missionsMois: 15 },
@@ -62,7 +73,13 @@ const AMBULANCES_INITIALES: Ambulance[] = [
 @Injectable({ providedIn: 'root' })
 export class FlotteService {
   readonly ambulances = signal<Ambulance[]>(AMBULANCES_INITIALES);
-  readonly chauffeurs = signal<Chauffeur[]>(CHAUFFEURS_INITIAUX);
+  readonly chauffeurs = signal<Chauffeur[]>(
+    CHAUFFEURS_INITIAUX.map(c => ({ ...c, doitChangerMotDePasse: false, derniereConnexion: null })),
+  );
+
+  /** Empreintes des comptes de démonstration, calculées une fois au démarrage. */
+  private pret = Promise.all(this.chauffeurs().map(async c => ({ id: c.id, empreinte: await hacherMotDePasse(MOT_DE_PASSE_DEMO) })))
+    .then(liste => this.chauffeurs.update(cs => cs.map(c => ({ ...c, empreinte: liste.find(l => l.id === c.id)?.empreinte ?? c.empreinte }))));
 
   /** Chauffeur → ambulance affectée. */
   readonly affectations = computed(() => new Map(
@@ -113,17 +130,47 @@ export class FlotteService {
 
   // --- Chauffeurs -----------------------------------------------------------------
 
-  ajouterChauffeur(c: Omit<Chauffeur, 'id' | 'matricule' | 'statut' | 'missionsMois'>): Chauffeur {
+  /** Matricule attribué au prochain chauffeur : c'est son identifiant de connexion. */
+  prochainMatricule(): string {
     const max = this.chauffeurs().reduce((m, x) => Math.max(m, parseInt(x.matricule.split('-')[1], 10) || 0), 0);
+    return `CHF-${String(max + 1).padStart(4, '0')}`;
+  }
+
+  async ajouterChauffeur(
+    c: Omit<Chauffeur, 'id' | 'matricule' | 'statut' | 'missionsMois' | 'empreinte' | 'derniereConnexion'>,
+    motDePasse: string,
+  ): Promise<Chauffeur> {
     const nouvel: Chauffeur = {
       ...c,
       id: `CH-${String(this.chauffeurs().length + 1).padStart(3, '0')}`,
-      matricule: `CHF-${String(max + 1).padStart(4, '0')}`,
+      matricule: this.prochainMatricule(),
       statut: 'Actif',
       missionsMois: 0,
+      empreinte: await hacherMotDePasse(motDePasse),
+      derniereConnexion: null,
     };
     this.chauffeurs.update(liste => [nouvel, ...liste]);
     return nouvel;
+  }
+
+  async definirMotDePasse(id: string, motDePasse: string, doitChanger: boolean): Promise<void> {
+    const empreinte = await hacherMotDePasse(motDePasse);
+    this.chauffeurs.update(liste => liste.map(c => c.id === id ? { ...c, empreinte, doitChangerMotDePasse: doitChanger } : c));
+  }
+
+  /** Connexion à l'application ambulance avec le matricule et le mot de passe. */
+  async connecter(matricule: string, motDePasse: string): Promise<ResultatConnexion> {
+    await this.pret;
+    const m = matricule.trim().toUpperCase();
+    const c = this.chauffeurs().find(x => x.matricule === m);
+    // Message identique que le matricule existe ou non : on ne révèle pas les comptes.
+    const refus = { erreur: 'Matricule ou mot de passe incorrect.' };
+    if (!c?.empreinte || !(await verifierMotDePasse(motDePasse, c.empreinte))) return refus;
+    if (c.statut === 'Suspendu') return { erreur: 'Votre compte est suspendu. Contactez le superviseur des secours.' };
+
+    const maintenant = new Date().toISOString().slice(0, 16).replace('T', ' ');
+    this.chauffeurs.update(liste => liste.map(x => x.id === c.id ? { ...x, derniereConnexion: maintenant } : x));
+    return { chauffeur: this.chauffeur(c.id)! };
   }
 
   /** Un chauffeur suspendu est retiré de son ambulance (sauf en mission). */

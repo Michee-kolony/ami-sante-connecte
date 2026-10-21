@@ -55,7 +55,7 @@
           <label class="label" for="login">E-mail</label>
           <div class="relative">
             <i class="fa-regular fa-envelope pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
-            <input id="login" type="email" class="input pl-10" placeholder="prenom.nom@amisante.cd" autocomplete="username">
+            <input id="login" type="email" class="input pl-10" placeholder="prenom.nom@amisante.cd" autocomplete="username" name="email" [(ngModel)]="email" required [readonly]="!!choix">
           </div>
         </div>
 
@@ -66,27 +66,47 @@
           </div>
           <div class="relative">
             <i class="fa-solid fa-lock pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
-            <input id="password" [type]="showPassword ? 'text' : 'password'" class="input px-10" placeholder="••••••••" autocomplete="current-password">
+            <input id="password" [type]="showPassword ? 'text' : 'password'" class="input px-10" placeholder="••••••••" autocomplete="current-password" name="motDePasse" [(ngModel)]="motDePasse" required [readonly]="!!choix">
             <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" (click)="showPassword = !showPassword" aria-label="Afficher le mot de passe">
               <i class="fa-regular" [class.fa-eye]="!showPassword" [class.fa-eye-slash]="showPassword"></i>
             </button>
           </div>
         </div>
 
-        <div>
-          <label class="label" for="structure">Structure sanitaire</label>
-          <div class="relative">
-            <i class="fa-solid fa-hospital pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
-            <select id="structure" class="input appearance-none pl-10" name="structure" [(ngModel)]="structure">
-              <option value="hmgr">HMGR — Camp Colonel Tshatshi</option>
-              <option value="kokolo">CS Militaire Kokolo</option>
-            </select>
-            <i class="fa-solid fa-chevron-down pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
-          </div>
-        </div>
+        <!-- Étape 2 : le soignant exerce dans plusieurs établissements -->
+        @if (choix) {
+          <fieldset class="space-y-2">
+            <div class="flex items-center justify-between">
+              <legend class="label">Dans quel établissement travaillez-vous aujourd’hui ?</legend>
+              <button type="button" class="mb-1.5 text-xs font-medium text-brand-600 hover:text-brand-800 dark:text-brand-400 dark:hover:text-brand-300" (click)="changerDeCompte()">Changer de compte</button>
+            </div>
+            @for (e of choix; track e.id) {
+              <label class="flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition"
+                     [class]="etablissementId === e.id ? 'border-brand-600 bg-brand-50 ring-1 ring-brand-600 dark:border-brand-400 dark:bg-brand-500/10 dark:ring-brand-400' : 'border-slate-200 hover:border-brand-300 dark:border-slate-700 dark:hover:border-brand-500/50'">
+                <input type="radio" name="etablissement" class="sr-only" [value]="e.id" [(ngModel)]="etablissementId">
+                @if (e.photo) {
+                  <img [src]="e.photo" alt="" class="h-12 w-12 flex-none rounded-lg object-cover">
+                } @else {
+                  <span class="flex h-12 w-12 flex-none items-center justify-center rounded-lg bg-slate-100 text-slate-400 dark:bg-slate-800"><i class="fa-solid fa-hospital"></i></span>
+                }
+                <span class="min-w-0 flex-1">
+                  <span class="block truncate text-sm font-semibold text-slate-900 dark:text-white">{{ e.nom }}</span>
+                  <span class="block truncate text-xs text-slate-500 dark:text-slate-400"><span class="font-mono">{{ e.code }}</span> · {{ e.zoneSante }}</span>
+                </span>
+                <i class="fa-solid fa-circle-check text-lg" [class]="etablissementId === e.id ? 'text-brand-600 dark:text-brand-400' : 'text-transparent'"></i>
+              </label>
+            }
+          </fieldset>
+        }
 
-        <button type="submit" class="btn-primary w-full py-3">
-          Se connecter <i class="fa-solid fa-arrow-right"></i>
+        @if (erreur) {
+          <p class="flex items-start gap-2 rounded-xl bg-rose-50 px-3 py-2.5 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300" role="alert">
+            <i class="fa-solid fa-circle-exclamation mt-0.5"></i> {{ erreur }}
+          </p>
+        }
+
+        <button type="submit" class="btn-primary w-full py-3" [disabled]="connexion || (choix && !etablissementId)">
+          {{ choix ? 'Entrer dans cet établissement' : 'Se connecter' }} <i class="fa-solid" [class]="connexion ? 'fa-spinner fa-spin' : 'fa-arrow-right'"></i>
         </button>
       </form>
 

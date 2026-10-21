@@ -1,203 +1,686 @@
+@if (session.estInfirmier()) {
+  <app-patient-suivi [id]="id" />
+} @else {
 <div class="mx-auto max-w-7xl space-y-6">
   <nav class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
     <a routerLink="/admin/patientes" class="hover:text-brand-700 dark:hover:text-brand-300">Patientes</a>
     <i class="fa-solid fa-chevron-right text-[9px]"></i>
-    <span class="font-mono text-slate-700 dark:text-slate-200">{{ p.id }}</span>
+    <span class="font-mono text-slate-700 dark:text-slate-200">{{ id }}</span>
   </nav>
 
-  @if (p.sync === 'en attente') {
-    <div class="flex items-center gap-3 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-300">
-      <i class="fa-solid fa-cloud-arrow-up text-amber-500"></i>
-      <span class="flex-1"><strong class="font-semibold">Fiche locale non synchronisée.</strong> Identifiant provisoire — un contrôle de doublons sera fait à la synchronisation.</span>
-      <a routerLink="/admin/synchronisation" class="font-semibold underline">Synchroniser</a>
-    </div>
-  } @else if (p.sync === 'conflit') {
-    <div class="flex items-center gap-3 rounded-xl border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-4 py-3 text-sm text-rose-900 dark:text-rose-300">
-      <i class="fa-solid fa-code-compare text-rose-500"></i>
-      <span class="flex-1"><strong class="font-semibold">Conflit de synchronisation.</strong> Deux appareils ont modifié cette fiche. Arbitrage requis.</span>
-      <a routerLink="/admin/synchronisation" class="font-semibold underline">Résoudre</a>
-    </div>
-  }
-
-  <!-- Carte identité -->
-  <div class="card overflow-hidden">
-    <div class="h-20 bg-gradient-to-r from-brand-900 via-brand-700 to-accent-600"></div>
-    <div class="px-5 pb-5 sm:px-6">
-      <div class="-mt-10 flex flex-col gap-4 sm:flex-row sm:items-end">
-        <app-avatar [photo]="p.photo" [prenom]="p.prenom" [nomFamille]="p.nom" class="h-20 w-20 rounded-2xl text-2xl shadow-lg ring-4 ring-white dark:ring-slate-900" />
-        <div class="flex-1">
-          <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ p.prenom }} {{ p.nom }} <span class="font-semibold text-slate-500 dark:text-slate-400">{{ p.postnom }}</span></h1>
-          <div class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
-            <span class="font-mono">{{ p.id }}</span>
-            <span><i class="fa-solid fa-cake-candles mr-1"></i>{{ p.age }} ans</span>
-            <span><i class="fa-solid fa-phone mr-1"></i>{{ p.telephone }}</span>
-            <span><i class="fa-solid fa-location-dot mr-1"></i>{{ p.quartier }}, {{ p.commune }}</span>
-          </div>
-        </div>
-        <div class="flex flex-wrap gap-2">
-          <span class="badge bg-accent-50 dark:bg-accent-500/10 py-1 text-accent-700 dark:text-accent-300 ring-1 ring-accent-200 dark:ring-accent-500/30"><i class="fa-solid fa-circle text-[6px]"></i> {{ p.statut }}</span>
-          @if (p.risque && !vueNonClinique) {
-            <span class="badge bg-rose-50 dark:bg-rose-500/10 py-1 text-rose-700 dark:text-rose-300 ring-1 ring-rose-200 dark:ring-rose-500/30"><i class="fa-solid fa-circle-exclamation"></i> Grossesse à risque</span>
-          }
-          <a routerLink="/admin/messages" [queryParams]="{ patiente: p.id }" class="btn-primary px-3 py-1.5 text-xs"><i class="fa-solid fa-comment-dots"></i> Écrire</a>
+  @if (chargement) {
+    <p class="sr-only" role="status">Chargement du dossier…</p>
+    <div class="space-y-6" aria-hidden="true">
+      <div class="card overflow-hidden">
+        <div class="skeleton h-20 rounded-none"></div>
+        <div class="flex items-end gap-4 px-6 pb-5">
+          <div class="skeleton -mt-10 h-20 w-20 rounded-2xl ring-4 ring-white dark:ring-slate-900"></div>
+          <div class="flex-1 space-y-2"><div class="skeleton h-7 w-64"></div><div class="skeleton h-4 w-96 max-w-full"></div></div>
         </div>
       </div>
-    </div>
-    <div class="flex gap-1 overflow-x-auto border-t border-slate-100 dark:border-slate-800 px-3">
-      @for (t of [{ k: 'resume', l: 'Résumé', i: 'fa-house-medical' }, { k: 'cpn', l: 'Consultations', i: 'fa-stethoscope' }, { k: 'historique', l: 'Historique & audit', i: 'fa-clock-rotate-left' }]; track t.k) {
-        <button class="flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition"
-                [class]="tab === t.k ? 'border-brand-700 text-brand-800 dark:text-brand-300' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100'"
-                (click)="tab = $any(t.k)">
-          <i class="fa-solid {{ t.i }}"></i> {{ t.l }}
-        </button>
-      }
-      <label class="ml-auto flex cursor-pointer items-center gap-2 whitespace-nowrap px-3 text-xs text-slate-500 dark:text-slate-400">
-        <input type="checkbox" class="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-brand-600 dark:text-brand-400" [checked]="vueNonClinique" (change)="vueNonClinique = !vueNonClinique">
-        Simuler la vue agent d’accueil
-      </label>
-    </div>
-  </div>
-
-  @switch (tab) {
-    @case ('resume') {
       <div class="grid gap-6 lg:grid-cols-3">
-        <!-- Grossesse -->
-        <div class="card lg:col-span-2">
-          <div class="card-header">
-            <h2 class="card-title"><i class="fa-solid fa-person-pregnant text-accent-600 dark:text-accent-400"></i> Grossesse en cours</h2>
-            <span class="text-xs text-slate-500 dark:text-slate-400">Référence : 18/10/2026</span>
-          </div>
-          @if (vueNonClinique) {
-            <div class="flex flex-col items-center gap-3 p-10 text-center">
-              <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400"><i class="fa-solid fa-lock text-xl"></i></div>
-              <p class="font-semibold text-slate-900 dark:text-white">Accès restreint au personnel clinique</p>
-              <p class="max-w-sm text-sm text-slate-500 dark:text-slate-400">Votre rôle (agent d’accueil) ne permet pas de consulter les données obstétricales. Cette tentative a été journalisée.</p>
+        <div class="card space-y-4 p-6 lg:col-span-2"><div class="skeleton h-4 w-40"></div><div class="grid grid-cols-3 gap-6">@for (i of [1, 2, 3]; track i) {<div class="space-y-2"><div class="skeleton h-3 w-20"></div><div class="skeleton h-7 w-28"></div></div>}</div><div class="skeleton h-3 w-full rounded-full"></div></div>
+        <div class="card space-y-3 p-5"><div class="skeleton h-4 w-36"></div><div class="skeleton h-8 w-40"></div><div class="skeleton h-3 w-28"></div></div>
+      </div>
+    </div>
+  } @else if (erreur || !dossier) {
+    <div class="card flex flex-col items-center gap-3 p-10 text-center">
+      <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50 text-rose-500 dark:bg-rose-500/10"><i class="fa-solid fa-lock text-xl"></i></div>
+      <p class="font-semibold text-slate-900 dark:text-white">Dossier inaccessible</p>
+      <p class="max-w-md text-sm text-slate-500 dark:text-slate-400">{{ erreur || 'Dossier introuvable.' }}</p>
+      <a routerLink="/admin/patientes" class="btn-secondary"><i class="fa-solid fa-arrow-left"></i> Retour à la recherche</a>
+    </div>
+  } @else {
+    @let p = dossier.patiente;
+    @let g = grossesseAffichee;
+
+    @if (nouveau && !premiereFaite && grossesse) {
+      <div class="flex flex-col gap-3 rounded-2xl border border-accent-200 bg-accent-50 p-5 dark:border-accent-500/30 dark:bg-accent-500/10 sm:flex-row sm:items-center">
+        <div class="flex h-11 w-11 flex-none items-center justify-center rounded-xl bg-accent-500 text-white"><i class="fa-solid fa-check"></i></div>
+        <div class="flex-1">
+          <p class="font-semibold text-slate-900 dark:text-white">Dossier {{ p.numero }} créé</p>
+          <p class="text-sm text-slate-600 dark:text-slate-300">Réalisez maintenant la première consultation prénatale : vous en serez l’auteur.</p>
+        </div>
+        <a [routerLink]="['/admin/patientes', p.numero, 'consultation']" [queryParams]="{ type: 'Première consultation prénatale' }" class="btn-primary"><i class="fa-solid fa-stethoscope"></i> Commencer la première consultation</a>
+      </div>
+    }
+
+    @if (notification) {
+      <div class="flex items-start gap-3 rounded-xl border border-accent-200 bg-accent-50 px-4 py-3 text-sm text-accent-900 dark:border-accent-500/30 dark:bg-accent-500/10 dark:text-accent-200" role="status">
+        <i class="fa-solid fa-circle-check mt-0.5 text-accent-600 dark:text-accent-400"></i>
+        <span class="flex-1">{{ notification }}</span>
+        <button type="button" (click)="notification = ''" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    }
+
+    <!-- Carte identité -->
+    <div class="card overflow-hidden">
+      <div class="h-20 bg-gradient-to-r from-brand-900 via-brand-700 to-accent-600"></div>
+      <div class="px-5 pb-5 sm:px-6">
+        <div class="-mt-10 flex flex-col gap-4 sm:flex-row sm:items-end">
+          <button type="button" class="flex-none rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500" (click)="p.photoUrl && (photoAgrandie = true)"
+                  [class.cursor-zoom-in]="!!p.photoUrl" [attr.aria-label]="p.photoUrl ? 'Agrandir la photo' : null">
+            <app-avatar [photo]="p.photoUrl ?? undefined" [prenom]="p.prenom || p.nom" [nomFamille]="p.nom" class="h-20 w-20 rounded-2xl text-2xl shadow-lg ring-4 ring-white dark:ring-slate-900" />
+          </button>
+          <div class="flex-1">
+            <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ p.prenom }} {{ p.nom }} <span class="font-semibold text-slate-500 dark:text-slate-400">{{ p.postnom }}</span></h1>
+            <div class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
+              <span class="font-mono font-semibold text-slate-700 dark:text-slate-200">{{ p.numero }}</span>
+              <span><i class="fa-solid fa-cake-candles mr-1"></i>{{ p.age != null ? p.age + ' ans' : 'Âge non renseigné' }}{{ p.dateNaissance ? ' (' + jour(p.dateNaissance) + ')' : p.ageDeclare != null ? ' (déclaré)' : '' }}</span>
+              @if (p.telephone) { <a [href]="'tel:' + p.telephone.split(' ').join('')" class="hover:text-brand-700"><i class="fa-solid fa-phone mr-1"></i>{{ p.telephone }}{{ p.telephonePartage ? ' (partagé)' : '' }}</a> }
+              @if (p.adresse.province || p.adresse.commune || p.adresse.quartier) { <span><i class="fa-solid fa-location-dot mr-1"></i>{{ residence(p.adresse) }}</span> }
             </div>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <span class="badge bg-accent-50 dark:bg-accent-500/10 py-1 text-accent-700 dark:text-accent-300 ring-1 ring-accent-200 dark:ring-accent-500/30"><i class="fa-solid fa-circle text-[6px]"></i> {{ p.statut }}</span>
+            @if (grossesse?.facteursRisque?.length) {
+              <span class="badge bg-rose-50 dark:bg-rose-500/10 py-1 text-rose-700 dark:text-rose-300 ring-1 ring-rose-200 dark:ring-rose-500/30"><i class="fa-solid fa-circle-exclamation"></i> {{ grossesse!.facteursRisque.length }} facteur(s) de risque</span>
+            }
+            @if (grossesse) {
+              <a [routerLink]="['/admin/patientes', p.numero, 'consultation']" [queryParams]="{ type: premiereFaite ? 'Suivi prénatal' : 'Première consultation prénatale' }" class="btn-primary px-3 py-1.5 text-xs"><i class="fa-solid fa-plus"></i> Nouvelle consultation</a>
+            }
+            <button type="button" class="btn-secondary px-3 py-1.5 text-xs" (click)="ouvrirCarte()">
+              <i class="fa-solid fa-id-card"></i> Carte patiente
+            </button>
+            @if (session.peutGererSoignants()) {
+              <button type="button" class="btn-ghost px-3 py-1.5 text-xs text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10" (click)="ouvrirSuppression()">
+                <i class="fa-solid fa-trash"></i> Supprimer
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+      <div class="flex gap-1 overflow-x-auto border-t border-slate-100 dark:border-slate-800 px-3" role="tablist">
+        @for (t of onglets; track t.k) {
+          <button role="tab" class="flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition" [attr.aria-selected]="onglet === t.k"
+                  [class]="onglet === t.k ? 'border-brand-700 text-brand-800 dark:text-brand-300' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100'"
+                  (click)="changerOnglet(t.k)">
+            <i class="fa-solid {{ t.i }}"></i> {{ t.l }}
+            @if (t.k === 'consultations') { <span class="rounded-full bg-slate-100 px-1.5 text-[11px] dark:bg-slate-800">{{ consultations.length }}</span> }
+            @if (t.k === 'rendez-vous' && rdvAVenir.length) { <span class="rounded-full bg-brand-100 px-1.5 text-[11px] text-brand-700 dark:bg-brand-500/20 dark:text-brand-300">{{ rdvAVenir.length }}</span> }
+          </button>
+        }
+      </div>
+    </div>
+
+    @switch (onglet) {
+      <!-- ================================ RÉSUMÉ ================================ -->
+      @case ('resume') {
+        <div class="grid gap-6 lg:grid-cols-3">
+          <div class="space-y-6 lg:col-span-2">
+            <!-- Grossesse -->
+            <div class="card">
+              <div class="card-header flex-wrap">
+                <h2 class="card-title"><i class="fa-solid fa-person-pregnant text-accent-600 dark:text-accent-400"></i>
+                  @if (g) { Grossesse n° {{ g.numero }} · {{ g.statut }} } @else { Aucune grossesse }
+                </h2>
+                <div class="flex flex-wrap gap-2">
+                  @if (grossesse) {
+                    <button class="btn-ghost px-2.5 py-1.5 text-xs" (click)="ouvrir('datation')"><i class="fa-solid fa-calendar-days"></i> {{ grossesse.datation ? 'Corriger la datation' : 'Dater la grossesse' }}</button>
+                    <button class="btn-ghost px-2.5 py-1.5 text-xs" (click)="ouvrir('issue')"><i class="fa-solid fa-baby"></i> Issue de grossesse</button>
+                  } @else {
+                    <button class="btn-secondary px-2.5 py-1.5 text-xs" (click)="nouvelleGrossesse()" [disabled]="envoi"><i class="fa-solid fa-plus"></i> Nouvelle grossesse</button>
+                  }
+                </div>
+              </div>
+              @if (g) {
+                <div class="p-5 sm:p-6">
+                  @if (g.statut === 'En cours') {
+                    <div class="grid gap-6 sm:grid-cols-3">
+                      <div>
+                        <p class="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">Âge gestationnel</p>
+                        <p class="mt-1 text-2xl font-bold text-slate-900 dark:text-white">{{ ag(g.agJours) }}</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">aujourd’hui</p>
+                      </div>
+                      <div>
+                        <p class="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">DPA estimée</p>
+                        <p class="mt-1 text-2xl font-bold text-slate-900 dark:text-white">{{ g.datation ? jour(g.datation.dpa) : 'À confirmer' }}</p>
+                        @if (g.datation && g.datation.dpa !== g.datation.dpaCalculee) { <p class="text-xs text-amber-600 dark:text-amber-400">corrigée (calculée : {{ jour(g.datation.dpaCalculee) }})</p> }
+                      </div>
+                      <div>
+                        <p class="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">DDR</p>
+                        <p class="mt-1 text-2xl font-bold text-slate-900 dark:text-white">{{ g.datation?.ddr ? jour(g.datation!.ddr) : 'Non renseignée' }}</p>
+                        @if (g.datation?.ddrFiabilite) { <p class="text-xs" [class]="g.datation!.ddrFiabilite === 'Fiable' ? 'text-accent-600 dark:text-accent-400' : 'text-amber-600 dark:text-amber-400'">{{ g.datation!.ddrFiabilite }}</p> }
+                      </div>
+                    </div>
+
+                    <div class="mt-8">
+                      <div class="mb-2 flex justify-between text-xs font-medium text-slate-500 dark:text-slate-400">
+                        <span>T1</span><span>T2</span><span>T3</span><span>40 SA</span>
+                      </div>
+                      <div class="relative h-3 rounded-full bg-gradient-to-r from-brand-100 dark:from-brand-500/20 via-brand-100 dark:via-brand-500/20 to-accent-100 dark:to-accent-500/20">
+                        <div class="h-full rounded-full bg-gradient-to-r from-brand-400 via-brand-700 to-accent-600" [style.width.%]="progression"></div>
+                        <div class="absolute top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-4 border-white dark:border-slate-900 bg-brand-700 shadow" [style.left.%]="progression"></div>
+                      </div>
+                    </div>
+
+                    @if (g.datation) {
+                      <p class="mt-5 text-xs text-slate-500 dark:text-slate-400">
+                        <i class="fa-solid fa-circle-check mr-1 text-accent-500"></i>
+                        Datation par <strong>{{ g.datation.methode }}</strong>{{ g.datation.methode !== 'DDR' ? ' du ' + jour(g.datation.dateReference) : '' }},
+                        validée par {{ dr(g.datation.valideePar.nom, g.datation.valideePar.role) }} le {{ dateHeure(g.datation.valideeLe) }}.
+                        @if (g.datation.justification) { Motif : « {{ g.datation.justification }} ». }
+                        @if (g.historiqueDatation.length) { {{ g.historiqueDatation.length }} valeur(s) antérieure(s) conservée(s). }
+                      </p>
+                      @if (g.datation.ddrFiabilite && g.datation.ddrFiabilite !== 'Fiable') {
+                        <div class="mt-3 flex items-start gap-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-300">
+                          <i class="fa-solid fa-triangle-exclamation mt-0.5 text-amber-500"></i>
+                          <p>Datation basée sur une DDR {{ g.datation.ddrFiabilite.toLowerCase() }} — à confirmer selon le protocole clinique.</p>
+                        </div>
+                      }
+                    } @else {
+                      <div class="mt-5 flex items-start gap-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-300">
+                        <i class="fa-solid fa-circle-info mt-0.5 text-amber-500"></i>
+                        <p>Grossesse non datée : âge gestationnel et DPA « à confirmer ». Aucune date n’est inventée.</p>
+                      </div>
+                    }
+                  } @else if (g.issue) {
+                    <div class="grid gap-4 sm:grid-cols-3">
+                      <div><p class="text-xs text-slate-500 dark:text-slate-400">Issue</p><p class="font-semibold text-slate-900 dark:text-white">{{ g.issue.issue }}</p></div>
+                      <div><p class="text-xs text-slate-500 dark:text-slate-400">Date</p><p class="font-semibold text-slate-900 dark:text-white">{{ jour(g.issue.date) }}</p></div>
+                      <div><p class="text-xs text-slate-500 dark:text-slate-400">Mode</p><p class="font-semibold text-slate-900 dark:text-white">{{ g.issue.mode }}</p></div>
+                      @if (g.issue.lieu) { <div><p class="text-xs text-slate-500 dark:text-slate-400">Lieu</p><p class="text-slate-900 dark:text-white">{{ g.issue.lieu }}</p></div> }
+                      @if (g.issue.complications) { <div class="sm:col-span-2"><p class="text-xs text-slate-500 dark:text-slate-400">Complications</p><p class="text-slate-900 dark:text-white">{{ g.issue.complications }}</p></div> }
+                    </div>
+                    <p class="mt-4 text-xs text-slate-500 dark:text-slate-400">Enregistrée par {{ dr(g.issue.enregistreePar.nom, g.issue.enregistreePar.role) }} le {{ dateHeure(g.issue.enregistreeLe) }}. Les consultations de cette grossesse restent consultables.</p>
+                  }
+                </div>
+              } @else {
+                <p class="p-6 text-sm text-slate-500 dark:text-slate-400">Aucune grossesse enregistrée.</p>
+              }
+            </div>
+
+            <!-- Facteurs de risque & antécédents -->
+            <div class="card">
+              <div class="card-header">
+                <h2 class="card-title"><i class="fa-solid fa-notes-medical text-rose-500"></i> Risques et antécédents</h2>
+                @if (grossesse) { <button class="btn-ghost px-2.5 py-1.5 text-xs" (click)="ouvrir('risques')"><i class="fa-solid fa-pen"></i> Facteurs de risque</button> }
+              </div>
+              <div class="space-y-5 p-5 sm:p-6">
+                <div>
+                  <p class="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Facteurs de risque relevés</p>
+                  @if (g?.facteursRisque?.length) {
+                    <div class="flex flex-wrap gap-2">
+                      @for (f of g!.facteursRisque; track f) { <span class="badge bg-rose-50 text-rose-700 ring-1 ring-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/30">{{ f }}</span> }
+                    </div>
+                  } @else {
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Aucun facteur relevé par un médecin.</p>
+                  }
+                  <p class="mt-2 text-xs text-slate-400">Grossesse multiple : {{ g?.grossesseMultiple === true ? 'oui' : g?.grossesseMultiple === false ? 'non (unique)' : 'non confirmé' }}</p>
+                </div>
+                <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-5">
+                  @for (c of [{ k: 'gestite', l: 'Gestité' }, { k: 'parite', l: 'Parité' }, { k: 'enfantsVivants', l: 'Enfants vivants' }, { k: 'avortements', l: 'Avortements' }, { k: 'cesariennes', l: 'Césariennes' }]; track c.k) {
+                    <div><dt class="text-xs text-slate-500 dark:text-slate-400">{{ c.l }}</dt><dd class="font-semibold text-slate-900 dark:text-white">{{ $any(p.antecedents)[c.k] ?? '—' }}</dd></div>
+                  }
+                </dl>
+                <dl class="grid gap-x-4 gap-y-3 text-sm sm:grid-cols-2">
+                  <div><dt class="text-xs text-slate-500 dark:text-slate-400">Allergies</dt><dd class="text-slate-900 dark:text-white">{{ p.antecedents.allergies || 'Non renseigné' }}</dd></div>
+                  <div><dt class="text-xs text-slate-500 dark:text-slate-400">Médicaments en cours</dt><dd class="text-slate-900 dark:text-white">{{ p.antecedents.medicaments || 'Non renseigné' }}</dd></div>
+                  <div><dt class="text-xs text-slate-500 dark:text-slate-400">Complications obstétricales</dt><dd class="text-slate-900 dark:text-white">{{ p.antecedents.complicationsObstetricales || 'Non renseigné' }}</dd></div>
+                  <div><dt class="text-xs text-slate-500 dark:text-slate-400">Antécédents médicaux / chirurgicaux</dt><dd class="text-slate-900 dark:text-white">{{ (p.antecedents.medicaux + ' ' + p.antecedents.chirurgicaux).trim() || 'Non renseigné' }}</dd></div>
+                </dl>
+              </div>
+            </div>
+          </div>
+
+          <div class="space-y-6">
+            <!-- Prochain RDV -->
+            <div class="card p-5">
+              <p class="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white"><i class="fa-solid fa-calendar-check text-accent-600 dark:text-accent-400"></i> Prochain rendez-vous</p>
+              @if (prochainRdv; as r) {
+                <p class="mt-3 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ dateHeure(r.date) }}</p>
+                <p class="text-sm text-slate-500 dark:text-slate-400">{{ r.motif }} · <span class="badge {{ statutRdvClass(r.statut) }}">{{ r.statut }}</span></p>
+                <div class="mt-4 flex gap-2">
+                  <button class="btn-secondary flex-1 py-2 text-xs" (click)="demanderActionRdv(r, 'reporter')"><i class="fa-solid fa-calendar-plus"></i> Reporter</button>
+                  <button class="btn-secondary flex-1 py-2 text-xs" (click)="changerOnglet('rendez-vous')"><i class="fa-solid fa-list"></i> Tous</button>
+                </div>
+              } @else {
+                <p class="mt-3 text-sm text-slate-500 dark:text-slate-400">Aucun rendez-vous programmé.</p>
+                <button class="btn-secondary mt-3 w-full py-2 text-xs" (click)="ouvrir('rdv')"><i class="fa-solid fa-plus"></i> Planifier</button>
+              }
+            </div>
+
+            <!-- Traçabilité -->
+            <div class="card p-5">
+              <p class="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white"><i class="fa-solid fa-user-doctor text-brand-600 dark:text-brand-400"></i> Traçabilité</p>
+              <dl class="mt-3 space-y-3 text-sm">
+                <div>
+                  <dt class="text-xs text-slate-500 dark:text-slate-400">Médecin de première consultation</dt>
+                  <dd class="font-medium text-slate-900 dark:text-white">
+                    @if (dossier.premiereConsultation; as pc) {
+                      {{ dr(pc.medecin.nom, pc.medecin.role) }} <span class="text-xs font-normal text-slate-500">· {{ dateHeure(pc.date) }}</span>
+                    } @else { <span class="text-slate-500 dark:text-slate-400">Pas encore réalisée</span> }
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-xs text-slate-500 dark:text-slate-400">Établissement de prise en charge</dt>
+                  <dd class="text-slate-900 dark:text-white">
+                    @if (dossier.etablissement; as e) { {{ e.nom }} <span class="text-xs text-slate-500">· {{ e.province }}</span> } @else { <span class="text-slate-500 dark:text-slate-400">Non renseigné</span> }
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-xs text-slate-500 dark:text-slate-400">Dossier créé par</dt>
+                  <dd class="text-slate-900 dark:text-white">{{ dr(p.creePar.nom, p.creePar.role) }} <span class="text-xs text-slate-500">· {{ dateHeure(p.createdAt) }}</span></dd>
+                </div>
+                @if (p.modifiePar) {
+                  <div>
+                    <dt class="text-xs text-slate-500 dark:text-slate-400">Dernière modification administrative</dt>
+                    <dd class="text-slate-900 dark:text-white">{{ dr(p.modifiePar.nom, p.modifiePar.role) }} <span class="text-xs text-slate-500">· {{ dateHeure(p.updatedAt) }}</span></dd>
+                  </div>
+                }
+              </dl>
+              <p class="mt-3 text-[11px] text-slate-400">Le dossier appartient à la patiente : tous les médecins peuvent le consulter, chaque ouverture est journalisée.</p>
+            </div>
+
+            <!-- Contact -->
+            <div class="card p-5">
+              <div class="flex items-center justify-between">
+                <p class="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white"><i class="fa-solid fa-address-book text-brand-600 dark:text-brand-400"></i> Contact</p>
+                <button class="btn-ghost px-2 py-1 text-xs" (click)="ouvrir('infos')" aria-label="Modifier"><i class="fa-solid fa-pen"></i></button>
+              </div>
+              <dl class="mt-3 space-y-2 text-sm">
+                <div class="flex justify-between gap-3"><dt class="text-slate-500 dark:text-slate-400">Téléphone</dt><dd class="text-right text-slate-900 dark:text-white">{{ p.telephone || '—' }}{{ p.telephone2 ? ' · ' + p.telephone2 : '' }}</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-slate-500 dark:text-slate-400">E-mail</dt><dd class="truncate text-slate-900 dark:text-white">{{ p.email || '—' }}</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-slate-500 dark:text-slate-400">Espace patiente</dt><dd class="text-slate-900 dark:text-white">{{ p.espaceEnLigne }}</dd></div>
+                @if (p.contactUrgence.nom) {
+                  <div class="flex justify-between gap-3"><dt class="text-slate-500 dark:text-slate-400">Urgence</dt><dd class="text-right text-slate-900 dark:text-white">{{ p.contactUrgence.nom }}{{ p.contactUrgence.lien ? ' (' + p.contactUrgence.lien + ')' : '' }}<br><span class="text-xs">{{ p.contactUrgence.telephone }}</span></dd></div>
+                }
+              </dl>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- ============================ CONSULTATIONS ============================ -->
+      @case ('consultations') {
+        <div class="card overflow-hidden">
+          <div class="card-header">
+            <h2 class="card-title"><i class="fa-solid fa-stethoscope text-brand-600 dark:text-brand-400"></i> Consultations @if (g) { · grossesse n° {{ g.numero }} }</h2>
+            @if (grossesse) {
+              <a [routerLink]="['/admin/patientes', p.numero, 'consultation']" [queryParams]="{ type: premiereFaite ? 'Suivi prénatal' : 'Première consultation prénatale' }" class="btn-primary py-2 text-xs"><i class="fa-solid fa-plus"></i> Nouvelle consultation</a>
+            }
+          </div>
+          @if (consultations.length) {
+            <ol class="relative space-y-5 p-6 before:absolute before:bottom-6 before:left-[39px] before:top-6 before:w-px before:bg-slate-200 dark:before:bg-slate-700">
+              @for (c of consultations; track c.id; let n = $count; let i = $index) {
+                <li class="relative flex gap-4">
+                  <span class="z-10 flex h-9 w-9 flex-none items-center justify-center rounded-full text-xs font-bold ring-4 ring-white dark:ring-slate-900"
+                        [class]="c.statut === 'Finalisée' ? 'bg-brand-700 text-white' : c.statut === 'Brouillon' ? 'bg-amber-400 text-white' : 'bg-slate-300 text-white dark:bg-slate-700'">{{ n - i }}</span>
+                  <a [routerLink]="['/admin/consultations', c.id]" class="flex-1 rounded-xl border border-slate-200 p-4 transition hover:border-brand-300 hover:bg-slate-50/60 dark:border-slate-800 dark:hover:border-brand-500/40 dark:hover:bg-slate-800/40">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                      <p class="font-semibold text-slate-900 dark:text-white">{{ c.type }} · {{ dateHeure(c.date) }}</p>
+                      <div class="flex items-center gap-2">
+                        @if (c.addenda) { <span class="badge bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300"><i class="fa-solid fa-paperclip"></i> {{ c.addenda }} addendum</span> }
+                        <span class="badge {{ statutConsultationClass(c.statut) }}">{{ c.statut }}</span>
+                      </div>
+                    </div>
+                    <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                      <i class="fa-solid fa-user-doctor mr-1 text-slate-400"></i>Réalisée par <strong>{{ dr(c.auteur.nom, c.auteur.role) }}</strong>
+                      @if (estMoi(c.auteur.id)) { <span class="badge ml-1 bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">vous</span> }
+                      @if (dossier.premiereConsultation?.consultationId === c.id) { <span class="badge ml-1 bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300">Première consultation</span> }
+                    </p>
+                    <div class="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                      <div><p class="text-xs text-slate-500 dark:text-slate-400">Âge gest.</p><p class="font-medium">{{ c.statut === 'Finalisée' ? ag(c.agJours) : '—' }}</p></div>
+                      <div><p class="text-xs text-slate-500 dark:text-slate-400">Poids</p><p class="font-medium">{{ c.constantes.poidsKg != null ? c.constantes.poidsKg + ' kg' : '—' }}</p></div>
+                      <div><p class="text-xs text-slate-500 dark:text-slate-400">TA</p><p class="font-medium">{{ c.constantes.taSystolique != null ? c.constantes.taSystolique + '/' + (c.constantes.taDiastolique ?? '—') : '—' }}</p></div>
+                      <div><p class="text-xs text-slate-500 dark:text-slate-400">Motif</p><p class="truncate font-medium">{{ c.motif || '—' }}</p></div>
+                    </div>
+                  </a>
+                </li>
+              }
+            </ol>
           } @else {
-            <div class="p-5 sm:p-6">
-              <div class="grid gap-6 sm:grid-cols-3">
-                <div>
-                  <p class="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">Âge gestationnel</p>
-                  <p class="mt-1 text-2xl font-bold text-slate-900 dark:text-white">{{ p.ageGestationnel }}</p>
-                </div>
-                <div>
-                  <p class="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">DPA</p>
-                  <p class="mt-1 text-2xl font-bold text-slate-900 dark:text-white">{{ fmt(p.dpa) }}</p>
-                  <p class="text-xs text-slate-500 dark:text-slate-400">Méthode : {{ p.dpaMethode }}</p>
-                </div>
-                <div>
-                  <p class="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">DDR</p>
-                  <p class="mt-1 text-2xl font-bold text-slate-900 dark:text-white">{{ fmt(p.ddr) }}</p>
-                  <p class="text-xs" [class]="p.ddrFiabilite === 'Fiable' ? 'text-accent-600 dark:text-accent-400' : 'text-amber-600 dark:text-amber-400'">{{ p.ddrFiabilite }}</p>
-                </div>
-              </div>
-
-              <div class="mt-8">
-                <div class="mb-2 flex justify-between text-xs font-medium text-slate-500 dark:text-slate-400">
-                  <span>T1</span><span>T2</span><span>T3</span><span>40 SA</span>
-                </div>
-                <div class="relative h-3 rounded-full bg-gradient-to-r from-brand-100 dark:from-brand-500/20 via-brand-100 dark:via-brand-500/20 to-accent-100 dark:to-accent-500/20">
-                  <div class="h-full rounded-full bg-gradient-to-r from-brand-400 via-brand-700 to-accent-600" [style.width.%]="progression"></div>
-                  <div class="absolute top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-4 border-white dark:border-slate-900 bg-brand-700 shadow" [style.left.%]="progression"></div>
-                </div>
-              </div>
-
-              @if (p.ddrFiabilite !== 'Fiable') {
-                <div class="mt-6 flex items-start gap-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-300">
-                  <i class="fa-solid fa-triangle-exclamation mt-0.5 text-amber-500"></i>
-                  <p>Datation basée sur des données incertaines — à confirmer selon le protocole clinique.</p>
-                </div>
+            <div class="flex flex-col items-center gap-3 p-10 text-center">
+              <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800"><i class="fa-solid fa-stethoscope text-xl"></i></div>
+              <p class="font-semibold text-slate-900 dark:text-white">Aucune consultation pour cette grossesse</p>
+              @if (grossesse) {
+                <a [routerLink]="['/admin/patientes', p.numero, 'consultation']" [queryParams]="{ type: 'Première consultation prénatale' }" class="btn-primary"><i class="fa-solid fa-stethoscope"></i> Réaliser la première consultation</a>
               }
             </div>
           }
         </div>
+      }
 
-        <!-- Prochain RDV -->
-        <div class="space-y-6">
-          <div class="card p-5">
-            <p class="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white"><i class="fa-solid fa-calendar-check text-accent-600 dark:text-accent-400"></i> Prochain rendez-vous</p>
-            @if (p.prochainRdv) {
-              <p class="mt-3 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ fmt(p.prochainRdv) }}</p>
-              <p class="text-sm text-slate-500 dark:text-slate-400">CPN {{ p.cpnCount + 1 }} · 10:00</p>
-              <div class="mt-4 flex gap-2">
-                <button class="btn-secondary flex-1 py-2 text-xs"><i class="fa-solid fa-pen"></i> Modifier</button>
-                <button class="btn-secondary flex-1 py-2 text-xs"><i class="fa-solid fa-check"></i> Honoré</button>
-              </div>
-            } @else {
-              <p class="mt-3 text-sm text-slate-500 dark:text-slate-400">Aucun rendez-vous programmé.</p>
-            }
+      <!-- ============================= RENDEZ-VOUS ============================= -->
+      @case ('rendez-vous') {
+        <div class="card overflow-hidden">
+          <div class="card-header">
+            <h2 class="card-title"><i class="fa-solid fa-calendar-check text-accent-600 dark:text-accent-400"></i> Rendez-vous</h2>
+            <button class="btn-primary py-2 text-xs" (click)="ouvrir('rdv')"><i class="fa-solid fa-plus"></i> Planifier</button>
           </div>
-
-          <div class="card p-5">
-            <p class="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white"><i class="fa-solid fa-file-signature text-brand-600 dark:text-brand-400"></i> Consentements</p>
-            <ul class="mt-3 space-y-2.5 text-sm">
-              <li class="flex items-center justify-between"><span class="text-slate-600 dark:text-slate-300"><i class="fa-solid fa-comment-sms mr-2 w-4 text-sky-600 dark:text-sky-400"></i>SMS</span><span class="badge bg-accent-50 dark:bg-accent-500/10 text-accent-700 dark:text-accent-300">Oui</span></li>
-              <li class="flex items-center justify-between"><span class="text-slate-600 dark:text-slate-300"><i class="fa-solid fa-phone mr-2 w-4 text-brand-700 dark:text-brand-300"></i>Appel</span><span class="badge bg-accent-50 dark:bg-accent-500/10 text-accent-700 dark:text-accent-300">Oui</span></li>
-              <li class="flex items-center justify-between"><span class="text-slate-600 dark:text-slate-300"><i class="fa-brands fa-whatsapp mr-2 w-4 text-accent-600 dark:text-accent-400"></i>WhatsApp</span><span class="badge bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300">Non</span></li>
+          @for (groupe of [{ l: 'À venir', liste: rdvAVenir }, { l: 'Passés et clôturés', liste: rdvPasses }]; track groupe.l) {
+            <p class="border-b border-slate-100 bg-slate-50/70 px-5 py-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-400">{{ groupe.l }} ({{ groupe.liste.length }})</p>
+            <ul class="divide-y divide-slate-100 dark:divide-slate-800">
+              @for (r of groupe.liste; track r.id) {
+                <li class="px-5 py-4">
+                  <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <div class="flex-1">
+                      <p class="font-medium text-slate-900 dark:text-white">{{ dateHeure(r.date) }} · {{ r.motif }}</p>
+                      <p class="text-xs text-slate-500 dark:text-slate-400">Planifié par {{ dr(r.creePar.nom, r.creePar.role) }}{{ r.modifiePar ? ' · dernière modification : ' + dr(r.modifiePar.nom, r.modifiePar.role) : '' }}{{ r.canalRappel !== 'Aucun' ? ' · rappel ' + r.canalRappel : '' }}</p>
+                      @if (r.consignes) { <p class="mt-1 text-xs text-slate-600 dark:text-slate-300"><i class="fa-solid fa-circle-info mr-1"></i>{{ r.consignes }}</p> }
+                    </div>
+                    <div class="flex flex-wrap items-center gap-1.5">
+                      <span class="badge {{ statutRdvClass(r.statut) }}">{{ r.statut }}</span>
+                      @if (['Planifié', 'Confirmé', 'Reporté'].includes(r.statut)) {
+                        @if (r.statut !== 'Confirmé') { <button class="btn-ghost px-2 py-1 text-xs" (click)="demanderActionRdv(r, 'confirmer')" [disabled]="envoi">Confirmer</button> }
+                        <button class="btn-ghost px-2 py-1 text-xs" (click)="demanderActionRdv(r, 'reporter')">Reporter</button>
+                        <button class="btn-ghost px-2 py-1 text-xs" (click)="demanderActionRdv(r, 'effectue')" [disabled]="envoi">Effectué</button>
+                        <button class="btn-ghost px-2 py-1 text-xs" (click)="demanderActionRdv(r, 'absent')">Absente</button>
+                        <button class="btn-ghost px-2 py-1 text-xs text-rose-600" (click)="demanderActionRdv(r, 'annuler')">Annuler</button>
+                        @if (estAujourdhui(r) && grossesse) {
+                          <a [routerLink]="['/admin/patientes', p.numero, 'consultation']" [queryParams]="{ type: premiereFaite ? 'Suivi prénatal' : 'Première consultation prénatale', rdv: r.id }" class="btn-primary px-2.5 py-1 text-xs"><i class="fa-solid fa-stethoscope"></i> Consulter</a>
+                        }
+                      }
+                    </div>
+                  </div>
+                  @if (r.historique.length > 1) {
+                    <details class="mt-2">
+                      <summary class="cursor-pointer text-xs font-medium text-brand-700 dark:text-brand-300">Historique ({{ r.historique.length }})</summary>
+                      <ol class="mt-2 space-y-1 border-l-2 border-slate-200 pl-3 text-xs text-slate-600 dark:border-slate-700 dark:text-slate-300">
+                        @for (h of r.historique; track $index) {
+                          <li>
+                            <strong>{{ h.action }}</strong> · {{ dateHeure(h.le) }} · {{ dr(h.par.nom, h.par.role) }}
+                            @if (h.ancienneDate) { — ancien créneau : {{ dateHeure(h.ancienneDate) }} → {{ dateHeure(h.nouvelleDate) }} }
+                            @if (h.motif) { — « {{ h.motif }} » }
+                          </li>
+                        }
+                      </ol>
+                    </details>
+                  }
+                </li>
+              } @empty {
+                <li class="px-5 py-6 text-center text-sm text-slate-500 dark:text-slate-400">Aucun rendez-vous.</li>
+              }
             </ul>
-            <p class="mt-3 text-xs text-slate-400">Texte v1.2 · recueilli le {{ fmt(p.creeLe) }} · révocable</p>
-          </div>
-        </div>
-      </div>
-    }
-
-    @case ('cpn') {
-      <div class="card overflow-hidden">
-        <div class="card-header">
-          <h2 class="card-title"><i class="fa-solid fa-stethoscope text-brand-600 dark:text-brand-400"></i> Consultations prénatales</h2>
-          <button class="btn-primary py-2 text-xs"><i class="fa-solid fa-plus"></i> Nouvelle CPN</button>
-        </div>
-        @if (vueNonClinique) {
-          <p class="p-8 text-center text-sm text-slate-500 dark:text-slate-400"><i class="fa-solid fa-lock mr-1"></i> Accès restreint au personnel clinique.</p>
-        } @else {
-          <ol class="relative space-y-6 p-6 before:absolute before:bottom-6 before:left-[39px] before:top-6 before:w-px before:bg-slate-200 dark:before:bg-slate-700">
-            @for (c of cpns; track c.n) {
-              <li class="relative flex gap-4">
-                <span class="z-10 flex h-9 w-9 flex-none items-center justify-center rounded-full bg-brand-700 text-xs font-bold text-white ring-4 ring-white dark:ring-slate-900">{{ c.n }}</span>
-                <div class="flex-1 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
-                  <div class="flex flex-wrap items-center justify-between gap-2">
-                    <p class="font-semibold text-slate-900 dark:text-white">CPN {{ c.n }} · {{ fmt(c.date) }}</p>
-                    <span class="text-xs text-slate-500 dark:text-slate-400">{{ c.soignant }}</span>
-                  </div>
-                  <div class="mt-3 grid grid-cols-3 gap-3 text-sm">
-                    <div><p class="text-xs text-slate-500 dark:text-slate-400">Âge gest.</p><p class="font-medium">{{ c.ag }}</p></div>
-                    <div><p class="text-xs text-slate-500 dark:text-slate-400">Poids</p><p class="font-medium">{{ c.poids }}</p></div>
-                    <div><p class="text-xs text-slate-500 dark:text-slate-400">TA</p><p class="font-medium">{{ c.ta }}</p></div>
-                  </div>
-                </div>
-              </li>
-            }
-          </ol>
-        }
-      </div>
-    }
-
-    @case ('historique') {
-      <div class="card">
-        <div class="card-header">
-          <h2 class="card-title"><i class="fa-solid fa-clock-rotate-left text-brand-600 dark:text-brand-400"></i> Historique des modifications</h2>
-          <span class="badge bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"><i class="fa-solid fa-lock"></i> Non modifiable</span>
-        </div>
-        <ul class="divide-y divide-slate-100 dark:divide-slate-800">
-          @for (h of historique; track h.date) {
-            <li class="flex gap-4 px-5 py-4">
-              <div class="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"><i class="fa-solid fa-pen-to-square text-sm"></i></div>
-              <div class="flex-1">
-                <p class="text-sm font-medium text-slate-900 dark:text-white">{{ h.action }}</p>
-                <p class="mt-0.5 text-sm text-slate-600 dark:text-slate-300">{{ h.detail }}</p>
-                <p class="mt-1 text-xs text-slate-400">{{ h.auteur }} · {{ h.role }} · {{ h.date }}</p>
-              </div>
-            </li>
           }
-          <li class="flex gap-4 px-5 py-4">
-            <div class="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-accent-50 dark:bg-accent-500/10 text-accent-600 dark:text-accent-400"><i class="fa-solid fa-plus text-sm"></i></div>
-            <div class="flex-1">
-              <p class="text-sm font-medium text-slate-900 dark:text-white">Création du dossier</p>
-              <p class="mt-1 text-xs text-slate-400">Inf. Grâce Mbuyi · Sage-femme CPN · {{ fmt(p.creeLe) }}</p>
+        </div>
+      }
+
+      <!-- ============================= HISTORIQUE ============================== -->
+      @case ('historique') {
+        <div class="card">
+          <div class="card-header flex-wrap">
+            <h2 class="card-title"><i class="fa-solid fa-clock-rotate-left text-brand-600 dark:text-brand-400"></i> Historique & accès</h2>
+            <div class="flex items-center gap-2">
+              <div class="inline-flex rounded-lg bg-slate-100 p-0.5 text-[11px] font-semibold dark:bg-slate-800">
+                @for (f of [{ k: 'tout', l: 'Tout' }, { k: 'actes', l: 'Actes & modifications' }, { k: 'acces', l: 'Ouvertures & refus' }]; track f.k) {
+                  <button type="button" class="rounded-md px-2 py-1 transition" (click)="filtreJournal = $any(f.k)"
+                          [class]="filtreJournal === f.k ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white' : 'text-slate-500 dark:text-slate-400'">{{ f.l }}</button>
+                }
+              </div>
+              <span class="badge bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"><i class="fa-solid fa-lock"></i> Non modifiable</span>
             </div>
-          </li>
-        </ul>
-      </div>
+          </div>
+          @if (chargementJournal && !journal) {
+            <ul class="divide-y divide-slate-100 dark:divide-slate-800" aria-hidden="true">
+              @for (i of [1, 2, 3, 4]; track i) {
+                <li class="flex gap-4 px-5 py-4"><div class="skeleton h-9 w-9 rounded-full"></div><div class="flex-1 space-y-2"><div class="skeleton h-3.5 w-56"></div><div class="skeleton h-3 w-40"></div></div></li>
+              }
+            </ul>
+          } @else {
+            <ul class="divide-y divide-slate-100 dark:divide-slate-800">
+              @for (e of journalFiltre; track e.id) {
+                @let ic = iconeJournal(e);
+                <li class="flex gap-4 px-5 py-3.5">
+                  <div class="flex h-9 w-9 flex-none items-center justify-center rounded-full text-sm {{ ic.c }}"><i class="fa-solid {{ ic.i }}"></i></div>
+                  <div class="min-w-0 flex-1">
+                    <p class="text-sm font-medium text-slate-900 dark:text-white">{{ e.libelle }}
+                      @if (e.resultat === 'refusé') { <span class="badge ml-1 bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">refusé</span> }
+                      @if (e.action.endsWith('.lecture')) { <span class="badge ml-1 bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">simple accès</span> }
+                    </p>
+                    <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                      {{ e.acteur ? dr(e.acteur.nom, e.acteur.role) + ' · ' + e.acteur.role : 'Système' }} · {{ dateHeure(e.le) }}
+                    </p>
+                  </div>
+                </li>
+              } @empty {
+                <li class="px-5 py-8 text-center text-sm text-slate-500 dark:text-slate-400">Aucune entrée.</li>
+              }
+            </ul>
+          }
+        </div>
+      }
     }
   }
 </div>
+}
+
+<!-- ============================ PHOTO AGRANDIE ============================ -->
+@if (photoAgrandie && dossier?.patiente?.photoUrl) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Photo de la patiente" (click)="photoAgrandie = false">
+    <img [src]="dossier!.patiente.photoUrl" [alt]="'Photo de ' + dossier!.patiente.prenom + ' ' + dossier!.patiente.nom" class="max-h-[85vh] max-w-full rounded-2xl shadow-2xl">
+    <button type="button" class="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20" aria-label="Fermer"><i class="fa-solid fa-xmark text-lg"></i></button>
+  </div>
+}
+
+<!-- ============================ CARTE PATIENTE ============================ -->
+@if (carteOuverte && dossier) {
+  <div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="titre-carte">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" (click)="fermerCarte()"></div>
+    <div class="relative flex max-h-[95vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl dark:bg-slate-900 sm:rounded-2xl">
+      <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+        <div>
+          <h2 id="titre-carte" class="flex items-center gap-2 text-base font-semibold text-slate-900 dark:text-white"><i class="fa-solid fa-id-card text-brand-600 dark:text-brand-400"></i> Carte patiente</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">PDF recto-verso au format carte bancaire (85,6 × 54 mm) · <span class="font-mono">{{ dossier.patiente.numero }}</span></p>
+        </div>
+        <button type="button" class="btn-ghost px-2.5" (click)="fermerCarte()" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto bg-slate-100 p-4 dark:bg-slate-950/60">
+        @if (carteChargement) {
+          <div class="mx-auto aspect-[85.6/54] w-full max-w-lg" aria-hidden="true"><div class="skeleton h-full w-full rounded-xl"></div></div>
+          <p class="mt-3 text-center text-sm text-slate-500 dark:text-slate-400" role="status"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Génération de la carte…</p>
+        } @else if (carteErreur) {
+          <p class="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:bg-rose-500/10 dark:text-rose-200" role="alert"><i class="fa-solid fa-circle-exclamation mr-1"></i>{{ carteErreur }}</p>
+        } @else if (carteApercu) {
+          <iframe [src]="carteApercu" title="Aperçu de la carte patiente" class="h-[60vh] w-full rounded-xl border-0 bg-white shadow"></iframe>
+        }
+        <ul class="mt-4 grid gap-2 text-xs text-slate-600 dark:text-slate-300 sm:grid-cols-3">
+          <li class="flex items-start gap-2"><i class="fa-solid fa-qrcode mt-0.5 text-brand-600 dark:text-brand-400"></i>Le QR code ouvre ce dossier (connexion médecin requise).</li>
+          <li class="flex items-start gap-2"><i class="fa-solid fa-user-shield mt-0.5 text-accent-600 dark:text-accent-400"></i>Aucune donnée médicale sur la carte : seulement l’identité et le n° de dossier.</li>
+          <li class="flex items-start gap-2"><i class="fa-solid fa-print mt-0.5 text-slate-500"></i>Imprimez à 100 % (taille réelle), sur papier épais si possible.</li>
+        </ul>
+      </div>
+
+      <div class="flex flex-wrap justify-end gap-2 border-t border-slate-100 px-5 py-4 dark:border-slate-800">
+        <button type="button" class="btn-ghost" (click)="fermerCarte()">Fermer</button>
+        @if (carteErreur) {
+          <button type="button" class="btn-secondary" (click)="ouvrirCarte()"><i class="fa-solid fa-rotate-right"></i> Réessayer</button>
+        }
+        <button type="button" class="btn-secondary" (click)="imprimerCarte()" [disabled]="!carteApercu"><i class="fa-solid fa-print"></i> Imprimer</button>
+        <button type="button" class="btn-primary" (click)="telechargerCarte()" [disabled]="!carteApercu"><i class="fa-solid fa-download"></i> Télécharger le PDF</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ======================= SUPPRESSION (MÉDECIN CHEF) ======================= -->
+@if (suppressionOuverte && dossier) {
+  @let p = dossier.patiente;
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4" role="alertdialog" aria-modal="true" aria-labelledby="titre-suppr-pat" aria-describedby="texte-suppr-pat">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" (click)="fermerSuppression()"></div>
+    <div class="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
+      <div class="flex items-start gap-4">
+        <span class="flex h-12 w-12 flex-none items-center justify-center rounded-2xl bg-rose-100 text-xl text-rose-600 dark:bg-rose-500/15 dark:text-rose-400"><i class="fa-solid fa-triangle-exclamation"></i></span>
+        <div>
+          <h2 id="titre-suppr-pat" class="text-lg font-semibold text-slate-900 dark:text-white">Supprimer définitivement ce dossier ?</h2>
+          <p id="texte-suppr-pat" class="mt-1 text-sm text-slate-600 dark:text-slate-300">
+            <strong>{{ p.prenom }} {{ p.nom }} {{ p.postnom }}</strong> · <span class="font-mono">{{ p.numero }}</span>
+          </p>
+        </div>
+      </div>
+      <ul class="mt-4 space-y-1.5 rounded-xl bg-rose-50 p-3 text-sm text-rose-900 dark:bg-rose-500/10 dark:text-rose-200">
+        <li><i class="fa-solid fa-xmark mr-1.5"></i>{{ dossier.grossesses.length }} grossesse(s), {{ dossier.consultations.length }} consultation(s) et {{ dossier.rendezVous.length }} rendez-vous effacés</li>
+        <li><i class="fa-solid fa-xmark mr-1.5"></i>Photo et compte de l’application mobile supprimés</li>
+        <li><i class="fa-solid fa-lock mr-1.5"></i>Seule la trace de la suppression reste au journal d’audit</li>
+      </ul>
+      <p class="mt-3 text-xs font-semibold text-rose-700 dark:text-rose-300">Cette action est irréversible.</p>
+      <label class="label mt-4" for="confirm-suppr">Pour confirmer, saisissez le numéro du dossier <span class="font-mono">{{ p.numero }}</span></label>
+      <input id="confirm-suppr" class="input font-mono uppercase" [(ngModel)]="saisieSuppression" name="confirmSuppr" autocomplete="off" [placeholder]="p.numero" (keydown.enter)="supprimerDossier()">
+      @if (erreurSuppression) {
+        <p class="mt-2 text-sm text-rose-600 dark:text-rose-400" role="alert"><i class="fa-solid fa-circle-exclamation mr-1"></i>{{ erreurSuppression }}</p>
+      }
+      <div class="mt-5 flex justify-end gap-2">
+        <button type="button" class="btn-ghost" (click)="fermerSuppression()">Annuler</button>
+        <button type="button" class="btn bg-rose-600 text-white hover:bg-rose-700" (click)="supprimerDossier()"
+                [disabled]="suppression || saisieSuppression.trim().toUpperCase() !== p.numero">
+          <i class="fa-solid" [class]="suppression ? 'fa-spinner fa-spin' : 'fa-trash'"></i> {{ suppression ? 'Suppression…' : 'Supprimer définitivement' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ============================ FENÊTRES D'ACTION ============================ -->
+@if (fenetre && dossier) {
+  <div class="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true">
+    <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" (click)="fermer()"></div>
+    <div class="relative max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white shadow-2xl dark:bg-slate-900 sm:rounded-2xl">
+      <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+        <h2 class="text-base font-semibold text-slate-900 dark:text-white">
+          @switch (fenetre) {
+            @case ('datation') { Datation de la grossesse }
+            @case ('issue') { Issue de grossesse }
+            @case ('rdv') { Planifier un rendez-vous }
+            @case ('risques') { Facteurs de risque }
+            @case ('infos') { Contact et informations }
+            @case ('action-rdv') { {{ rdvAction?.action === 'reporter' ? 'Reporter le rendez-vous' : rdvAction?.action === 'annuler' ? 'Annuler le rendez-vous' : 'Patiente absente' }} }
+          }
+        </h2>
+        <button type="button" class="btn-ghost px-2.5" (click)="fermer()" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="space-y-4 px-5 py-5">
+        @if (erreurFenetre) {
+          <p class="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:bg-rose-500/10 dark:text-rose-200" role="alert"><i class="fa-solid fa-circle-exclamation mr-1"></i>{{ erreurFenetre }}</p>
+        }
+
+        @switch (fenetre) {
+          @case ('datation') {
+            <div>
+              <label class="label" for="d-meth">Méthode</label>
+              <select id="d-meth" class="input" [(ngModel)]="formDatation.methode" name="dmeth">
+                <option value="DDR">DDR</option><option>Échographie</option><option>Examen clinique</option>
+              </select>
+            </div>
+            @if (formDatation.methode === 'DDR') {
+              <div class="grid gap-4 sm:grid-cols-2">
+                <div><label class="label" for="d-ddr">DDR</label><input id="d-ddr" type="date" class="input" [(ngModel)]="formDatation.ddr" name="dddr"></div>
+                <div><label class="label" for="d-fia">Fiabilité</label><select id="d-fia" class="input" [(ngModel)]="formDatation.ddrFiabilite" name="dfia"><option>Fiable</option><option>Incertaine</option><option>Inconnue</option></select></div>
+              </div>
+            } @else {
+              <div class="grid gap-4 sm:grid-cols-3">
+                <div><label class="label" for="d-ref">Date de l’examen</label><input id="d-ref" type="date" class="input" [(ngModel)]="formDatation.dateReference" name="dref"></div>
+                <div><label class="label" for="d-sa">SA</label><input id="d-sa" type="number" min="0" max="44" class="input" [(ngModel)]="formDatation.agSemaines" name="dsa"></div>
+                <div><label class="label" for="d-j">Jours</label><input id="d-j" type="number" min="0" max="6" class="input" [(ngModel)]="formDatation.agJours" name="dj"></div>
+              </div>
+            }
+            <div><label class="label" for="d-dpa">DPA retenue <span class="text-xs font-normal text-slate-400">(si différente de la DPA calculée)</span></label><input id="d-dpa" type="date" class="input" [(ngModel)]="formDatation.dpa" name="ddpa"></div>
+            <div>
+              <label class="label" for="d-just">Motif {{ grossesse?.datation ? '(obligatoire : la valeur actuelle sera archivée)' : '(obligatoire si la DPA s’écarte de plus de 7 jours)' }}</label>
+              <textarea id="d-just" rows="2" class="input" [(ngModel)]="formDatation.justification" name="djust" placeholder="ex. Échographie du premier trimestre"></textarea>
+            </div>
+          }
+
+          @case ('risques') {
+            <div class="flex flex-wrap gap-2">
+              @for (f of facteursProposes; track f) {
+                <button type="button" class="rounded-full border px-3 py-1.5 text-xs font-semibold transition"
+                        [class]="formRisques.facteurs.includes(f) ? 'border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-300' : 'border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300'"
+                        (click)="basculerFacteur(f)">{{ f }}</button>
+              }
+            </div>
+            <div>
+              <label class="label" for="r-mult">Grossesse multiple</label>
+              <select id="r-mult" class="input" [(ngModel)]="formRisques.multiple" name="rmult">
+                <option [ngValue]="null">Non confirmé</option><option [ngValue]="false">Unique</option><option [ngValue]="true">Multiple</option>
+              </select>
+            </div>
+          }
+
+          @case ('issue') {
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div><label class="label" for="i-date">Date</label><input id="i-date" type="date" class="input" [(ngModel)]="formIssue.date" name="idate"></div>
+              <div><label class="label" for="i-issue">Issue</label><select id="i-issue" class="input" [(ngModel)]="formIssue.issue" name="iissue">@for (x of issues; track x) { <option>{{ x }}</option> }</select></div>
+              <div><label class="label" for="i-mode">Mode d’accouchement</label><select id="i-mode" class="input" [(ngModel)]="formIssue.mode" name="imode">@for (x of modes; track x) { <option>{{ x }}</option> }</select></div>
+              <div><label class="label" for="i-lieu">Lieu</label><input id="i-lieu" class="input" [(ngModel)]="formIssue.lieu" name="ilieu"></div>
+            </div>
+            <div><label class="label" for="i-compl">Complications</label><textarea id="i-compl" rows="2" class="input" [(ngModel)]="formIssue.complications" name="icompl"></textarea></div>
+            <div><label class="label" for="i-res">Résumé clinique</label><textarea id="i-res" rows="2" class="input" [(ngModel)]="formIssue.resume" name="ires"></textarea></div>
+            <div><label class="label" for="i-ori">Orientation / suivi postnatal</label><input id="i-ori" class="input" [(ngModel)]="formIssue.orientation" name="iori"></div>
+            <label class="flex items-start gap-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
+              <input type="checkbox" class="mt-0.5 h-4 w-4" [(ngModel)]="confirmationIssue" name="iconf">
+              La grossesse sera close et le dossier passera en suivi postnatal. L’historique reste consultable.
+            </label>
+          }
+
+          @case ('rdv') {
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div><label class="label" for="v-date">Date et heure <span class="req">*</span></label><input id="v-date" type="datetime-local" class="input" [(ngModel)]="formRdv.date" name="vdate"></div>
+              <div><label class="label" for="v-motif">Motif</label><input id="v-motif" class="input" [(ngModel)]="formRdv.motif" name="vmotif"></div>
+              <div><label class="label" for="v-lieu">Lieu</label><input id="v-lieu" class="input" [(ngModel)]="formRdv.lieu" name="vlieu" [placeholder]="session.etablissement()?.nom ?? ''"></div>
+              <div>
+                <label class="label" for="v-canal">Rappel</label>
+                <select id="v-canal" class="input" [(ngModel)]="formRdv.canalRappel" name="vcanal">
+                  @for (c of ['SMS', 'Appel', 'WhatsApp']; track c) { <option [value]="c">{{ c }}</option> }
+                  <option value="Aucun">Aucun</option>
+                </select>
+              </div>
+            </div>
+            <div><label class="label" for="v-cons">Consignes pour la patiente</label><textarea id="v-cons" rows="2" class="input" [(ngModel)]="formRdv.consignes" name="vcons" placeholder="Pas de détail médical sensible"></textarea></div>
+          }
+
+          @case ('action-rdv') {
+            @if (rdvAction?.action === 'reporter') {
+              <div><label class="label" for="a-date">Nouveau créneau <span class="req">*</span></label><input id="a-date" type="datetime-local" class="input" [(ngModel)]="formActionRdv.date" name="adate"></div>
+            }
+            <div>
+              <label class="label" for="a-motif">Motif {{ rdvAction?.action === 'absent' ? '(facultatif)' : '' }}@if (rdvAction?.action !== 'absent') { <span class="req">*</span> }</label>
+              <textarea id="a-motif" rows="2" class="input" [(ngModel)]="formActionRdv.motif" name="amotif"></textarea>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400"><i class="fa-solid fa-clock-rotate-left mr-1"></i>L’ancien créneau, votre nom et le motif sont conservés dans l’historique du rendez-vous.</p>
+          }
+
+          @case ('infos') {
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div><label class="label" for="f-tel">Téléphone</label><input id="f-tel" class="input" [(ngModel)]="formInfos.telephone" name="ftel"></div>
+              <div><label class="label" for="f-tel2">Téléphone secondaire</label><input id="f-tel2" class="input" [(ngModel)]="formInfos.telephone2" name="ftel2"></div>
+              <div class="sm:col-span-2"><label class="label" for="f-mail">E-mail</label><input id="f-mail" type="email" class="input" [(ngModel)]="formInfos.email" name="fmail"></div>
+              <div class="sm:col-span-2">
+                <label class="label" for="f-prov">Province de résidence</label>
+                <select id="f-prov" class="input" [(ngModel)]="formInfos.province" name="fprov">
+                  @if (!formInfos.province) { <option value="" disabled>Choisir parmi les 26 provinces</option> }
+                  @for (pr of referentiels.provinces(); track pr) { <option [value]="pr">{{ pr }}</option> }
+                </select>
+              </div>
+              <div><label class="label" for="f-com">Commune</label><input id="f-com" class="input" [(ngModel)]="formInfos.commune" name="fcom"></div>
+              <div><label class="label" for="f-qua">Quartier</label><input id="f-qua" class="input" [(ngModel)]="formInfos.quartier" name="fqua"></div>
+              <div class="sm:col-span-2"><label class="label" for="f-ave">Avenue / repère</label><input id="f-ave" class="input" [(ngModel)]="formInfos.avenue" name="fave"></div>
+              <div><label class="label" for="f-un">Contact d’urgence</label><input id="f-un" class="input" [(ngModel)]="formInfos.urgenceNom" name="fun" placeholder="Nom"></div>
+              <div><label class="label" for="f-ut">Téléphone d’urgence</label><input id="f-ut" class="input" [(ngModel)]="formInfos.urgenceTel" name="fut"></div>
+              <div><label class="label" for="f-all">Allergies</label><input id="f-all" class="input" [(ngModel)]="formInfos.allergies" name="fall"></div>
+              <div><label class="label" for="f-med">Médicaments en cours</label><input id="f-med" class="input" [(ngModel)]="formInfos.medicaments" name="fmed"></div>
+            </div>
+          }
+        }
+      </div>
+
+      <div class="flex justify-end gap-2 border-t border-slate-100 px-5 py-4 dark:border-slate-800">
+        <button type="button" class="btn-ghost" (click)="fermer()">Annuler</button>
+        @switch (fenetre) {
+          @case ('datation') { <button class="btn-primary" (click)="enregistrerDatation()" [disabled]="envoi"><i class="fa-solid" [class]="envoi ? 'fa-spinner fa-spin' : 'fa-check'"></i> Valider la datation</button> }
+          @case ('risques') { <button class="btn-primary" (click)="enregistrerRisques()" [disabled]="envoi"><i class="fa-solid fa-check"></i> Enregistrer</button> }
+          @case ('issue') { <button class="btn-primary" (click)="enregistrerIssue()" [disabled]="envoi || !confirmationIssue"><i class="fa-solid fa-baby"></i> Enregistrer l’issue</button> }
+          @case ('rdv') { <button class="btn-primary" (click)="creerRdv()" [disabled]="envoi || !formRdv.date"><i class="fa-solid fa-calendar-plus"></i> Planifier</button> }
+          @case ('infos') { <button class="btn-primary" (click)="enregistrerInfos()" [disabled]="envoi"><i class="fa-solid fa-check"></i> Enregistrer</button> }
+          @case ('action-rdv') {
+            <button class="btn-primary" (click)="confirmerActionRdv()"
+                    [disabled]="envoi || (rdvAction?.action === 'reporter' && !formActionRdv.date) || (rdvAction?.action !== 'absent' && !formActionRdv.motif.trim())">
+              <i class="fa-solid fa-check"></i> Confirmer
+            </button>
+          }
+        }
+      </div>
+    </div>
+  </div>
+}

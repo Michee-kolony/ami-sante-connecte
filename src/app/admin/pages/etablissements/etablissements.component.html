@@ -1,0 +1,513 @@
+<div class="mx-auto max-w-7xl space-y-6">
+  <!-- En-tête -->
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Établissements sanitaires</h1>
+      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Hôpitaux, centres et postes de santé raccordés à la plateforme. Chaque établissement reçoit un code unique qui rattache son personnel, ses patientes et ses ambulances. Seul le médecin chef peut les ajouter, modifier ou supprimer.</p>
+    </div>
+    @if (peutGerer()) {
+      <button type="button" class="btn-primary" (click)="ouvrir()"><i class="fa-solid fa-hospital"></i> Ajouter un établissement</button>
+    }
+  </div>
+
+  @if (erreurChargement) {
+    <div class="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200" role="alert">
+      <i class="fa-solid fa-circle-exclamation mt-0.5"></i>
+      <span class="flex-1">Impossible de charger les établissements : {{ erreurChargement }}</span>
+    </div>
+  }
+
+  @if (notification) {
+    <div class="flex items-start gap-3 rounded-xl border border-accent-200 bg-accent-50 px-4 py-3 text-sm text-accent-900 dark:border-accent-500/30 dark:bg-accent-500/10 dark:text-accent-200" role="status">
+      <i class="fa-solid fa-circle-check mt-0.5 text-accent-600 dark:text-accent-400"></i>
+      <span class="flex-1">{{ notification }}</span>
+      <button type="button" class="text-accent-700 hover:text-accent-900 dark:text-accent-300" (click)="notification = null" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+  }
+
+  <!-- Statistiques -->
+  <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="card flex items-center gap-4 p-4">
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"><i class="fa-solid fa-hospital"></i></div>
+      <div>@if (chargement && !etablissements().length) { <div class="skeleton mb-1.5 h-7 w-12"></div> } @else { <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats().total }}</p> }<p class="text-xs text-slate-500 dark:text-slate-400">Établissements</p></div>
+    </div>
+    <div class="card flex items-center gap-4 p-4">
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-accent-50 text-accent-600 dark:bg-accent-500/10 dark:text-accent-400"><i class="fa-solid fa-circle-check"></i></div>
+      <div>@if (chargement && !etablissements().length) { <div class="skeleton mb-1.5 h-7 w-12"></div> } @else { <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats().actifs }}</p> }<p class="text-xs text-slate-500 dark:text-slate-400">Actifs</p></div>
+    </div>
+    <div class="card flex items-center gap-4 p-4">
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400"><i class="fa-solid fa-map-location-dot"></i></div>
+      <div>@if (chargement && !etablissements().length) { <div class="skeleton mb-1.5 h-7 w-12"></div> } @else { <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats().provinces }}</p> }<p class="text-xs text-slate-500 dark:text-slate-400">Provinces couvertes</p></div>
+    </div>
+    <div class="card flex items-center gap-4 p-4">
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400"><i class="fa-solid fa-bed"></i></div>
+      <div>@if (chargement && !etablissements().length) { <div class="skeleton mb-1.5 h-7 w-12"></div> } @else { <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats().lits }}</p> }<p class="text-xs text-slate-500 dark:text-slate-400">Lits au total</p></div>
+    </div>
+  </div>
+
+  <!-- Liste -->
+  <div class="card overflow-hidden">
+    <div class="flex flex-col gap-3 border-b border-slate-100 p-4 dark:border-slate-800 sm:flex-row sm:items-center">
+      <div class="relative flex-1">
+        <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-slate-400"></i>
+        <input type="search" class="input pl-10" placeholder="Rechercher par nom, code, province, zone ou responsable"
+               [value]="recherche()" (input)="recherche.set($any($event.target).value)">
+      </div>
+      <div class="relative sm:w-56">
+        <select class="input appearance-none pr-10" [value]="filtreStatut()" (change)="filtreStatut.set($any($event.target).value)">
+          <option value="Tous">Tous les statuts</option>
+          <option value="Actif">Actifs</option>
+          <option value="Suspendu">Suspendus</option>
+        </select>
+        <i class="fa-solid fa-chevron-down pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
+        <thead class="bg-slate-50/70 dark:bg-slate-800/50">
+          <tr>
+            <th class="table-th">Établissement</th>
+            <th class="table-th">Localisation</th>
+            <th class="table-th">Responsable</th>
+            <th class="table-th">Services</th>
+            <th class="table-th">Lits</th>
+            <th class="table-th">Statut</th>
+            <th class="table-th"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+          @for (e of filtres(); track e.id) {
+            <tr class="transition hover:bg-slate-50/70 dark:hover:bg-slate-800/50" [class.opacity-60]="e.statut === 'Suspendu'">
+              <td class="table-td">
+                <div class="flex items-center gap-3">
+                  <button type="button" class="group relative h-14 w-20 flex-none overflow-hidden rounded-lg bg-slate-100 ring-1 ring-slate-200 transition hover:ring-2 hover:ring-brand-500 dark:bg-slate-800 dark:ring-slate-700"
+                          (click)="ouvrirFiche(e)" [title]="'Voir ' + e.nom">
+                    @if (e.photos.length) {
+                      <img [src]="e.photos[0]" [alt]="e.nom" loading="lazy" class="h-full w-full object-cover transition group-hover:scale-105">
+                      @if (e.photos.length > 1) {
+                        <span class="absolute bottom-1 right-1 rounded bg-slate-900/70 px-1.5 text-[10px] font-semibold text-white"><i class="fa-solid fa-images mr-0.5"></i>{{ e.photos.length }}</span>
+                      }
+                    } @else {
+                      <span class="flex h-full w-full items-center justify-center text-xl text-slate-300 dark:text-slate-600"><i class="fa-solid fa-hospital"></i></span>
+                    }
+                  </button>
+                  <div class="min-w-0">
+                    <button type="button" class="text-left font-medium text-slate-900 hover:text-brand-700 dark:text-white dark:hover:text-brand-300" (click)="ouvrirFiche(e)">{{ e.nom }}</button>
+                    <p class="font-mono text-xs text-slate-500 dark:text-slate-400">{{ e.code }}</p>
+                    <p class="whitespace-nowrap text-[11px] text-slate-400">{{ e.type }} · {{ e.secteur }}</p>
+                  </div>
+                </div>
+              </td>
+              <td class="table-td">
+                <p class="whitespace-nowrap text-slate-900 dark:text-white">{{ e.province }}</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400">{{ e.zoneSante }}</p>
+                @if (e.latitude != null) {
+                  <a [href]="lienCarte(e)" target="_blank" rel="noopener" class="text-[11px] text-brand-700 hover:underline dark:text-brand-300">
+                    <i class="fa-solid fa-location-dot mr-1"></i>{{ e.latitude }}, {{ e.longitude }}
+                  </a>
+                }
+              </td>
+              <td class="table-td">
+                <p class="whitespace-nowrap text-slate-900 dark:text-white">{{ e.responsable }}</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400">{{ e.fonctionResponsable }}</p>
+                <a [href]="'tel:' + e.telephone.split(' ').join('')" class="whitespace-nowrap text-xs hover:text-brand-700 dark:hover:text-brand-300"><i class="fa-solid fa-phone mr-1 text-slate-400"></i>{{ e.telephone }}</a>
+              </td>
+              <td class="table-td">
+                <div class="flex max-w-xs flex-wrap gap-1">
+                  @for (s of e.services; track s) {
+                    <span class="badge bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">{{ s }}</span>
+                  }
+                </div>
+              </td>
+              <td class="table-td font-semibold text-slate-900 dark:text-white">{{ e.lits }}</td>
+              <td class="table-td">
+                @if (e.statut === 'Actif') {
+                  <span class="badge bg-accent-50 text-accent-700 ring-1 ring-accent-200 dark:bg-accent-500/10 dark:text-accent-300 dark:ring-accent-500/30">Actif</span>
+                } @else {
+                  <span class="badge bg-rose-50 text-rose-700 ring-1 ring-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/30">Suspendu</span>
+                }
+              </td>
+              <td class="table-td">
+                <div class="flex justify-end gap-1">
+                  <button type="button" class="btn-ghost px-2.5 py-1.5" title="Voir la fiche" (click)="ouvrirFiche(e)">
+                    <i class="fa-solid fa-eye"></i><span class="sr-only">Voir la fiche</span>
+                  </button>
+                  @if (peutGerer()) {
+                    <button type="button" class="btn-ghost px-2.5 py-1.5" title="Modifier" (click)="ouvrir(e)">
+                      <i class="fa-solid fa-pen text-brand-600 dark:text-brand-400"></i><span class="sr-only">Modifier</span>
+                    </button>
+                    <button type="button" class="btn-ghost px-2.5 py-1.5" [title]="e.statut === 'Actif' ? 'Suspendre' : 'Réactiver'" (click)="basculer(e)">
+                      <i class="fa-solid" [class]="e.statut === 'Actif' ? 'fa-ban text-amber-500' : 'fa-rotate-left text-accent-600'"></i>
+                      <span class="sr-only">{{ e.statut === 'Actif' ? 'Suspendre' : 'Réactiver' }}</span>
+                    </button>
+                    <button type="button" class="btn-ghost px-2.5 py-1.5" title="Supprimer" (click)="demanderSuppression(e)">
+                      <i class="fa-solid fa-trash text-rose-500"></i><span class="sr-only">Supprimer</span>
+                    </button>
+                  }
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            @if (chargement) {
+              @for (i of lignesSquelette; track i) {
+                <tr aria-hidden="true">
+                  <td class="table-td">
+                    <div class="flex items-center gap-3">
+                      <div class="skeleton h-14 w-20 flex-none rounded-lg"></div>
+                      <div class="space-y-2"><div class="skeleton h-3.5 w-40"></div><div class="skeleton h-3 w-24"></div><div class="skeleton h-2.5 w-32"></div></div>
+                    </div>
+                  </td>
+                  <td class="table-td"><div class="space-y-2"><div class="skeleton h-3.5 w-24"></div><div class="skeleton h-3 w-20"></div></div></td>
+                  <td class="table-td"><div class="space-y-2"><div class="skeleton h-3.5 w-28"></div><div class="skeleton h-3 w-20"></div><div class="skeleton h-3 w-24"></div></div></td>
+                  <td class="table-td"><div class="flex gap-1"><div class="skeleton h-5 w-12 rounded-full"></div><div class="skeleton h-5 w-16 rounded-full"></div><div class="skeleton h-5 w-10 rounded-full"></div></div></td>
+                  <td class="table-td"><div class="skeleton h-4 w-8"></div></td>
+                  <td class="table-td"><div class="skeleton h-5 w-14 rounded-full"></div></td>
+                  <td class="table-td"><div class="flex justify-end gap-2"><div class="skeleton h-7 w-7 rounded-lg"></div><div class="skeleton h-7 w-7 rounded-lg"></div></div></td>
+                </tr>
+              }
+              <tr class="sr-only"><td colspan="7" role="status">Chargement des établissements…</td></tr>
+            } @else {
+            <tr><td colspan="7" class="table-td py-10 text-center text-slate-500 dark:text-slate-400">
+              @if (!etablissements().length) {
+                Aucun établissement enregistré pour l’instant.
+              } @else {
+                Aucun établissement ne correspond à la recherche.
+              }
+            </td></tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Panneau d'ajout d'un établissement -->
+@if (panneauOuvert) {
+  <div class="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-labelledby="titre-ajout-et">
+    <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" (click)="fermer()"></div>
+
+    <form #f="ngForm" (ngSubmit)="enregistrer(f)" novalidate
+          class="relative flex h-full w-full max-w-2xl flex-col bg-white shadow-2xl dark:bg-slate-900">
+      <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800 sm:px-6">
+        <div>
+          <h2 id="titre-ajout-et" class="text-lg font-semibold text-slate-900 dark:text-white">{{ enEdition ? 'Modifier l’établissement' : 'Ajouter un établissement sanitaire' }}</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Code {{ enEdition ? '' : 'attribué ' }}: <span class="font-mono font-semibold text-slate-700 dark:text-slate-200">{{ codePropose }}</span></p>
+        </div>
+        <button type="button" class="btn-ghost px-3" (click)="fermer()" aria-label="Fermer"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div class="flex-1 space-y-7 overflow-y-auto px-5 py-6 sm:px-6">
+        <!-- Photos -->
+        <section>
+          <div class="mb-3 flex items-center justify-between gap-3">
+            <h3 class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-images"></i> Photos <span class="font-normal normal-case tracking-normal">({{ nombrePhotos }}/{{ maxPhotos }})</span></h3>
+          </div>
+          <div class="grid grid-cols-3 gap-3 sm:grid-cols-4">
+            @for (url of photosConservees; track url; let premiere = $first) {
+              <div class="group relative aspect-[4/3] overflow-hidden rounded-xl bg-slate-100 ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+                <img [src]="url" alt="" class="h-full w-full object-cover">
+                @if (premiere) { <span class="absolute left-1.5 top-1.5 rounded bg-slate-900/70 px-1.5 py-0.5 text-[10px] font-semibold text-white">Couverture</span> }
+                <button type="button" class="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-rose-600 shadow transition hover:bg-white dark:bg-slate-900/90"
+                        (click)="retirerPhotoConservee(url)" aria-label="Retirer cette photo"><i class="fa-solid fa-xmark text-sm"></i></button>
+              </div>
+            }
+            @for (p of nouvellesPhotos; track p.apercu; let i = $index) {
+              <div class="group relative aspect-[4/3] overflow-hidden rounded-xl bg-slate-100 ring-2 ring-brand-500 dark:bg-slate-800">
+                <img [src]="p.apercu" alt="" class="h-full w-full object-cover">
+                @if (!photosConservees.length && i === 0) { <span class="absolute left-1.5 top-1.5 rounded bg-slate-900/70 px-1.5 py-0.5 text-[10px] font-semibold text-white">Couverture</span> }
+                <span class="absolute bottom-1.5 left-1.5 rounded bg-brand-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">Nouvelle</span>
+                <button type="button" class="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-rose-600 shadow transition hover:bg-white dark:bg-slate-900/90"
+                        (click)="retirerNouvellePhoto(p)" aria-label="Retirer cette photo"><i class="fa-solid fa-xmark text-sm"></i></button>
+              </div>
+            }
+            @if (nombrePhotos < maxPhotos) {
+              <label class="flex aspect-[4/3] cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-slate-300 text-slate-500 transition hover:border-brand-400 hover:bg-brand-50/50 hover:text-brand-700 dark:border-slate-700 dark:text-slate-400 dark:hover:border-brand-500 dark:hover:bg-brand-500/5 dark:hover:text-brand-300">
+                <i class="fa-solid fa-camera text-xl"></i>
+                <span class="text-xs font-medium">Ajouter</span>
+                <input type="file" accept="image/jpeg,image/png,image/webp" multiple class="sr-only" (change)="choisirPhotos($event)">
+              </label>
+            }
+          </div>
+          <p class="mt-2 text-xs" [class]="photoErreur ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500 dark:text-slate-400'">
+            {{ photoErreur || 'Façade, accueil, salles… JPG, PNG ou WebP, 5 Mo max par photo. La première sert de couverture.' }}
+          </p>
+        </section>
+
+        <!-- Identification -->
+        <section>
+          <h3 class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-hospital"></i> Identification</h3>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div class="sm:col-span-2">
+              <label class="label" for="et-nom">Nom de l’établissement <span class="req">*</span></label>
+              <input id="et-nom" name="nom" class="input" placeholder="Centre de Santé de …" [(ngModel)]="form.nom" #nom="ngModel" required
+                     [class.border-rose-400]="(nom.invalid || nomExiste) && (nom.touched || f.submitted)">
+              @if (nomExiste) {
+                <p class="mt-1.5 text-xs text-rose-600 dark:text-rose-400">Un établissement porte déjà ce nom dans cette province.</p>
+              }
+            </div>
+            <div>
+              <label class="label" for="et-type">Type <span class="req">*</span></label>
+              <select id="et-type" name="type" class="input" [(ngModel)]="form.type" #type="ngModel" required
+                      [class.border-rose-400]="type.invalid && (type.touched || f.submitted)">
+                <option value="" disabled>— Choisir —</option>
+                @for (t of types; track t) { <option [value]="t">{{ t }}</option> }
+              </select>
+            </div>
+            <div>
+              <label class="label" for="et-secteur">Secteur <span class="req">*</span></label>
+              <select id="et-secteur" name="secteur" class="input" [(ngModel)]="form.secteur" #secteur="ngModel" required
+                      [class.border-rose-400]="secteur.invalid && (secteur.touched || f.submitted)">
+                <option value="" disabled>— Choisir —</option>
+                @for (s of secteurs; track s) { <option [value]="s">{{ s }}</option> }
+              </select>
+            </div>
+            <div>
+              <label class="label" for="et-lits">Capacité (lits)</label>
+              <input id="et-lits" name="lits" type="number" min="0" inputmode="numeric" class="input" [(ngModel)]="form.lits">
+            </div>
+          </div>
+        </section>
+
+        <!-- Localisation -->
+        <section>
+          <h3 class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-map-location-dot"></i> Localisation</h3>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label class="label" for="et-province">Province <span class="req">*</span></label>
+              <select id="et-province" name="province" class="input" [(ngModel)]="form.province" required>
+                @for (p of provinces; track p) { <option [value]="p">{{ p }}</option> }
+              </select>
+            </div>
+            <div>
+              <label class="label" for="et-zone">Zone de santé <span class="req">*</span></label>
+              <input id="et-zone" name="zoneSante" class="input" placeholder="Zone de Santé de …" [(ngModel)]="form.zoneSante" #zone="ngModel" required
+                     [class.border-rose-400]="zone.invalid && (zone.touched || f.submitted)">
+            </div>
+            <div>
+              <label class="label" for="et-aire">Aire de santé</label>
+              <input id="et-aire" name="aireSante" class="input" placeholder="AS …" [(ngModel)]="form.aireSante">
+            </div>
+            <div>
+              <label class="label" for="et-adresse">Adresse <span class="req">*</span></label>
+              <input id="et-adresse" name="adresse" class="input" placeholder="Avenue, numéro, commune" [(ngModel)]="form.adresse" #adr="ngModel" required
+                     [class.border-rose-400]="adr.invalid && (adr.touched || f.submitted)">
+            </div>
+            <div class="sm:col-span-2">
+              <div class="flex items-center justify-between">
+                <span class="label">Coordonnées GPS</span>
+                <button type="button" class="mb-1.5 text-xs font-semibold text-brand-600 hover:text-brand-800 dark:text-brand-400 dark:hover:text-brand-300" (click)="localiser()" [disabled]="localisation">
+                  <i class="fa-solid" [class]="localisation ? 'fa-spinner fa-spin' : 'fa-location-crosshairs'"></i> Ma position actuelle
+                </button>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <input name="latitude" type="number" step="any" class="input font-mono" placeholder="Latitude (ex. -4.3217)" aria-label="Latitude"
+                       [(ngModel)]="form.latitude" [class.border-rose-400]="!coordonneesValides">
+                <input name="longitude" type="number" step="any" class="input font-mono" placeholder="Longitude (ex. 15.2663)" aria-label="Longitude"
+                       [(ngModel)]="form.longitude" [class.border-rose-400]="!coordonneesValides">
+              </div>
+              <p class="mt-1.5 text-xs" [class]="localisationErreur || !coordonneesValides ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500 dark:text-slate-400'">
+                {{ localisationErreur || (!coordonneesValides ? 'Renseignez la latitude et la longitude (degrés décimaux).' : 'Utilisées pour placer l’établissement sur la carte des urgences.') }}
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Contact et responsable -->
+        <section>
+          <h3 class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-user-tie"></i> Contact et responsable</h3>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label class="label" for="et-resp">Nom du responsable <span class="req">*</span></label>
+              <input id="et-resp" name="responsable" class="input" placeholder="Dr …" [(ngModel)]="form.responsable" #resp="ngModel" required
+                     [class.border-rose-400]="resp.invalid && (resp.touched || f.submitted)">
+            </div>
+            <div>
+              <label class="label" for="et-fonction">Fonction</label>
+              <input id="et-fonction" name="fonctionResponsable" class="input" placeholder="Médecin directeur, infirmier titulaire…" [(ngModel)]="form.fonctionResponsable">
+            </div>
+            <div>
+              <label class="label" for="et-tel">Téléphone <span class="req">*</span></label>
+              <input id="et-tel" name="telephone" type="tel" inputmode="tel" class="input" placeholder="+243 81 000 0000"
+                     [(ngModel)]="form.telephone" #tel="ngModel" required pattern="[+0-9 ().-]{9,20}"
+                     [class.border-rose-400]="tel.invalid && (tel.touched || f.submitted)">
+            </div>
+            <div>
+              <label class="label" for="et-email">E-mail</label>
+              <input id="et-email" name="email" type="email" class="input" placeholder="contact@…" [(ngModel)]="form.email" #mail="ngModel" email
+                     [class.border-rose-400]="mail.invalid && (mail.touched || f.submitted)">
+            </div>
+          </div>
+        </section>
+
+        <!-- Services offerts -->
+        <section>
+          <h3 class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-stethoscope"></i> Services offerts <span class="req">*</span></h3>
+          <div class="flex flex-wrap gap-2">
+            @for (s of servicesDisponibles; track s) {
+              @let actif = form.services.has(s);
+              <button type="button" (click)="basculerService(s)" [attr.aria-pressed]="actif"
+                      class="rounded-full px-3 py-1.5 text-xs font-medium ring-1 transition"
+                      [class]="actif ? 'bg-brand-600 text-white ring-brand-600' : 'bg-white text-slate-600 ring-slate-200 hover:ring-brand-300 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700'">
+                @if (actif) { <i class="fa-solid fa-check mr-1"></i> }{{ s }}
+              </button>
+            }
+          </div>
+          @if (!form.services.size && f.submitted) {
+            <p class="mt-1.5 text-xs text-rose-600 dark:text-rose-400">Sélectionnez au moins un service.</p>
+          }
+        </section>
+
+        <p class="flex items-start gap-2 rounded-xl bg-slate-50 p-3 text-xs text-slate-600 dark:bg-slate-800/50 dark:text-slate-300">
+          <i class="fa-solid fa-shield-halved mt-0.5 text-brand-600 dark:text-brand-400"></i>
+          La création est inscrite au journal d’audit. Les comptes du personnel de l’établissement se créent ensuite depuis les pages Agents et Chauffeurs.
+        </p>
+      </div>
+
+      @if (erreurEnregistrement) {
+        <p class="flex items-start gap-2 border-t border-rose-100 bg-rose-50 px-5 py-3 text-sm text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300 sm:px-6" role="alert">
+          <i class="fa-solid fa-circle-exclamation mt-0.5"></i> {{ erreurEnregistrement }}
+        </p>
+      }
+      <div class="flex flex-col-reverse gap-2 border-t border-slate-100 px-5 py-4 dark:border-slate-800 sm:flex-row sm:justify-end sm:px-6">
+        <button type="button" class="btn-secondary" (click)="fermer()">Annuler</button>
+        <button type="submit" class="btn-primary" [disabled]="enregistrement">
+          <i class="fa-solid" [class]="enregistrement ? 'fa-spinner fa-spin' : 'fa-hospital'"></i> {{ enEdition ? 'Enregistrer les modifications' : 'Enregistrer l’établissement' }}
+        </button>
+      </div>
+    </form>
+  </div>
+}
+
+<!-- Fiche : photos, coordonnées et carte -->
+@if (fiche; as e) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="titre-fiche-et" (keydown.escape)="fiche = null">
+    <div class="absolute inset-0 bg-slate-900/70 backdrop-blur-sm" (click)="fiche = null"></div>
+    <div class="relative flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-900">
+      <!-- Galerie -->
+      <div class="relative aspect-[16/9] max-h-[50vh] w-full flex-none bg-slate-900">
+        @if (e.photos.length) {
+          <img [src]="e.photos[photoIndex]" [alt]="e.nom + ' — photo ' + (photoIndex + 1)" class="h-full w-full object-contain">
+          @if (e.photos.length > 1) {
+            <button type="button" class="absolute left-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur transition hover:bg-white/30" (click)="photoSuivante(-1)" aria-label="Photo précédente"><i class="fa-solid fa-chevron-left"></i></button>
+            <button type="button" class="absolute right-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur transition hover:bg-white/30" (click)="photoSuivante(1)" aria-label="Photo suivante"><i class="fa-solid fa-chevron-right"></i></button>
+            <div class="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
+              @for (p of e.photos; track p; let i = $index) {
+                <button type="button" class="h-2 rounded-full transition-all" [class]="i === photoIndex ? 'w-6 bg-white' : 'w-2 bg-white/50 hover:bg-white/80'" (click)="photoIndex = i" [attr.aria-label]="'Photo ' + (i + 1)"></button>
+              }
+            </div>
+          }
+        } @else {
+          <div class="flex h-full w-full flex-col items-center justify-center gap-2 text-slate-500"><i class="fa-solid fa-hospital text-5xl"></i><span class="text-sm">Aucune photo</span></div>
+        }
+        <button type="button" class="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-slate-900/60 text-white transition hover:bg-slate-900/80" (click)="fiche = null" aria-label="Fermer"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <!-- Informations -->
+      <div class="grid gap-6 overflow-y-auto p-5 sm:p-6 md:grid-cols-2">
+        <div class="space-y-4">
+          <div>
+            <h2 id="titre-fiche-et" class="text-xl font-bold text-slate-900 dark:text-white">{{ e.nom }}</h2>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400"><span class="font-mono">{{ e.code }}</span> · {{ e.type }} · {{ e.secteur }}</p>
+          </div>
+          <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+            <div><dt class="text-xs text-slate-500 dark:text-slate-400">Province</dt><dd class="text-slate-900 dark:text-white">{{ e.province }}</dd></div>
+            <div><dt class="text-xs text-slate-500 dark:text-slate-400">Zone de santé</dt><dd class="text-slate-900 dark:text-white">{{ e.zoneSante }}</dd></div>
+            <div><dt class="text-xs text-slate-500 dark:text-slate-400">Aire de santé</dt><dd class="text-slate-900 dark:text-white">{{ e.aireSante || '—' }}</dd></div>
+            <div><dt class="text-xs text-slate-500 dark:text-slate-400">Lits</dt><dd class="text-slate-900 dark:text-white">{{ e.lits }}</dd></div>
+            <div class="col-span-2"><dt class="text-xs text-slate-500 dark:text-slate-400">Adresse</dt><dd class="text-slate-900 dark:text-white">{{ e.adresse }}</dd></div>
+            <div><dt class="text-xs text-slate-500 dark:text-slate-400">Responsable</dt><dd class="text-slate-900 dark:text-white">{{ e.responsable }}<span class="block text-xs text-slate-500 dark:text-slate-400">{{ e.fonctionResponsable }}</span></dd></div>
+            <div><dt class="text-xs text-slate-500 dark:text-slate-400">Contact</dt><dd>
+              <a [href]="'tel:' + e.telephone.split(' ').join('')" class="block text-brand-700 hover:underline dark:text-brand-300">{{ e.telephone }}</a>
+              @if (e.email) { <a [href]="'mailto:' + e.email" class="block truncate text-xs text-brand-700 hover:underline dark:text-brand-300">{{ e.email }}</a> }
+            </dd></div>
+          </dl>
+          <div class="flex flex-wrap gap-1">
+            @for (s of e.services; track s) { <span class="badge bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">{{ s }}</span> }
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <p class="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+            <span><i class="fa-solid fa-location-dot mr-1 text-rose-500"></i> Coordonnées GPS</span>
+            @if (e.latitude != null) { <span class="font-mono">{{ e.latitude }}, {{ e.longitude }}</span> }
+          </p>
+          @if (carteFiche) {
+            <iframe [src]="carteFiche" title="Carte de l’établissement" loading="lazy" class="h-64 w-full rounded-xl border border-slate-200 dark:border-slate-700"></iframe>
+            <a [href]="lienCarte(e)" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-xs font-medium text-brand-700 hover:underline dark:text-brand-300">
+              Ouvrir dans OpenStreetMap <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            </a>
+          } @else {
+            <div class="flex h-64 items-center justify-center rounded-xl border border-dashed border-slate-300 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">Coordonnées non renseignées</div>
+          }
+        </div>
+      </div>
+
+      @if (peutGerer()) {
+        <div class="flex justify-end gap-2 border-t border-slate-100 px-5 py-3 dark:border-slate-800 sm:px-6">
+          <button type="button" class="btn-secondary" (click)="fiche = null; ouvrir(e)"><i class="fa-solid fa-pen"></i> Modifier</button>
+        </div>
+      }
+    </div>
+  </div>
+}
+
+<!-- Confirmation de suppression -->
+@if (aSupprimer; as e) {
+  <div class="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center" role="alertdialog" aria-modal="true"
+       aria-labelledby="titre-suppression-et" (keydown.escape)="annulerSuppression()">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" (click)="annulerSuppression()"></div>
+    <div class="relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 dark:bg-slate-900 dark:ring-white/10">
+      <div class="h-1.5 bg-gradient-to-r from-rose-500 via-rose-600 to-rose-500"></div>
+      <div class="p-6">
+        <div class="flex items-start gap-4">
+          <div class="flex h-12 w-12 flex-none items-center justify-center rounded-full bg-rose-100 ring-8 ring-rose-50 dark:bg-rose-500/15 dark:ring-rose-500/5">
+            <i class="fa-solid fa-triangle-exclamation text-xl text-rose-600 dark:text-rose-400"></i>
+          </div>
+          <div class="min-w-0 flex-1">
+            <h2 id="titre-suppression-et" class="text-lg font-semibold text-slate-900 dark:text-white">Supprimer cet établissement ?</h2>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Cette action est définitive et ne peut pas être annulée.</p>
+          </div>
+        </div>
+
+        <div class="mt-5 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-800/50">
+          @if (e.photos.length) {
+            <img [src]="e.photos[0]" alt="" class="h-12 w-16 flex-none rounded-lg object-cover">
+          } @else {
+            <span class="flex h-12 w-16 flex-none items-center justify-center rounded-lg bg-slate-200 text-slate-400 dark:bg-slate-700"><i class="fa-solid fa-hospital"></i></span>
+          }
+          <div class="min-w-0">
+            <p class="truncate font-medium text-slate-900 dark:text-white">{{ e.nom }}</p>
+            <p class="truncate text-xs text-slate-500 dark:text-slate-400"><span class="font-mono font-semibold text-slate-700 dark:text-slate-200">{{ e.code }}</span> · {{ e.province }}</p>
+          </div>
+        </div>
+
+        <ul class="mt-4 space-y-1.5 text-sm text-slate-600 dark:text-slate-300">
+          <li class="flex items-start gap-2"><i class="fa-solid fa-images mt-0.5 w-4 text-rose-500"></i> Ses {{ e.photos.length }} photo(s) sont supprimées du stockage.</li>
+          <li class="flex items-start gap-2"><i class="fa-solid fa-users mt-0.5 w-4 text-rose-500"></i> Refusé si du personnel y est encore rattaché.</li>
+          <li class="flex items-start gap-2"><i class="fa-solid fa-lightbulb mt-0.5 w-4 text-amber-500"></i> Pour une fermeture temporaire, préférez la suspension.</li>
+        </ul>
+
+        <div class="mt-5">
+          <label class="label" for="confirm-suppression-et">Tapez <span class="font-mono font-semibold text-rose-600 dark:text-rose-400">{{ e.code }}</span> pour confirmer</label>
+          <input id="confirm-suppression-et" class="input font-mono uppercase" autocomplete="off" [placeholder]="e.code"
+                 [value]="saisieConfirmation" (input)="saisieConfirmation = $any($event.target).value" (keydown.enter)="confirmerSuppression()">
+        </div>
+
+        @if (erreurSuppression) {
+          <p class="mt-4 flex items-start gap-2 rounded-xl bg-rose-50 px-3 py-2.5 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300" role="alert">
+            <i class="fa-solid fa-circle-exclamation mt-0.5"></i> {{ erreurSuppression }}
+          </p>
+        }
+      </div>
+      <div class="flex flex-col-reverse gap-2 border-t border-slate-100 bg-slate-50/60 px-6 py-4 dark:border-slate-800 dark:bg-slate-900/60 sm:flex-row sm:justify-end">
+        <button type="button" class="btn-secondary" (click)="annulerSuppression()" [disabled]="suppression">Annuler</button>
+        <button type="button" class="btn bg-rose-600 text-white shadow-sm hover:bg-rose-700 focus-visible:ring-rose-500 dark:bg-rose-600 dark:hover:bg-rose-500"
+                [disabled]="!suppressionConfirmee || suppression" (click)="confirmerSuppression()">
+          <i class="fa-solid" [class]="suppression ? 'fa-spinner fa-spin' : 'fa-trash'"></i> {{ suppression ? 'Suppression…' : 'Supprimer définitivement' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

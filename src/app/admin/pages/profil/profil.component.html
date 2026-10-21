@@ -1,0 +1,224 @@
+<div class="mx-auto max-w-4xl space-y-6">
+  <!-- En-tête -->
+  <div class="card flex flex-col gap-5 p-5 sm:flex-row sm:items-center">
+    <div class="relative h-24 w-24 flex-none">
+      @if (photoApercu) {
+        <img [src]="photoApercu" alt="Aperçu de la nouvelle photo" class="h-24 w-24 rounded-2xl object-cover ring-2 ring-brand-500">
+      } @else {
+        <app-avatar [photo]="moi.photo" [prenom]="moi.prenom" [nomFamille]="moi.nom" class="h-24 w-24 rounded-2xl text-2xl ring-1 ring-slate-200 dark:ring-slate-700" />
+      }
+      <label class="absolute -bottom-2 -right-2 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-brand-600 text-white shadow-lg ring-4 ring-white transition hover:bg-brand-700 dark:ring-slate-900" title="Changer la photo">
+        <i class="fa-solid fa-camera text-sm"></i>
+        <input type="file" accept="image/jpeg,image/png,image/webp" class="sr-only" (change)="choisirPhoto($event)">
+      </label>
+    </div>
+    <div class="min-w-0 flex-1">
+      <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ categorie === 'Médecin' ? 'Dr ' : '' }}{{ moi.prenom }} {{ moi.nom }}</h1>
+      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ moi.role }} · <span class="font-mono">{{ moi.matricule }}</span> · {{ moi.email }}</p>
+      @if (photoApercu) {
+        <p class="mt-2 text-xs text-brand-700 dark:text-brand-300">
+          <i class="fa-solid fa-circle-info"></i> Nouvelle photo choisie : elle sera envoyée en enregistrant le profil.
+          <button type="button" class="ml-1 font-semibold underline" (click)="annulerPhoto()">Annuler</button>
+        </p>
+      } @else {
+        <p class="mt-2 text-xs" [class]="photoErreur ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500 dark:text-slate-400'">
+          {{ photoErreur || 'Photo de face, fond neutre. JPG, PNG ou WebP, 2 Mo max.' }}
+        </p>
+      }
+    </div>
+  </div>
+
+  <!-- Profil -->
+  <form #f="ngForm" (ngSubmit)="enregistrer(f)" novalidate class="card space-y-7 p-5 sm:p-6">
+    <section>
+      <h2 class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-id-card"></i> Identité</h2>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="label" for="pf-prenom">Prénom <span class="req">*</span></label>
+          <input id="pf-prenom" name="prenom" class="input" [(ngModel)]="form.prenom" #prenom="ngModel" required autocomplete="given-name"
+                 [class.border-rose-400]="prenom.invalid && (prenom.touched || f.submitted)">
+        </div>
+        <div>
+          <label class="label" for="pf-nom">Nom <span class="req">*</span></label>
+          <input id="pf-nom" name="nom" class="input uppercase" [(ngModel)]="form.nom" #nom="ngModel" required autocomplete="family-name"
+                 [class.border-rose-400]="nom.invalid && (nom.touched || f.submitted)">
+        </div>
+        <div>
+          <label class="label" for="pf-postnom">Postnom</label>
+          <input id="pf-postnom" name="postnom" class="input uppercase" [(ngModel)]="form.postnom">
+        </div>
+        <div>
+          <span class="label">Sexe <span class="req">*</span></span>
+          <div class="grid grid-cols-2 gap-2">
+            @for (s of [{ v: 'F', l: 'Femme' }, { v: 'M', l: 'Homme' }]; track s.v) {
+              <button type="button" class="rounded-xl border px-3 py-2.5 text-sm font-medium transition"
+                      [class]="form.sexe === s.v ? 'border-brand-600 bg-brand-50 text-brand-800 dark:border-brand-400 dark:bg-brand-500/10 dark:text-brand-200' : 'border-slate-300 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800'"
+                      (click)="form.sexe = $any(s.v)">{{ s.l }}</button>
+            }
+          </div>
+        </div>
+        <div>
+          <label class="label" for="pf-naissance">Date de naissance <span class="req">*</span></label>
+          <input id="pf-naissance" name="dateNaissance" type="date" class="input" [max]="dateMax" [(ngModel)]="form.dateNaissance" #naiss="ngModel" required
+                 [class.border-rose-400]="naiss.invalid && (naiss.touched || f.submitted)">
+        </div>
+        <div>
+          <label class="label" for="pf-lieu">Lieu de naissance <span class="req">*</span></label>
+          <input id="pf-lieu" name="lieuNaissance" class="input" [(ngModel)]="form.lieuNaissance" #lieu="ngModel" required
+                 [class.border-rose-400]="lieu.invalid && (lieu.touched || f.submitted)">
+        </div>
+        <div>
+          <label class="label" for="pf-nationalite">Nationalité <span class="req">*</span></label>
+          <input id="pf-nationalite" name="nationalite" class="input" [(ngModel)]="form.nationalite" #nat="ngModel" required
+                 [class.border-rose-400]="nat.invalid && (nat.touched || f.submitted)">
+        </div>
+        <div>
+          <label class="label" for="pf-tel">Téléphone <span class="req">*</span></label>
+          <input id="pf-tel" name="telephone" type="tel" inputmode="tel" class="input" placeholder="+243 81 000 0000"
+                 [(ngModel)]="form.telephone" #tel="ngModel" required pattern="[+0-9 ().-]{9,20}"
+                 [class.border-rose-400]="tel.invalid && (tel.touched || f.submitted)">
+        </div>
+        <div>
+          <label class="label" for="pf-piece">Pièce d’identité <span class="req">*</span></label>
+          <select id="pf-piece" name="pieceType" class="input" [(ngModel)]="form.pieceType" required>
+            @for (p of pieces; track p) { <option [ngValue]="p">{{ p }}</option> }
+          </select>
+        </div>
+        <div>
+          <label class="label" for="pf-piece-num">N° de la pièce</label>
+          <input id="pf-piece-num" name="pieceNumero" class="input font-mono uppercase" [(ngModel)]="form.pieceNumero">
+        </div>
+        <div class="sm:col-span-2">
+          <label class="label" for="pf-adresse">Adresse de résidence <span class="req">*</span></label>
+          <input id="pf-adresse" name="adresse" class="input" placeholder="Avenue, numéro, quartier, commune" [(ngModel)]="form.adresse" #adr="ngModel" required autocomplete="street-address"
+                 [class.border-rose-400]="adr.invalid && (adr.touched || f.submitted)">
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-briefcase-medical"></i> Profession</h2>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="label" for="pf-ordre">N° d’inscription à l’Ordre ({{ ordre }})</label>
+          <input id="pf-ordre" name="numeroOrdre" class="input font-mono uppercase" [(ngModel)]="form.numeroOrdre">
+        </div>
+        <div>
+          <label class="label" for="pf-grade">Grade <span class="req">*</span></label>
+          <select id="pf-grade" name="grade" class="input" [(ngModel)]="form.grade" required>
+            @for (g of grades; track g) { <option [value]="g">{{ g }}</option> }
+          </select>
+        </div>
+        <div>
+          <label class="label" for="pf-specialite">Spécialité <span class="req">*</span></label>
+          <select id="pf-specialite" name="specialite" class="input" [(ngModel)]="form.specialite" required>
+            @for (s of specialites; track s) { <option [value]="s">{{ s }}</option> }
+          </select>
+        </div>
+        <div>
+          <span class="label">Rôle dans le système</span>
+          <p class="input bg-slate-50 text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">{{ moi.role }}</p>
+        </div>
+      </div>
+    </section>
+
+    @if (peutChoisirEtablissements()) {
+      <section>
+        <h2 class="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-hospital"></i> Mes établissements</h2>
+        <p class="mb-3 text-xs text-slate-500 dark:text-slate-400">Établissements où vous exercez. Le premier coché est votre établissement principal ; si vous en cochez plusieurs, vous choisirez lequel à chaque connexion.</p>
+        @if (etablissementsActifs().length) {
+          <div class="grid gap-2 sm:grid-cols-2">
+            @for (e of etablissementsActifs(); track e.id) {
+              @let coche = estAffecte(e.id);
+              <button type="button" (click)="basculerEtablissement(e.id)" [attr.aria-pressed]="coche"
+                      class="flex items-center gap-3 rounded-xl border p-2.5 text-left transition"
+                      [class]="coche ? 'border-brand-600 bg-brand-50 dark:border-brand-400 dark:bg-brand-500/10' : 'border-slate-200 hover:border-brand-300 dark:border-slate-700'">
+                @if (e.photos.length) {
+                  <img [src]="e.photos[0]" alt="" class="h-10 w-12 flex-none rounded-lg object-cover">
+                } @else {
+                  <span class="flex h-10 w-12 flex-none items-center justify-center rounded-lg bg-slate-100 text-slate-400 dark:bg-slate-800"><i class="fa-solid fa-hospital"></i></span>
+                }
+                <span class="min-w-0 flex-1">
+                  <span class="block truncate text-sm font-medium text-slate-900 dark:text-white">{{ e.nom }}</span>
+                  <span class="block truncate text-xs text-slate-500 dark:text-slate-400"><span class="font-mono">{{ e.code }}</span> · {{ e.province }}</span>
+                </span>
+                @if (coche && affectations[0].etablissementId === e.id) {
+                  <span class="badge bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"><i class="fa-solid fa-star"></i> Principal</span>
+                }
+                <i class="fa-solid text-lg" [class]="coche ? 'fa-square-check text-brand-600 dark:text-brand-400' : 'fa-square text-slate-300 dark:text-slate-600'"></i>
+              </button>
+            }
+          </div>
+        } @else {
+          <p class="rounded-xl border border-dashed border-slate-300 p-3 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">Aucun établissement actif pour l’instant. Créez-en un dans <span class="font-medium">Établissements sanitaires</span>.</p>
+        }
+      </section>
+    }
+
+    @if (erreur) {
+      <p class="flex items-start gap-2 rounded-xl bg-rose-50 px-3 py-2.5 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300" role="alert">
+        <i class="fa-solid fa-circle-exclamation mt-0.5"></i> {{ erreur }}
+      </p>
+    }
+    @if (succes) {
+      <p class="flex items-start gap-2 rounded-xl bg-accent-50 px-3 py-2.5 text-sm text-accent-800 dark:bg-accent-500/10 dark:text-accent-200" role="status">
+        <i class="fa-solid fa-circle-check mt-0.5"></i> {{ succes }}
+      </p>
+    }
+
+    <div class="flex justify-end">
+      <button type="submit" class="btn-primary" [disabled]="enregistrement">
+        <i class="fa-solid" [class]="enregistrement ? 'fa-spinner fa-spin' : 'fa-floppy-disk'"></i> Enregistrer le profil
+      </button>
+    </div>
+  </form>
+
+  <!-- Mot de passe -->
+  <form #fm="ngForm" (ngSubmit)="changerMotDePasse(fm)" novalidate class="card space-y-4 p-5 sm:p-6">
+    <div class="flex items-center justify-between">
+      <h2 class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-key"></i> Mot de passe</h2>
+      <button type="button" class="text-xs font-semibold text-brand-600 dark:text-brand-400" (click)="afficherMdp = !afficherMdp">
+        <i class="fa-regular" [class]="afficherMdp ? 'fa-eye-slash' : 'fa-eye'"></i> {{ afficherMdp ? 'Masquer' : 'Afficher' }}
+      </button>
+    </div>
+    <div class="grid gap-4 sm:grid-cols-3">
+      <div>
+        <label class="label" for="pf-mdp-actuel">Mot de passe actuel</label>
+        <input id="pf-mdp-actuel" name="actuel" class="input" [type]="afficherMdp ? 'text' : 'password'" [(ngModel)]="mdp.actuel" required autocomplete="current-password">
+      </div>
+      <div>
+        <label class="label" for="pf-mdp-nouveau">Nouveau mot de passe</label>
+        <input id="pf-mdp-nouveau" name="nouveau" class="input" [type]="afficherMdp ? 'text' : 'password'" [(ngModel)]="mdp.nouveau" required autocomplete="new-password">
+      </div>
+      <div>
+        <label class="label" for="pf-mdp-confirmation">Confirmation</label>
+        <input id="pf-mdp-confirmation" name="confirmation" class="input" [type]="afficherMdp ? 'text' : 'password'" [(ngModel)]="mdp.confirmation" required autocomplete="new-password"
+               [class.border-rose-400]="mdp.confirmation && mdp.confirmation !== mdp.nouveau">
+      </div>
+    </div>
+    @if (mdp.nouveau) {
+      <ul class="grid gap-1 text-xs sm:grid-cols-2">
+        @for (r of regles; track r.texte) {
+          <li [class]="r.ok ? 'text-accent-700 dark:text-accent-400' : 'text-slate-500 dark:text-slate-400'">
+            <i class="fa-solid" [class]="r.ok ? 'fa-check' : 'fa-circle text-[6px] align-middle'"></i> {{ r.texte }}
+          </li>
+        }
+      </ul>
+    }
+    @if (erreurMdp) {
+      <p class="flex items-start gap-2 rounded-xl bg-rose-50 px-3 py-2.5 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300" role="alert">
+        <i class="fa-solid fa-circle-exclamation mt-0.5"></i> {{ erreurMdp }}
+      </p>
+    }
+    @if (succesMdp) {
+      <p class="flex items-start gap-2 rounded-xl bg-accent-50 px-3 py-2.5 text-sm text-accent-800 dark:bg-accent-500/10 dark:text-accent-200" role="status">
+        <i class="fa-solid fa-circle-check mt-0.5"></i> {{ succesMdp }}
+      </p>
+    }
+    <div class="flex justify-end">
+      <button type="submit" class="btn-secondary" [disabled]="changementMdp || !mdpValide || !mdp.actuel">
+        <i class="fa-solid" [class]="changementMdp ? 'fa-spinner fa-spin' : 'fa-lock'"></i> Changer le mot de passe
+      </button>
+    </div>
+  </form>
+</div>

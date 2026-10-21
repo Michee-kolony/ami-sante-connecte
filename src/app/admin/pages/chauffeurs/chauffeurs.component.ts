@@ -2,11 +2,15 @@ import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { AvatarComponent } from '../../components/avatar.component';
 import { Chauffeur, FlotteService, StatutChauffeur, joursAvant } from '../../data/flotte.service';
+import { genererMotDePasse, reglesMotDePasse } from '../../../shared/mot-de-passe';
 
 const PHOTO_MAX_OCTETS = 2 * 1024 * 1024;
 
 function formulaireVide() {
-  return { prenom: '', nom: '', postnom: '', telephone: '', permis: '', permisExpire: '', ambulanceId: null as string | null };
+  return {
+    prenom: '', nom: '', postnom: '', telephone: '', permis: '', permisExpire: '', ambulanceId: null as string | null,
+    motDePasse: '', confirmation: '', doitChangerMotDePasse: true,
+  };
 }
 
 @Component({
@@ -65,6 +69,47 @@ export class ChauffeursComponent implements OnDestroy {
   /** Ambulances pouvant recevoir le nouveau chauffeur (pas en mission). */
   ambulancesAffectables = computed(() => this.flotte.ambulances().filter(a => a.statut !== 'En mission'));
 
+  afficherMdp = false;
+  enregistrement = false;
+  /** Mot de passe temporaire affiché une seule fois après une réinitialisation. */
+  identifiants: { nom: string; matricule: string; motDePasse: string } | null = null;
+
+  get matriculePropose(): string {
+    return this.flotte.prochainMatricule();
+  }
+
+  get regles() {
+    return reglesMotDePasse(this.form.motDePasse);
+  }
+
+  get force(): number {
+    return this.regles.filter(r => r.ok).length;
+  }
+
+  get motDePasseValide(): boolean {
+    return this.force === this.regles.length;
+  }
+
+  get confirmationOk(): boolean {
+    return this.form.confirmation.length > 0 && this.form.confirmation === this.form.motDePasse;
+  }
+
+  genererMotDePasse(): void {
+    this.form.motDePasse = this.form.confirmation = genererMotDePasse();
+    this.afficherMdp = true;
+  }
+
+  /** Nouveau mot de passe temporaire, à remettre au chauffeur en personne. */
+  async reinitialiser(c: Chauffeur): Promise<void> {
+    const motDePasse = genererMotDePasse();
+    await this.flotte.definirMotDePasse(c.id, motDePasse, true);
+    this.identifiants = { nom: `${c.prenom} ${c.nom}`, matricule: c.matricule, motDePasse };
+  }
+
+  copier(texte: string): void {
+    navigator.clipboard?.writeText(texte);
+  }
+
   get permisExiste(): boolean {
     const p = this.form.permis.trim().toUpperCase();
     return !!p && this.chauffeurs().some(c => c.permis === p);
@@ -73,6 +118,7 @@ export class ChauffeursComponent implements OnDestroy {
   ouvrir(): void {
     this.form = formulaireVide();
     this.retirerPhoto();
+    this.afficherMdp = false;
     this.panneauOuvert = true;
     document.body.style.overflow = 'hidden';
   }
@@ -103,9 +149,11 @@ export class ChauffeursComponent implements OnDestroy {
     this.photoApercu = null;
   }
 
-  enregistrer(f: NgForm): void {
-    if (f.invalid || this.permisExiste) return;
-    const c = this.flotte.ajouterChauffeur({
+  async enregistrer(f: NgForm): Promise<void> {
+    if (f.invalid || this.permisExiste || !this.motDePasseValide || !this.confirmationOk || this.enregistrement) return;
+    this.enregistrement = true;
+    // TODO serveur : envoyer { ...chauffeur, motDePasse } en HTTPS ; le serveur crée le compte et hache le mot de passe.
+    const c = await this.flotte.ajouterChauffeur({
       prenom: this.form.prenom.trim(),
       nom: this.form.nom.trim().toUpperCase(),
       postnom: this.form.postnom.trim().toUpperCase(),
@@ -113,11 +161,13 @@ export class ChauffeursComponent implements OnDestroy {
       photo: this.photoApercu ?? undefined,
       permis: this.form.permis.trim().toUpperCase(),
       permisExpire: this.form.permisExpire,
-    });
+      doitChangerMotDePasse: this.form.doitChangerMotDePasse,
+    }, this.form.motDePasse);
+    this.enregistrement = false;
     if (this.form.ambulanceId) this.flotte.affecterChauffeur(this.form.ambulanceId, c.id);
     this.photoApercu = null; // l'aperçu appartient désormais au chauffeur créé
     this.fermer();
-    this.notifier(`${c.prenom} ${c.nom} (${c.matricule}) a été ajouté aux chauffeurs.`);
+    this.notifier(`Compte créé pour ${c.prenom} ${c.nom}. Identifiant de l’application ambulance : ${c.matricule}. Remettez-lui son mot de passe en personne.`);
   }
 
   private notifier(message: string): void {

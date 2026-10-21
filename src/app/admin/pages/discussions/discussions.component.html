@@ -1,0 +1,203 @@
+<div class="mx-auto max-w-7xl space-y-4">
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Discussions</h1>
+      <p class="mt-1 flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
+        <i class="fa-solid fa-lock text-accent-600 dark:text-accent-400"></i>
+        Messagerie privée entre médecins et infirmier·ères · messages chiffrés, visibles uniquement par les participants.
+      </p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      @if (permissionNotifications === 'default') {
+        <button type="button" class="btn-secondary" (click)="activerNotifications()" title="Être prévenu même quand l’onglet est en arrière-plan">
+          <i class="fa-solid fa-bell"></i> Activer les notifications
+        </button>
+      }
+      <button type="button" class="btn-primary" (click)="ouvrirAnnuaire()"><i class="fa-solid fa-pen-to-square"></i> Nouvelle discussion</button>
+    </div>
+  </div>
+
+  <div class="card grid h-[calc(100vh-13rem)] min-h-[30rem] overflow-hidden md:grid-cols-[20rem_1fr]">
+    <!-- Liste des discussions -->
+    <aside class="min-h-0 flex-col border-slate-100 dark:border-slate-800 md:border-r" [class]="discussionOuverte() ? 'hidden md:flex' : 'flex'">
+      <div class="border-b border-slate-100 p-3 dark:border-slate-800">
+        <div class="relative">
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
+          <input class="input py-2 pl-9 text-sm" placeholder="Rechercher une discussion" [ngModel]="recherche()" (ngModelChange)="recherche.set($event)" name="recherche">
+        </div>
+      </div>
+      <ul class="min-h-0 flex-1 divide-y divide-slate-100 overflow-y-auto dark:divide-slate-800">
+        @if (!service.charge()) {
+          @for (i of [1, 2, 3, 4]; track i) {
+            <li class="flex items-center gap-3 px-4 py-3" aria-hidden="true"><div class="skeleton h-11 w-11 rounded-full"></div><div class="flex-1 space-y-1.5"><div class="skeleton h-3.5 w-28"></div><div class="skeleton h-3 w-40"></div></div></li>
+          }
+        }
+        @for (d of liste(); track d.id) {
+          @let actif = service.ouverte() === d.id;
+          <li>
+            <button type="button" (click)="ouvrir(d)" class="flex w-full items-center gap-3 px-4 py-3 text-left transition"
+                    [class]="actif ? 'bg-brand-50 dark:bg-brand-500/10' : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'">
+              <span class="relative flex-none">
+                <app-avatar [photo]="d.interlocuteur?.photo ?? undefined" [prenom]="d.interlocuteur?.prenom ?? '?'" [nomFamille]="d.interlocuteur?.nom ?? ''" class="h-11 w-11 rounded-full text-xs" />
+                @if (d.interlocuteur && presence.estEnLigne(d.interlocuteur.id)) {
+                  <span class="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-accent-500 ring-2 ring-white dark:ring-slate-900" title="En ligne"></span>
+                }
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="flex items-baseline justify-between gap-2">
+                  <span class="truncate text-sm font-semibold text-slate-900 dark:text-white">{{ nom(d.interlocuteur) }}</span>
+                  <span class="flex-none text-[11px]" [class]="d.nonLus ? 'font-semibold text-brand-600 dark:text-brand-400' : 'text-slate-400'">{{ dateCourte(d.dernierMessageLe) }}</span>
+                </span>
+                <span class="flex items-center justify-between gap-2">
+                  @if (service.enTrainDecrire().has(d.id)) {
+                    <span class="truncate text-xs italic text-accent-600 dark:text-accent-400">en train d’écrire…</span>
+                  } @else {
+                    <span class="truncate text-xs" [class]="d.nonLus ? 'font-medium text-slate-800 dark:text-slate-100' : 'text-slate-500 dark:text-slate-400'">{{ apercu(d) }}</span>
+                  }
+                  @if (d.nonLus) { <span class="flex h-5 min-w-5 flex-none items-center justify-center rounded-full bg-brand-600 px-1.5 text-[11px] font-bold text-white">{{ d.nonLus }}</span> }
+                </span>
+              </span>
+            </button>
+          </li>
+        } @empty {
+          @if (service.charge()) {
+            <li class="flex flex-col items-center gap-3 px-6 py-12 text-center">
+              <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800"><i class="fa-regular fa-comments text-xl"></i></span>
+              <p class="text-sm text-slate-500 dark:text-slate-400">{{ recherche() ? 'Aucune discussion trouvée.' : 'Aucune discussion pour l’instant.' }}</p>
+              @if (!recherche()) { <button type="button" class="btn-secondary py-2 text-xs" (click)="ouvrirAnnuaire()"><i class="fa-solid fa-plus"></i> Écrire à un collègue</button> }
+            </li>
+          }
+        }
+      </ul>
+    </aside>
+
+    <!-- Fil de la discussion -->
+    <section class="min-h-0 flex-col" [class]="discussionOuverte() ? 'flex' : 'hidden md:flex'">
+      @if (discussionOuverte(); as d) {
+        <header class="flex items-center gap-3 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+          <button type="button" class="btn-ghost px-2 md:hidden" (click)="fermer()" aria-label="Retour aux discussions"><i class="fa-solid fa-arrow-left"></i></button>
+          <span class="relative flex-none">
+            <app-avatar [photo]="d.interlocuteur?.photo ?? undefined" [prenom]="d.interlocuteur?.prenom ?? '?'" [nomFamille]="d.interlocuteur?.nom ?? ''" class="h-10 w-10 rounded-full text-xs" />
+            @if (d.interlocuteur && presence.estEnLigne(d.interlocuteur.id)) {
+              <span class="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-accent-500 ring-2 ring-white dark:ring-slate-900"></span>
+            }
+          </span>
+          <div class="min-w-0 flex-1">
+            <p class="truncate font-semibold text-slate-900 dark:text-white">{{ nom(d.interlocuteur) }}</p>
+            <p class="truncate text-xs" [class]="service.enTrainDecrire().has(d.id) ? 'italic text-accent-600 dark:text-accent-400' : 'text-slate-500 dark:text-slate-400'">
+              @if (service.enTrainDecrire().has(d.id)) { en train d’écrire… }
+              @else { {{ d.interlocuteur?.role }} · {{ d.interlocuteur && presence.estEnLigne(d.interlocuteur.id) ? 'en ligne' : 'hors ligne' }} }
+            </p>
+          </div>
+          <span class="hidden items-center gap-1 rounded-full bg-accent-50 px-2.5 py-1 text-[11px] font-medium text-accent-700 dark:bg-accent-500/10 dark:text-accent-300 sm:flex"><i class="fa-solid fa-lock"></i> Chiffrée</span>
+        </header>
+
+        <div #fil class="min-h-0 flex-1 space-y-4 overflow-y-auto bg-slate-50/70 px-4 py-4 dark:bg-slate-950/40">
+          @if (chargementFil) {
+            <div class="space-y-3" aria-hidden="true">
+              @for (c of ['w-48', 'ml-auto w-56', 'w-40', 'ml-auto w-32']; track $index) { <div class="skeleton h-10 rounded-2xl {{ c }}"></div> }
+            </div>
+          } @else {
+            @if (service.plusAnciens()[d.id]) {
+              <div class="text-center"><button type="button" class="btn-ghost py-1.5 text-xs" (click)="plusAnciens()"><i class="fa-solid fa-clock-rotate-left"></i> Messages précédents</button></div>
+            }
+            @for (g of groupes(); track g.jour) {
+              <div class="flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                <span class="h-px flex-1 bg-slate-200 dark:bg-slate-800"></span>{{ g.libelle }}<span class="h-px flex-1 bg-slate-200 dark:bg-slate-800"></span>
+              </div>
+              @for (m of g.messages; track m.id) {
+                @let mien = m.auteurId === moi;
+                <div class="flex" [class.justify-end]="mien">
+                  <div class="max-w-[85%] sm:max-w-[70%]">
+                    <div class="whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2 text-sm shadow-sm"
+                         [class]="mien ? 'rounded-br-md bg-brand-600 text-white' : 'rounded-bl-md bg-white text-slate-800 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-700'"
+                         [class.opacity-60]="m.etat === 'envoi'">{{ m.texte }}</div>
+                    <p class="mt-1 flex items-center gap-1 px-1 text-[11px] text-slate-400" [class.justify-end]="mien">
+                      {{ heure(m.envoyeLe) }}
+                      @if (mien) {
+                        @if (m.etat === 'envoi') { <i class="fa-regular fa-clock" title="Envoi…"></i> }
+                        @else if (m.etat === 'echec') {
+                          <span class="text-rose-500"><i class="fa-solid fa-circle-exclamation"></i> Non envoyé</span>
+                          <button type="button" class="font-semibold text-rose-600 underline" (click)="renvoyer(m)">Réessayer</button>
+                        } @else if (estLu(m, d)) { <i class="fa-solid fa-check-double text-brand-500" title="Lu"></i> }
+                        @else { <i class="fa-solid fa-check" title="Envoyé"></i> }
+                      }
+                    </p>
+                  </div>
+                </div>
+              }
+            } @empty {
+              <div class="flex h-full flex-col items-center justify-center gap-2 text-center text-sm text-slate-500 dark:text-slate-400">
+                <i class="fa-solid fa-shield-halved text-2xl text-accent-500"></i>
+                Début de votre discussion avec {{ nom(d.interlocuteur) }}.<br>
+                <span class="text-xs">Ne partagez que les informations nécessaires à la prise en charge.</span>
+              </div>
+            }
+          }
+        </div>
+
+        <footer class="border-t border-slate-100 p-3 dark:border-slate-800">
+          @if (erreur) {
+            <p class="mb-2 text-xs text-rose-600 dark:text-rose-400" role="alert"><i class="fa-solid fa-circle-exclamation mr-1"></i>{{ erreur }}</p>
+          }
+          <form class="flex items-end gap-2" (ngSubmit)="envoyer()">
+            <textarea #saisie rows="1" name="texte" class="input max-h-32 min-h-[2.75rem] flex-1 resize-none py-2.5" placeholder="Écrire un message…"
+                      [(ngModel)]="texte" (keydown)="surTouche($event)" (input)="surSaisie()" [maxlength]="TAILLE_MAX"
+                      [disabled]="d.interlocuteur?.statut !== 'Actif'" aria-label="Message"></textarea>
+            <button type="submit" class="btn-primary h-11 w-11 flex-none p-0" [disabled]="!texte.trim() || d.interlocuteur?.statut !== 'Actif'" aria-label="Envoyer">
+              <i class="fa-solid fa-paper-plane"></i>
+            </button>
+          </form>
+          <p class="mt-1.5 flex justify-between px-1 text-[11px] text-slate-400">
+            <span>Entrée pour envoyer · Maj + Entrée pour aller à la ligne</span>
+            @if (texte.length > TAILLE_MAX - 200) { <span [class.text-rose-500]="texte.length >= TAILLE_MAX">{{ texte.length }} / {{ TAILLE_MAX }}</span> }
+          </p>
+        </footer>
+      } @else {
+        <div class="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
+          <span class="flex h-16 w-16 items-center justify-center rounded-3xl bg-brand-50 text-2xl text-brand-600 dark:bg-brand-500/10 dark:text-brand-400"><i class="fa-regular fa-comments"></i></span>
+          <p class="font-semibold text-slate-900 dark:text-white">Sélectionnez une discussion</p>
+          <p class="max-w-sm text-sm text-slate-500 dark:text-slate-400">Échangez en temps réel avec vos collègues médecins et infirmier·ères. Les messages sont chiffrés et seuls les deux participants peuvent les lire.</p>
+        </div>
+      }
+    </section>
+  </div>
+</div>
+
+<!-- Nouvelle discussion : annuaire du personnel -->
+@if (annuaireOuvert) {
+  <div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="titre-annuaire">
+    <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" (click)="annuaireOuvert = false"></div>
+    <div class="relative flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl dark:bg-slate-900 sm:rounded-2xl">
+      <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+        <h2 id="titre-annuaire" class="font-semibold text-slate-900 dark:text-white">Nouvelle discussion</h2>
+        <button type="button" class="btn-ghost px-2.5" (click)="annuaireOuvert = false" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="border-b border-slate-100 p-3 dark:border-slate-800">
+        <input class="input py-2 text-sm" placeholder="Nom, rôle ou matricule" [(ngModel)]="rechercheAnnuaire" name="rechercheAnnuaire" autofocus>
+      </div>
+      <ul class="min-h-0 flex-1 divide-y divide-slate-100 overflow-y-auto dark:divide-slate-800">
+        @if (chargementAnnuaire) {
+          @for (i of [1, 2, 3]; track i) { <li class="flex items-center gap-3 px-5 py-3" aria-hidden="true"><div class="skeleton h-10 w-10 rounded-full"></div><div class="flex-1 space-y-1.5"><div class="skeleton h-3.5 w-32"></div><div class="skeleton h-3 w-24"></div></div></li> }
+        }
+        @for (s of annuaireFiltre; track s.id) {
+          <li>
+            <button type="button" class="flex w-full items-center gap-3 px-5 py-3 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/40" (click)="demarrerAvec(s.id)">
+              <span class="relative flex-none">
+                <app-avatar [photo]="s.photo ?? undefined" [prenom]="s.prenom" [nomFamille]="s.nom" class="h-10 w-10 rounded-full text-xs" />
+                @if (presence.estEnLigne(s.id)) { <span class="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-accent-500 ring-2 ring-white dark:ring-slate-900"></span> }
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="block truncate text-sm font-semibold text-slate-900 dark:text-white">{{ nom(s) }}</span>
+                <span class="block truncate text-xs text-slate-500 dark:text-slate-400">{{ s.role }} · <span class="font-mono">{{ s.matricule }}</span></span>
+              </span>
+              @if (presence.estEnLigne(s.id)) { <span class="text-[11px] font-medium text-accent-600 dark:text-accent-400">en ligne</span> }
+            </button>
+          </li>
+        } @empty {
+          @if (!chargementAnnuaire) { <li class="px-5 py-8 text-center text-sm text-slate-500 dark:text-slate-400">Aucun soignant trouvé.</li> }
+        }
+      </ul>
+    </div>
+  </div>
+}

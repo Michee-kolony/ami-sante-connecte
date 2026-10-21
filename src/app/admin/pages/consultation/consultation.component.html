@@ -1,0 +1,290 @@
+<div class="mx-auto max-w-6xl space-y-6">
+  @if (chargement) {
+    <p class="sr-only" role="status">Chargement…</p>
+    <div class="space-y-6" aria-hidden="true">
+      <div class="skeleton h-4 w-64"></div>
+      <div class="card space-y-3 p-6"><div class="skeleton h-7 w-72"></div><div class="skeleton h-4 w-96 max-w-full"></div></div>
+      <div class="grid gap-6 lg:grid-cols-3">
+        <div class="card space-y-4 p-6 lg:col-span-2">@for (i of [1, 2, 3, 4]; track i) { <div class="space-y-2"><div class="skeleton h-3 w-28"></div><div class="skeleton h-10 w-full rounded-xl"></div></div> }</div>
+        <div class="card space-y-3 p-5"><div class="skeleton h-4 w-32"></div><div class="skeleton h-8 w-28"></div></div>
+      </div>
+    </div>
+  } @else if (!dossier) {
+    <div class="card flex flex-col items-center gap-3 p-10 text-center">
+      <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50 text-rose-500 dark:bg-rose-500/10"><i class="fa-solid fa-lock text-xl"></i></div>
+      <p class="font-semibold text-slate-900 dark:text-white">Consultation inaccessible</p>
+      <p class="max-w-md text-sm text-slate-500 dark:text-slate-400">{{ erreur || 'Introuvable.' }}</p>
+      <a routerLink="/admin/patientes" class="btn-secondary"><i class="fa-solid fa-arrow-left"></i> Patientes</a>
+    </div>
+  } @else {
+    @let p = dossier.patiente;
+    @let c = consultation;
+    <nav class="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+      <a routerLink="/admin/patientes" class="hover:text-brand-700 dark:hover:text-brand-300">Patientes</a>
+      <i class="fa-solid fa-chevron-right text-[9px]"></i>
+      <a [routerLink]="['/admin/patientes', p.numero]" class="hover:text-brand-700 dark:hover:text-brand-300">{{ p.prenom }} {{ p.nom }} · <span class="font-mono">{{ p.numero }}</span></a>
+      <i class="fa-solid fa-chevron-right text-[9px]"></i>
+      <span class="text-slate-700 dark:text-slate-200">{{ c ? form.type : 'Nouvelle consultation' }}</span>
+    </nav>
+
+    <!-- En-tête -->
+    <div class="card flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
+      <div class="flex h-12 w-12 flex-none items-center justify-center rounded-2xl bg-brand-50 text-xl text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"><i class="fa-solid fa-stethoscope"></i></div>
+      <div class="min-w-0 flex-1">
+        <h1 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">{{ form.type }}</h1>
+        <p class="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+          {{ p.prenom }} {{ p.nom }} {{ p.postnom }} · {{ p.age != null ? p.age + ' ans' : '' }}
+          @if (grossesse) { · grossesse n° {{ grossesse.numero }} }
+        </p>
+        <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">
+          <i class="fa-solid fa-user-doctor mr-1 text-slate-400"></i>
+          @if (c) { Réalisée par <strong>{{ dr(c.auteur.nom, c.auteur.role) }}</strong> ({{ c.auteur.role }}) } @else { Auteur : <strong>vous</strong> (enregistré par le serveur depuis votre session) }
+        </p>
+      </div>
+      <div class="flex flex-col items-start gap-2 sm:items-end">
+        @if (c) {
+          <span class="badge py-1" [class]="c.statut === 'Finalisée' ? 'bg-accent-50 text-accent-700 ring-1 ring-accent-200 dark:bg-accent-500/10 dark:text-accent-300' : c.statut === 'Brouillon' ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800'">
+            <i class="fa-solid" [class]="c.statut === 'Finalisée' ? 'fa-lock' : c.statut === 'Brouillon' ? 'fa-pen' : 'fa-ban'"></i> {{ c.statut }}
+          </span>
+          <span class="text-xs text-slate-400">Créée le {{ dateHeure(c.createdAt) }}{{ c.finaliseeLe ? ' · finalisée le ' + dateHeure(c.finaliseeLe) : '' }}</span>
+        } @else {
+          <span class="badge bg-slate-100 py-1 text-slate-600 dark:bg-slate-800 dark:text-slate-300"><i class="fa-solid fa-file-circle-plus"></i> Nouvelle</span>
+        }
+      </div>
+    </div>
+
+    @if (c?.statut === 'Annulée' && c?.annulation) {
+      <div class="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200">
+        <i class="fa-solid fa-ban mt-0.5"></i>
+        <span>Annulée le {{ dateHeure(c!.annulation!.le) }} par {{ dr(c!.annulation!.par.nom, c!.annulation!.par.role) }} — motif : « {{ c!.annulation!.motif }} ». Conservée dans l’historique.</span>
+      </div>
+    }
+    @if (c && c.statut === 'Brouillon' && !estAuteur) {
+      <div class="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+        <i class="fa-solid fa-lock mt-0.5"></i><span>Brouillon de {{ dr(c.auteur.nom, c.auteur.role) }} : seul son auteur peut le compléter ou le finaliser.</span>
+      </div>
+    }
+    @if (erreur) {
+      <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200" role="alert"><i class="fa-solid fa-circle-exclamation mr-1"></i>{{ erreur }}</div>
+    }
+    @if (erreurEnvoi) {
+      <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200" role="alert"><i class="fa-solid fa-circle-exclamation mr-1"></i>{{ erreurEnvoi }}</div>
+    }
+    @if (notification) {
+      <div class="flex items-start gap-3 rounded-xl border border-accent-200 bg-accent-50 px-4 py-3 text-sm text-accent-900 dark:border-accent-500/30 dark:bg-accent-500/10 dark:text-accent-200" role="status">
+        <i class="fa-solid fa-circle-check mt-0.5"></i><span class="flex-1">{{ notification }}</span>
+        <button type="button" (click)="notification = ''" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    }
+
+    <div class="grid gap-6 lg:grid-cols-3">
+      <!-- Formulaire / lecture -->
+      <fieldset class="space-y-6 lg:col-span-2" [disabled]="!modifiable">
+        <section class="card p-5 sm:p-6">
+          <h2 class="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-clipboard-list"></i> Visite</h2>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label class="label" for="c-type">Type</label>
+              <select id="c-type" class="input" [(ngModel)]="form.type" name="type">
+                @for (t of types; track t) { <option [value]="t" [disabled]="t === 'Première consultation prénatale' && premiereDejaFaite">{{ t }}</option> }
+              </select>
+            </div>
+            <div>
+              <label class="label" for="c-date">Date et heure réelles <span class="req">*</span></label>
+              <input id="c-date" type="datetime-local" class="input" [class.border-rose-400]="dateFuture" [(ngModel)]="form.date" name="date">
+            </div>
+            <div class="sm:col-span-2"><label class="label" for="c-motif">Motif</label><input id="c-motif" class="input" [(ngModel)]="form.motif" name="motif" placeholder="ex. CPN 2, contrôle tensionnel…"></div>
+            <div class="sm:col-span-2"><label class="label" for="c-sympt">Symptômes et données rapportées</label><textarea id="c-sympt" rows="2" class="input" [(ngModel)]="form.symptomes" name="symptomes"></textarea></div>
+          </div>
+        </section>
+
+        <section class="card p-5 sm:p-6">
+          <h2 class="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-heart-pulse"></i> Constantes</h2>
+          <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <div><label class="label text-xs" for="k-poids">Poids (kg)</label><input id="k-poids" type="number" step="0.1" class="input" [(ngModel)]="form.constantes.poidsKg" name="poids"></div>
+            <div class="col-span-2 sm:col-span-1">
+              <label class="label text-xs" for="k-tas">TA (mmHg)</label>
+              <div class="flex items-center gap-1">
+                <input id="k-tas" type="number" class="input px-2" [(ngModel)]="form.constantes.taSystolique" name="tas" placeholder="sys" aria-label="Systolique">
+                <span class="text-slate-400">/</span>
+                <input type="number" class="input px-2" [(ngModel)]="form.constantes.taDiastolique" name="tad" placeholder="dia" aria-label="Diastolique">
+              </div>
+            </div>
+            <div><label class="label text-xs" for="k-temp">Température (°C)</label><input id="k-temp" type="number" step="0.1" class="input" [(ngModel)]="form.constantes.temperature" name="temp"></div>
+            <div><label class="label text-xs" for="k-pouls">Pouls (bpm)</label><input id="k-pouls" type="number" class="input" [(ngModel)]="form.constantes.pouls" name="pouls"></div>
+            <div><label class="label text-xs" for="k-hu">Hauteur utérine (cm)</label><input id="k-hu" type="number" class="input" [(ngModel)]="form.constantes.hauteurUterineCm" name="hu"></div>
+            <div><label class="label text-xs" for="k-bcf">BCF (bpm)</label><input id="k-bcf" type="number" class="input" [(ngModel)]="form.constantes.bcf" name="bcf"></div>
+          </div>
+          @if (reperes.length) {
+            <ul class="mt-4 space-y-1.5 rounded-xl bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
+              @for (r of reperes; track r) { <li><i class="fa-solid fa-triangle-exclamation mr-1.5 text-amber-500"></i>{{ r }}</li> }
+              <li class="text-xs text-amber-700 dark:text-amber-300">Repères d’attention uniquement : aucune conclusion n’est tirée automatiquement.</li>
+            </ul>
+          }
+        </section>
+
+        <section class="card p-5 sm:p-6">
+          <h2 class="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-user-doctor"></i> Examen et évaluation</h2>
+          <div class="space-y-4">
+            <div><label class="label" for="c-exam">Examen clinique</label><textarea id="c-exam" rows="3" class="input" [(ngModel)]="form.examenClinique" name="examen"></textarea></div>
+            <div><label class="label" for="c-eval">Évaluation clinique</label><textarea id="c-eval" rows="2" class="input" [(ngModel)]="form.evaluation" name="evaluation"></textarea></div>
+            <div>
+              <span class="label">Facteurs de risque retenus</span>
+              <div class="flex flex-wrap gap-2">
+                @for (f of facteursProposes; track f) {
+                  <button type="button" class="rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-default"
+                          [class]="form.facteursRisque.includes(f) ? 'border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-300' : 'border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300'"
+                          (click)="basculer('facteursRisque', f)">{{ f }}</button>
+                }
+              </div>
+            </div>
+            <div><label class="label" for="c-dec">Décisions</label><textarea id="c-dec" rows="2" class="input" [(ngModel)]="form.decisions" name="decisions"></textarea></div>
+          </div>
+        </section>
+
+        <section class="card p-5 sm:p-6">
+          <h2 class="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-flask"></i> Examens</h2>
+          <span class="label">Examens demandés</span>
+          <div class="flex flex-wrap gap-2">
+            @for (e of examensProposes; track e) {
+              <button type="button" class="rounded-full border px-3 py-1.5 text-xs font-semibold transition"
+                      [class]="form.examensDemandes.includes(e) ? 'border-brand-300 bg-brand-50 text-brand-700 dark:border-brand-500/40 dark:bg-brand-500/10 dark:text-brand-300' : 'border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300'"
+                      (click)="basculer('examensDemandes', e)">{{ e }}</button>
+            }
+            @for (e of form.examensDemandes; track e) {
+              @if (!examensProposes.includes(e)) {
+                <button type="button" class="rounded-full border border-brand-300 bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 dark:border-brand-500/40 dark:bg-brand-500/10 dark:text-brand-300" (click)="basculer('examensDemandes', e)">{{ e }} <i class="fa-solid fa-xmark ml-1"></i></button>
+              }
+            }
+          </div>
+          @if (modifiable) {
+            <div class="mt-3 flex gap-2">
+              <input class="input" [(ngModel)]="nouvelExamen" name="nouvelExamen" placeholder="Autre examen" (keydown.enter)="$event.preventDefault(); ajouterExamen()">
+              <button type="button" class="btn-secondary" (click)="ajouterExamen()"><i class="fa-solid fa-plus"></i></button>
+            </div>
+          }
+          <div class="mt-4"><label class="label" for="c-res">Résultats revus</label><textarea id="c-res" rows="2" class="input" [(ngModel)]="form.resultatsRevus" name="resultats" placeholder="Résultats reçus et revus lors de cette visite"></textarea></div>
+        </section>
+
+        <section class="card p-5 sm:p-6">
+          <div class="mb-4 flex items-center justify-between">
+            <h2 class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-prescription-bottle-medical"></i> Traitements prescrits</h2>
+            @if (modifiable) { <button type="button" class="btn-ghost px-2.5 py-1.5 text-xs" (click)="ajouterTraitement()"><i class="fa-solid fa-plus"></i> Ajouter</button> }
+          </div>
+          @for (t of form.traitements; track t; let i = $index) {
+            <div class="mb-3 grid gap-2 rounded-xl border border-slate-200 p-3 dark:border-slate-800 sm:grid-cols-6">
+              <input class="input sm:col-span-2" [(ngModel)]="t.produit" [name]="'tp' + i" placeholder="Produit *" aria-label="Produit">
+              <input class="input" [(ngModel)]="t.dose" [name]="'td' + i" placeholder="Dose" aria-label="Dose">
+              <input class="input" [(ngModel)]="t.voie" [name]="'tv' + i" placeholder="Voie" aria-label="Voie">
+              <input class="input" [(ngModel)]="t.frequence" [name]="'tf' + i" placeholder="Fréquence" aria-label="Fréquence">
+              <input class="input" [(ngModel)]="t.duree" [name]="'tdu' + i" placeholder="Durée" aria-label="Durée">
+              <input class="input sm:col-span-5" [(ngModel)]="t.indication" [name]="'ti' + i" placeholder="Indication / conseils" aria-label="Indication">
+              @if (modifiable) { <button type="button" class="btn-ghost text-rose-600" (click)="retirerTraitement(t)" aria-label="Retirer"><i class="fa-solid fa-trash"></i></button> }
+            </div>
+          } @empty {
+            <p class="text-sm text-slate-500 dark:text-slate-400">Aucun traitement prescrit.</p>
+          }
+          <p class="mt-2 text-[11px] text-slate-400"><i class="fa-solid fa-lock mr-1"></i>Saisis et validés par le médecin : aucune prescription automatique.</p>
+        </section>
+
+        <section class="card p-5 sm:p-6">
+          <h2 class="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-route"></i> Conseils, orientation et suite</h2>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div class="sm:col-span-2"><label class="label" for="c-cons">Conseils donnés</label><textarea id="c-cons" rows="2" class="input" [(ngModel)]="form.conseils" name="conseils" placeholder="Supplémentation, prévention du paludisme, signes de danger expliqués…"></textarea></div>
+            <div class="sm:col-span-2"><label class="label" for="c-ori">Orientation</label><input id="c-ori" class="input" [(ngModel)]="form.orientation" name="orientation"></div>
+            <div><label class="label" for="c-rdv">Prochain rendez-vous recommandé</label><input id="c-rdv" type="datetime-local" class="input" [(ngModel)]="form.prochainRdv.date" name="rdvDate"></div>
+            <div><label class="label" for="c-rdvm">Motif</label><input id="c-rdvm" class="input" [(ngModel)]="form.prochainRdv.motif" name="rdvMotif"></div>
+            <div class="sm:col-span-2"><label class="label" for="c-rdvc">Consignes publiables à la patiente</label><input id="c-rdvc" class="input" [(ngModel)]="form.prochainRdv.consignes" name="rdvConsignes" placeholder="Pas de détail médical sensible"></div>
+          </div>
+          <p class="hint">Le rendez-vous est ajouté à l’agenda à la finalisation.</p>
+        </section>
+      </fieldset>
+
+      <!-- Panneau latéral -->
+      <aside class="space-y-4 lg:sticky lg:top-24 lg:self-start">
+        <div class="card overflow-hidden">
+          <div class="bg-gradient-to-br from-brand-700 to-brand-900 p-5 text-white">
+            <p class="text-xs font-semibold uppercase tracking-wider text-brand-200">Âge gestationnel à la visite</p>
+            <p class="mt-2 text-3xl font-bold tracking-tight">{{ ag(agALaDate) }}</p>
+            <p class="mt-1 text-xs text-brand-200">
+              @if (grossesse?.datation) { DPA {{ jour(grossesse!.datation!.dpa) }} · {{ grossesse!.datation!.methode }} } @else { Grossesse non datée — à dater depuis le dossier }
+            </p>
+          </div>
+          @if (dossier.premiereConsultation; as pc) {
+            <p class="p-4 text-xs text-slate-500 dark:text-slate-400"><i class="fa-solid fa-user-doctor mr-1"></i>Première consultation : {{ dr(pc.medecin.nom, pc.medecin.role) }}, {{ dateHeure(pc.date) }}</p>
+          }
+        </div>
+
+        @if (modifiable) {
+          <div class="card p-4">
+            @if (manquants.length) {
+              <p class="mb-2 text-sm font-semibold text-amber-800 dark:text-amber-300"><i class="fa-solid fa-list-check mr-1"></i>À corriger</p>
+              <ul class="mb-3 space-y-1 text-xs text-amber-800 dark:text-amber-300">@for (m of manquants; track m) { <li>• {{ m }}</li> }</ul>
+            }
+            <div class="space-y-2">
+              <button type="button" class="btn-secondary w-full" (click)="enregistrer(false)" [disabled]="envoi || manquants.length > 0"><i class="fa-regular fa-floppy-disk"></i> Enregistrer le brouillon</button>
+              @if (!confirmationFinalisation) {
+                <button type="button" class="btn w-full bg-accent-600 text-white hover:bg-accent-700" (click)="confirmationFinalisation = true" [disabled]="envoi || manquants.length > 0"><i class="fa-solid fa-signature"></i> Finaliser et signer</button>
+              } @else {
+                <div class="rounded-xl bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
+                  <p class="font-semibold">Confirmer la finalisation ?</p>
+                  <p class="mt-1 text-xs">La consultation sera verrouillée : toute correction ultérieure passera par un addendum signé.</p>
+                  <div class="mt-3 flex gap-2">
+                    <button type="button" class="btn-ghost flex-1 py-2 text-xs" (click)="confirmationFinalisation = false">Revenir</button>
+                    <button type="button" class="btn flex-1 bg-accent-600 py-2 text-xs text-white hover:bg-accent-700" (click)="enregistrer(true)" [disabled]="envoi">
+                      <i class="fa-solid" [class]="envoi ? 'fa-spinner fa-spin' : 'fa-lock'"></i> Finaliser
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        @if (c && estAuteur && c.statut !== 'Annulée') {
+          <div class="card p-4">
+            @if (!annulation.ouverte) {
+              <button type="button" class="btn-ghost w-full text-rose-600" (click)="annulation.ouverte = true"><i class="fa-solid fa-ban"></i> Annuler cette consultation</button>
+            } @else {
+              <label class="label" for="ann-motif">Motif de l’annulation <span class="req">*</span></label>
+              <textarea id="ann-motif" rows="2" class="input" [(ngModel)]="annulation.motif" name="annMotif" placeholder="ex. Saisie sur le mauvais dossier"></textarea>
+              <p class="hint">La consultation n’est pas supprimée : elle reste dans l’historique avec ce motif.</p>
+              <div class="mt-3 flex gap-2">
+                <button type="button" class="btn-ghost flex-1 text-xs" (click)="annulation.ouverte = false">Revenir</button>
+                <button type="button" class="btn flex-1 bg-rose-600 text-xs text-white hover:bg-rose-700" (click)="annuler()" [disabled]="envoi || !annulation.motif.trim()">Confirmer l’annulation</button>
+              </div>
+            }
+          </div>
+        }
+      </aside>
+    </div>
+
+    <!-- Addenda -->
+    @if (c && c.statut === 'Finalisée') {
+      <div class="card overflow-hidden">
+        <div class="card-header">
+          <h2 class="card-title"><i class="fa-solid fa-paperclip text-violet-500"></i> Addenda</h2>
+          <span class="badge bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"><i class="fa-solid fa-lock"></i> Note initiale verrouillée</span>
+        </div>
+        <ul class="divide-y divide-slate-100 dark:divide-slate-800">
+          @for (a of c.addenda; track a.id) {
+            <li class="px-5 py-4">
+              <p class="text-sm text-slate-800 dark:text-slate-100">{{ a.texte }}</p>
+              <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Motif : {{ a.motif }} · {{ dr(a.auteur.nom, a.auteur.role) }} · {{ dateHeure(a.le) }}</p>
+            </li>
+          } @empty {
+            <li class="px-5 py-4 text-sm text-slate-500 dark:text-slate-400">Aucun addendum.</li>
+          }
+        </ul>
+        <div class="space-y-3 border-t border-slate-100 bg-slate-50/60 p-5 dark:border-slate-800 dark:bg-slate-800/30">
+          <p class="text-sm font-semibold text-slate-900 dark:text-white">Ajouter une correction (addendum signé)</p>
+          <textarea rows="2" class="input" [(ngModel)]="addendum.texte" name="addTexte" placeholder="Correction ou complément"></textarea>
+          <input class="input" [(ngModel)]="addendum.motif" name="addMotif" placeholder="Motif de la correction *">
+          <div class="flex justify-end">
+            <button type="button" class="btn-primary" (click)="ajouterAddendum()" [disabled]="envoi || !addendum.texte.trim() || !addendum.motif.trim()"><i class="fa-solid fa-signature"></i> Signer l’addendum</button>
+          </div>
+        </div>
+      </div>
+    }
+  }
+</div>

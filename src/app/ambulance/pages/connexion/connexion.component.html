@@ -1,0 +1,96 @@
+<div class="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-brand-950 px-4 py-10">
+  <div aria-hidden="true" class="pointer-events-none absolute -right-32 -top-32 h-96 w-96 rounded-full bg-rose-600/25 blur-3xl"></div>
+  <div aria-hidden="true" class="pointer-events-none absolute -bottom-40 -left-20 h-96 w-96 rounded-full bg-brand-500/30 blur-3xl"></div>
+  <div class="absolute right-4 top-4"><app-theme-toggle /></div>
+
+  <div class="relative w-full max-w-sm">
+    <div class="mb-8 text-center">
+      <img src="images/ambulance-carte.webp" alt="" width="320" height="155" class="mx-auto h-20 w-auto drop-shadow-[0_8px_12px_rgb(0_0_0/0.4)]">
+      <h1 class="mt-4 text-2xl font-bold tracking-tight text-white">AMI Ambulance</h1>
+      <p class="mt-1 text-sm text-slate-300">Application des chauffeurs d’ambulance</p>
+    </div>
+
+    <div class="rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
+      @if (etape === 'identifiants') {
+        <form class="space-y-5" (ngSubmit)="connecter()">
+          <div>
+            <label class="label" for="matricule">Matricule</label>
+            <div class="relative">
+              <i class="fa-solid fa-id-badge pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+              <input id="matricule" name="matricule" class="input pl-10 font-mono uppercase" placeholder="CHF-0000" autocomplete="username"
+                     autocapitalize="characters" [(ngModel)]="matricule" required>
+            </div>
+          </div>
+
+          <div>
+            <label class="label" for="mdp">Mot de passe</label>
+            <div class="relative">
+              <i class="fa-solid fa-lock pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+              <input id="mdp" name="motDePasse" [type]="afficherMdp ? 'text' : 'password'" class="input px-10" placeholder="••••••••"
+                     autocomplete="current-password" [(ngModel)]="motDePasse" required>
+              <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                      (click)="afficherMdp = !afficherMdp" [attr.aria-label]="afficherMdp ? 'Masquer le mot de passe' : 'Afficher le mot de passe'">
+                <i class="fa-regular" [class]="afficherMdp ? 'fa-eye-slash' : 'fa-eye'"></i>
+              </button>
+            </div>
+          </div>
+
+          @if (secondesRestantes > 0) {
+            <p class="flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2.5 text-sm text-amber-800 dark:bg-amber-500/10 dark:text-amber-200" role="alert">
+              <i class="fa-solid fa-hourglass-half mt-0.5"></i> Trop de tentatives. Réessayez dans {{ secondesRestantes }} s.
+            </p>
+          } @else if (erreur) {
+            <p class="flex items-start gap-2 rounded-xl bg-rose-50 px-3 py-2.5 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300" role="alert">
+              <i class="fa-solid fa-circle-exclamation mt-0.5"></i> {{ erreur }}
+            </p>
+          }
+
+          <button type="submit" class="btn-primary w-full py-3" [disabled]="verification || secondesRestantes > 0 || !matricule || !motDePasse">
+            @if (verification) {
+              <i class="fa-solid fa-spinner fa-spin"></i> Vérification…
+            } @else {
+              Se connecter <i class="fa-solid fa-arrow-right"></i>
+            }
+          </button>
+        </form>
+        <p class="mt-5 text-center text-xs text-slate-500 dark:text-slate-400">Identifiants oubliés ? Demandez au superviseur des secours de réinitialiser votre mot de passe.</p>
+      } @else {
+        <form class="space-y-5" (ngSubmit)="changerMotDePasse()">
+          <div>
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Bienvenue {{ prenom }}</h2>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Choisissez votre propre mot de passe pour remplacer le mot de passe temporaire.</p>
+          </div>
+          <div>
+            <label class="label" for="nouveau">Nouveau mot de passe</label>
+            <input id="nouveau" name="nouveau" [type]="afficherMdp ? 'text' : 'password'" class="input font-mono" autocomplete="new-password" [(ngModel)]="nouveau" required>
+            <ul class="mt-2 grid gap-1 text-xs">
+              @for (r of regles; track r.texte) {
+                <li class="flex items-center gap-1.5" [class]="r.ok ? 'text-accent-700 dark:text-accent-400' : 'text-slate-500 dark:text-slate-400'">
+                  <i class="fa-solid text-[10px]" [class]="r.ok ? 'fa-circle-check' : 'fa-circle'"></i> {{ r.texte }}
+                </li>
+              }
+              @if (nouveau && nouveau === motDePasse) {
+                <li class="flex items-center gap-1.5 text-rose-600 dark:text-rose-400"><i class="fa-solid fa-circle-xmark text-[10px]"></i> Différent du mot de passe temporaire</li>
+              }
+            </ul>
+          </div>
+          <div>
+            <label class="label" for="confirmation">Confirmer</label>
+            <input id="confirmation" name="confirmation" [type]="afficherMdp ? 'text' : 'password'" class="input font-mono" autocomplete="new-password" [(ngModel)]="confirmation" required>
+            @if (confirmation && confirmation !== nouveau) {
+              <p class="mt-1.5 text-xs text-rose-600 dark:text-rose-400">Les deux mots de passe ne correspondent pas.</p>
+            }
+          </div>
+          <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+            <input type="checkbox" name="afficher" class="h-4 w-4 rounded border-slate-300 text-brand-600" [(ngModel)]="afficherMdp"> Afficher les mots de passe
+          </label>
+          <button type="submit" class="btn-primary w-full py-3" [disabled]="!nouveauValide || confirmation !== nouveau">
+            <i class="fa-solid fa-check"></i> Enregistrer et continuer
+          </button>
+        </form>
+      }
+    </div>
+
+    <p class="mt-6 text-center text-xs text-slate-400"><i class="fa-solid fa-lock mr-1"></i>Accès réservé aux chauffeurs enregistrés · connexions journalisées</p>
+  </div>
+</div>

@@ -1,0 +1,137 @@
+<div class="flex h-[100dvh] flex-col bg-slate-50 dark:bg-slate-950 lg:flex-row-reverse">
+  <!-- Carte -->
+  <div class="relative min-h-0 flex-1">
+    <div #carte class="absolute inset-0 z-0" role="region" aria-label="Carte de la mission"></div>
+
+    <!-- Barre du chauffeur, posée sur la carte -->
+    @if (chauffeur(); as c) {
+      <header class="absolute inset-x-3 top-3 z-10 flex items-center gap-3 rounded-2xl bg-white/90 p-2 pr-3 shadow-lg backdrop-blur-md dark:bg-slate-900/90 lg:right-auto lg:max-w-md">
+        <app-avatar [photo]="c.photo" [prenom]="c.prenom" [nomFamille]="c.nom" class="h-10 w-10 rounded-full text-sm" />
+        <div class="min-w-0 flex-1">
+          <p class="truncate text-sm font-semibold text-slate-900 dark:text-white">{{ c.prenom }} {{ c.nom }}</p>
+          <p class="truncate text-xs text-slate-500 dark:text-slate-400">
+            @if (ambulance(); as amb) { {{ amb.id }} · {{ amb.immatriculation }} } @else { Aucune ambulance attribuée }
+          </p>
+        </div>
+        <span class="badge" [title]="source() === 'gps' ? 'Position GPS de l’appareil' : 'Position simulée'"
+              [class]="source() === 'gps' ? 'bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'">
+          <i class="fa-solid" [class]="source() === 'gps' ? 'fa-location-crosshairs' : 'fa-route'"></i>
+          {{ source() === 'gps' ? 'GPS' : 'Simulation' }}
+        </span>
+        <button type="button" class="rounded-full p-2 text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                (click)="deconnecter()" title="Se déconnecter" aria-label="Se déconnecter">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </button>
+      </header>
+    }
+
+    <!-- Commandes de la carte -->
+    <div class="absolute left-3 top-[4.75rem] z-10 flex flex-col gap-2">
+      @if (!suivi()) {
+        <button type="button" class="btn-secondary px-3 py-2 text-xs shadow-lg" (click)="recentrer()"><i class="fa-solid fa-location-arrow"></i> Recentrer</button>
+      }
+      @if (itineraire()) {
+        <button type="button" class="btn-secondary px-3 py-2 text-xs shadow-lg" (click)="voirTrajet()"><i class="fa-solid fa-route"></i> Tout le trajet</button>
+      }
+    </div>
+  </div>
+
+  <!-- Panneau de mission -->
+  <section class="relative z-10 max-h-[55dvh] overflow-y-auto rounded-t-3xl bg-white p-5 shadow-[0_-8px_30px_-12px_rgb(0_0_0/0.25)] dark:bg-slate-900 lg:max-h-none lg:w-[26rem] lg:rounded-none lg:shadow-xl">
+    <div class="mx-auto mb-4 h-1.5 w-10 rounded-full bg-slate-200 dark:bg-slate-700 lg:hidden" aria-hidden="true"></div>
+
+    @if (!ambulance()) {
+      <div class="py-6 text-center">
+        <i class="fa-solid fa-truck-medical text-3xl text-slate-300 dark:text-slate-600"></i>
+        <p class="mt-3 font-semibold text-slate-900 dark:text-white">Aucune ambulance ne vous est attribuée</p>
+        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Contactez le superviseur des secours pour être affecté à un véhicule.</p>
+      </div>
+    } @else if (alerte()) {
+      @let a = alerte()!;
+      <!-- Étape -->
+      <ol class="mb-5 grid grid-cols-3 gap-1.5 text-center text-[11px] font-semibold">
+        @for (e of [{ id: 'vers-patiente', l: 'Vers la patiente' }, { id: 'sur-place', l: 'Sur place' }, { id: 'vers-hopital', l: 'Vers l’hôpital' }]; track e.id; let i = $index) {
+          <li class="rounded-lg px-1 py-1.5"
+              [class]="etape() === e.id ? 'bg-rose-600 text-white' : ['vers-patiente', 'sur-place', 'vers-hopital'].indexOf(etape()) > i ? 'bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'">
+            {{ e.l }}
+          </li>
+        }
+      </ol>
+
+      <!-- Patiente -->
+      <div class="flex items-center gap-3">
+        <span class="relative shrink-0">
+          <app-avatar [photo]="a.photo" [prenom]="a.patiente.split(' ')[0]" [nomFamille]="a.patiente.split(' ')[1]" class="h-14 w-14 rounded-full text-sm" />
+          <span class="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full ring-2 ring-white dark:ring-slate-900 {{ teinte(a) }}"></span>
+        </span>
+        <div class="min-w-0 flex-1">
+          <p class="truncate font-semibold text-slate-900 dark:text-white">{{ a.patiente }}</p>
+          <p class="text-sm text-slate-600 dark:text-slate-300">{{ a.motif }}</p>
+          <p class="mt-0.5 text-xs font-semibold uppercase tracking-wide"
+             [class]="a.gravite === 'critique' ? 'text-rose-600 dark:text-rose-400' : a.gravite === 'élevée' ? 'text-orange-600 dark:text-orange-400' : 'text-amber-600 dark:text-amber-400'">
+            Gravité {{ a.gravite }} · alerte de {{ a.heure }}
+          </p>
+        </div>
+        <a [href]="lienTel(a)" class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent-600 text-white shadow-lg transition hover:bg-accent-700" [attr.aria-label]="'Appeler ' + a.patiente">
+          <i class="fa-solid fa-phone"></i>
+        </a>
+      </div>
+
+      <!-- Itinéraire -->
+      <div class="mt-5 rounded-2xl bg-slate-50 p-4 dark:bg-slate-800/50">
+        @if (etape() === 'sur-place') {
+          <p class="flex items-center gap-2 font-semibold text-slate-900 dark:text-white"><i class="fa-solid fa-location-dot text-rose-600"></i> Sur place auprès de la patiente</p>
+          <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ adresse() ?? (a.quartier + ', ' + a.commune) }}</p>
+        } @else if (calcul()) {
+          <p class="text-sm text-slate-500 dark:text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Calcul de l’itinéraire TomTom…</p>
+        } @else if (restantS() !== null) {
+          <div class="flex items-end justify-between gap-3">
+            <div>
+              <p class="text-3xl font-bold text-slate-900 dark:text-white">{{ progression() >= 1 ? 'Arrivé' : minutes(restantS()!) + ' min' }}</p>
+              <p class="text-sm text-slate-500 dark:text-slate-400">{{ restantKm()!.toFixed(1) }} km · arrivée {{ heureArrivee() }}</p>
+            </div>
+            <p class="text-right text-xs text-slate-500 dark:text-slate-400">
+              <i class="fa-solid mr-1" [class]="etape() === 'vers-hopital' ? 'fa-hospital' : 'fa-location-dot'"></i>
+              {{ etape() === 'vers-hopital' ? 'Hôpital de la Garde Républicaine' : (adresse() ?? a.quartier + ', ' + a.commune) }}
+            </p>
+          </div>
+          @if (itineraire()!.retardS > 60) {
+            <p class="mt-2 text-xs text-amber-700 dark:text-amber-300"><i class="fa-solid fa-car-burst mr-1"></i>Trafic : +{{ minutes(itineraire()!.retardS) }} min</p>
+          }
+        } @else {
+          <p class="text-sm text-rose-600 dark:text-rose-400"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Itinéraire indisponible. Vérifiez la connexion.</p>
+        }
+      </div>
+
+      @if (gpsHorsZone()) {
+        <p class="mt-3 text-xs text-slate-500 dark:text-slate-400"><i class="fa-solid fa-circle-info mr-1"></i>Votre appareil est hors de Kinshasa : déplacement simulé.</p>
+      }
+
+      <!-- Action de l'étape -->
+      <div class="mt-5">
+        @switch (etape()) {
+          @case ('vers-patiente') {
+            <button type="button" class="btn w-full bg-rose-600 py-3.5 text-base text-white hover:bg-rose-700" (click)="arriveSurPlace()"><i class="fa-solid fa-location-dot"></i> Je suis arrivé</button>
+          }
+          @case ('sur-place') {
+            <button type="button" class="btn-primary w-full py-3.5 text-base" (click)="patienteABord()"><i class="fa-solid fa-truck-medical"></i> Patiente à bord, vers l’hôpital</button>
+          }
+          @case ('vers-hopital') {
+            <button type="button" class="btn w-full bg-accent-600 py-3.5 text-base text-white hover:bg-accent-700" (click)="terminer()"><i class="fa-solid fa-flag-checkered"></i> Arrivé à l’hôpital, terminer</button>
+          }
+        }
+      </div>
+    } @else {
+      <div class="py-6 text-center">
+        <span class="relative mx-auto flex h-14 w-14 items-center justify-center">
+          <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent-400 opacity-30"></span>
+          <span class="relative flex h-14 w-14 items-center justify-center rounded-full bg-accent-50 text-xl text-accent-600 dark:bg-accent-500/10 dark:text-accent-400"><i class="fa-solid fa-tower-broadcast"></i></span>
+        </span>
+        <p class="mt-4 font-semibold text-slate-900 dark:text-white">Aucune mission en cours</p>
+        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Restez disponible : la prochaine urgence attribuée à votre ambulance s’affichera ici.</p>
+      </div>
+    }
+
+    <div class="mt-6 flex justify-center"><app-theme-toggle /></div>
+  </section>
+</div>

@@ -1,8 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, Input, OnChanges } from '@angular/core';
 import { CARTE_RDC_VIEWBOX, PROVINCES_RDC } from '../data/carte-rdc';
-import { EFFECTIFS_PROVINCES } from '../data/mock-data';
+import type { EffectifProvincePatientes } from '../data/statistiques.service';
 
-type Indicateur = 'femmes' | 'enfants' | 'total';
+type Indicateur = 'patientes' | 'enCours';
 
 interface ProvinceCarte {
   id: string;
@@ -10,8 +10,8 @@ interface ProvinceCarte {
   cx: number;
   cy: number;
   d: string;
-  femmes: number;
-  enfants: number;
+  patientes: number;
+  enCours: number;
 }
 
 // Classes de remplissage, de la plus faible à la plus forte concentration (clair / sombre).
@@ -25,8 +25,9 @@ const TEINTES = [
 const TEINTE_VIDE = 'fill-slate-100 dark:fill-slate-800';
 
 /**
- * Carte choroplèthe des provinces de la RDC : plus la province est foncée,
- * plus elle compte de patientes et/ou d'enfants suivis.
+ * Carte choroplèthe des provinces de la RDC : plus la province est foncée, plus elle compte
+ * de patientes (province de résidence du dossier). Données fournies par le serveur
+ * (GET /api/statistiques/patientes), libellés identiques à l'énumération du modèle.
  */
 @Component({
   selector: 'app-carte-rdc',
@@ -34,7 +35,7 @@ const TEINTE_VIDE = 'fill-slate-100 dark:fill-slate-800';
   template: `
     <div class="card overflow-hidden">
       <div class="card-header flex-wrap">
-        <h2 class="card-title"><i class="fa-solid fa-map-location-dot text-brand-600 dark:text-brand-400"></i> Répartition par province</h2>
+        <h2 class="card-title"><i class="fa-solid fa-map-location-dot text-brand-600 dark:text-brand-400"></i> Patientes par province de résidence</h2>
         <div class="inline-flex rounded-xl bg-slate-100 p-1 text-xs font-semibold dark:bg-slate-800" role="group" aria-label="Indicateur affiché">
           @for (o of options; track o.id) {
             <button type="button" (click)="indicateur = o.id; calculerClasses()"
@@ -50,8 +51,13 @@ const TEINTE_VIDE = 'fill-slate-100 dark:fill-slate-800';
       <div class="grid gap-6 p-5 lg:grid-cols-5">
         <!-- Carte -->
         <div class="relative lg:col-span-3" (mousemove)="suivreSouris($event)" (mouseenter)="sourisSurCarte = true" (mouseleave)="sourisSurCarte = false">
+          @if (chargement) {
+            <div class="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-white/60 backdrop-blur-[1px] dark:bg-slate-900/60" role="status">
+              <span class="text-sm text-slate-500 dark:text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Chargement des données…</span>
+            </div>
+          }
           <svg [attr.viewBox]="viewBox" class="h-auto w-full" role="img"
-               aria-label="Carte de la RDC colorée selon le nombre de patients par province">
+               aria-label="Carte de la RDC colorée selon le nombre de patientes par province" [class.animate-pulse]="chargement">
             @for (p of provinces; track p.id) {
               <path [attr.d]="p.d" tabindex="0" role="button"
                     [attr.aria-label]="p.nom + ' : ' + valeur(p) + ' ' + uniteCourte"
@@ -79,7 +85,7 @@ const TEINTE_VIDE = 'fill-slate-100 dark:fill-slate-800';
             <div class="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-lg bg-slate-900 px-3 py-2 text-xs text-white shadow-lg dark:bg-white dark:text-slate-900"
                  [style.left.px]="souris.x" [style.top.px]="souris.y - 12">
               <p class="font-semibold">{{ s.nom }}</p>
-              <p class="tabular-nums opacity-80">{{ s.femmes }} femmes · {{ s.enfants }} enfants</p>
+              <p class="tabular-nums opacity-80">{{ s.patientes }} patiente{{ s.patientes > 1 ? 's' : '' }} · {{ s.enCours }} grossesse{{ s.enCours > 1 ? 's' : '' }} en cours</p>
             </div>
           }
 
@@ -106,12 +112,12 @@ const TEINTE_VIDE = 'fill-slate-100 dark:fill-slate-800';
               </div>
               <div class="mt-3 grid grid-cols-3 gap-3 text-center">
                 <div class="rounded-lg bg-white p-2.5 dark:bg-slate-900">
-                  <p class="text-xl font-bold tabular-nums text-rose-600 dark:text-rose-400">{{ a.femmes }}</p>
-                  <p class="text-[11px] text-slate-500 dark:text-slate-400">Femmes</p>
+                  <p class="text-xl font-bold tabular-nums text-brand-700 dark:text-brand-300">{{ a.patientes }}</p>
+                  <p class="text-[11px] text-slate-500 dark:text-slate-400">Patientes</p>
                 </div>
                 <div class="rounded-lg bg-white p-2.5 dark:bg-slate-900">
-                  <p class="text-xl font-bold tabular-nums text-sky-600 dark:text-sky-400">{{ a.enfants }}</p>
-                  <p class="text-[11px] text-slate-500 dark:text-slate-400">Enfants</p>
+                  <p class="text-xl font-bold tabular-nums text-accent-600 dark:text-accent-400">{{ a.enCours }}</p>
+                  <p class="text-[11px] text-slate-500 dark:text-slate-400">En cours</p>
                 </div>
                 <div class="rounded-lg bg-white p-2.5 dark:bg-slate-900">
                   <p class="text-xl font-bold tabular-nums text-slate-900 dark:text-white">{{ part(a) }} %</p>
@@ -140,29 +146,38 @@ const TEINTE_VIDE = 'fill-slate-100 dark:fill-slate-800';
             </ul>
           </div>
 
+          @if (!chargement && effectifs && total === 0) {
+            <p class="rounded-xl border border-dashed border-slate-300 p-3 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">Aucune patiente enregistrée pour l’instant : la carte se colorera au fil des enregistrements.</p>
+          } @else if (!effectifs && !chargement) {
+            <p class="rounded-xl border border-dashed border-slate-300 p-3 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">Données indisponibles (connexion au serveur requise).</p>
+          }
           <p class="text-xs text-slate-500 dark:text-slate-400">
             <i class="fa-solid fa-circle-info mr-1 text-brand-600 dark:text-brand-400"></i>
-            {{ total }} {{ uniteCourte }} répartis dans {{ provincesCouvertes }} provinces. Survolez ou touchez une province pour le détail.
+            {{ total }} {{ uniteCourte }} dans {{ provincesCouvertes }} province{{ provincesCouvertes > 1 ? 's' : '' }} sur 26.
+            @if (sansProvince) { {{ sansProvince }} dossier(s) sans province. }
+            Survolez ou touchez une province pour le détail.
           </p>
         </div>
       </div>
     </div>
   `,
 })
-export class CarteRdcComponent {
+export class CarteRdcComponent implements OnChanges {
+  /** Effectifs par province (null : non chargés ou indisponibles). */
+  @Input() effectifs: EffectifProvincePatientes[] | null = null;
+  @Input() chargement = false;
+  /** Dossiers dont la province n'est pas renseignée (anciens dossiers). */
+  @Input() sansProvince = 0;
+
   viewBox = CARTE_RDC_VIEWBOX;
   teinteVide = TEINTE_VIDE;
   options: { id: Indicateur; label: string; icon: string }[] = [
-    { id: 'total', label: 'Total', icon: 'fa-users' },
-    { id: 'femmes', label: 'Femmes', icon: 'fa-person-pregnant' },
-    { id: 'enfants', label: 'Enfants', icon: 'fa-baby' },
+    { id: 'patientes', label: 'Patientes', icon: 'fa-person-pregnant' },
+    { id: 'enCours', label: 'Grossesses en cours', icon: 'fa-baby-carriage' },
   ];
-  indicateur: Indicateur = 'total';
+  indicateur: Indicateur = 'patientes';
 
-  provinces: ProvinceCarte[] = PROVINCES_RDC.map(p => {
-    const e = EFFECTIFS_PROVINCES.find(x => x.province === p.id);
-    return { ...p, femmes: e?.femmes ?? 0, enfants: e?.enfants ?? 0 };
-  });
+  provinces: ProvinceCarte[] = PROVINCES_RDC.map(p => ({ ...p, patientes: 0, enCours: 0 }));
   kinshasa = this.provinces.find(p => p.id === 'kinshasa');
 
   survol: ProvinceCarte | null = null;
@@ -180,28 +195,41 @@ export class CarteRdcComponent {
     this.calculerClasses();
   }
 
+  /** Effectifs reçus du serveur, rapprochés des tracés de la carte par le nom de la province. */
+  ngOnChanges(): void {
+    const parNom = new Map((this.effectifs ?? []).map(e => [e.province, e]));
+    this.provinces = PROVINCES_RDC.map(p => {
+      const e = parNom.get(p.nom);
+      return { ...p, patientes: e?.patientes ?? 0, enCours: e?.grossessesEnCours ?? 0 };
+    });
+    this.kinshasa = this.provinces.find(p => p.id === 'kinshasa');
+    this.selection = this.selection && (this.provinces.find(p => p.id === this.selection!.id) ?? null);
+    this.survol = null;
+    this.calculerClasses();
+  }
+
   /** Province mise en avant : survolée, sinon cliquée, sinon la première du classement. */
   get active(): ProvinceCarte | null {
     return this.survol ?? this.selection ?? this.top[0] ?? null;
   }
 
   get uniteCourte(): string {
-    return { total: 'patients', femmes: 'femmes', enfants: 'enfants' }[this.indicateur];
+    return { patientes: 'patientes', enCours: 'grossesses en cours' }[this.indicateur];
   }
 
   get uniteLongue(): string {
-    return { total: 'Femmes + enfants', femmes: 'Femmes suivies', enfants: 'Enfants suivis' }[this.indicateur];
+    return { patientes: 'Patientes suivies', enCours: 'Grossesses en cours' }[this.indicateur];
   }
 
   valeur(p: ProvinceCarte): number {
-    return this.indicateur === 'femmes' ? p.femmes : this.indicateur === 'enfants' ? p.enfants : p.femmes + p.enfants;
+    return this.indicateur === 'enCours' ? p.enCours : p.patientes;
   }
 
   /** Seuils par quantiles (5 classes) sur les provinces ayant au moins un patient. */
   calculerClasses(): void {
     const tries = [...this.provinces].sort((a, b) => this.valeur(b) - this.valeur(a));
     const valeurs = tries.map(p => this.valeur(p)).filter(v => v > 0).reverse();
-    this.top = tries.slice(0, 6);
+    this.top = tries.filter(p => this.valeur(p) > 0).slice(0, 6);
     this.max = Math.max(1, ...valeurs);
     this.total = valeurs.reduce((s, v) => s + v, 0);
     this.provincesCouvertes = valeurs.length;

@@ -1,4 +1,6 @@
-import { Routes } from '@angular/router';
+import { Router, Routes } from '@angular/router';
+import { inject } from '@angular/core';
+import { UTILISATEUR } from './data/mock-data';
 import { ShellComponent } from './layout/shell.component';
 import { LoginComponent } from './pages/login/login.component';
 import { DashboardComponent } from './pages/dashboard/dashboard.component';
@@ -14,6 +16,22 @@ import { EnfantsComponent } from './pages/enfants/enfants.component';
 import { MessagesComponent } from './pages/messages/messages.component';
 import { AmbulancesComponent } from './pages/ambulances/ambulances.component';
 import { ChauffeursComponent } from './pages/chauffeurs/chauffeurs.component';
+import { EtablissementsComponent } from './pages/etablissements/etablissements.component';
+import { SoignantsComponent } from './pages/soignants/soignants.component';
+import { SessionService } from './data/session.service';
+import { ProfilComponent } from './pages/profil/profil.component';
+import { SoignantDetailComponent } from './pages/soignant-detail/soignant-detail.component';
+import { ConsultationComponent } from './pages/consultation/consultation.component';
+import { DiscussionsComponent } from './pages/discussions/discussions.component';
+
+/** Pages réservées au superadmin. ⚠️ Côté client seulement : le serveur doit refuser aussi. */
+const superAdminGuard = () => UTILISATEUR.superAdmin || inject(Router).parseUrl('/admin/tableau-de-bord');
+
+/** Pages branchées sur le serveur : une session est nécessaire. */
+const connecteGuard = () => inject(SessionService).connecte() || inject(Router).parseUrl('/admin/connexion');
+
+/** Dossier médical (enregistrement, consultations) : médecins seulement. ⚠️ Le serveur refuse aussi. */
+const medecinGuard = () => inject(SessionService).estMedecin() || inject(Router).parseUrl('/admin/patientes');
 
 /** Espace réservé au personnel et aux administrateurs — monté sous /admin. */
 export const ADMIN_ROUTES: Routes = [
@@ -24,20 +42,28 @@ export const ADMIN_ROUTES: Routes = [
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'tableau-de-bord' },
       { path: 'tableau-de-bord', component: DashboardComponent, title: 'Tableau de bord · AMI Santé Connect' },
-      { path: 'patientes', component: PatientsComponent, title: 'Patientes · AMI Santé Connect' },
-      { path: 'patientes/nouvelle', component: PatientNewComponent, title: 'Enregistrement CPN · AMI Santé Connect' },
-      { path: 'patientes/:id', component: PatientDetailComponent, title: 'Dossier patiente · AMI Santé Connect' },
-      { path: 'rendez-vous', component: AppointmentsComponent, title: 'Rendez-vous · AMI Santé Connect' },
+      // Suivi prénatal (serveur) : dossier complet pour les médecins, vue de suivi en lecture seule pour les infirmier·ères.
+      { path: 'patientes', component: PatientsComponent, canActivate: [connecteGuard], title: 'Patientes · AMI Santé Connect' },
+      { path: 'patientes/nouvelle', component: PatientNewComponent, canActivate: [connecteGuard, medecinGuard], title: 'Enregistrement CPN · AMI Santé Connect' },
+      { path: 'patientes/:id', component: PatientDetailComponent, canActivate: [connecteGuard], title: 'Dossier patiente · AMI Santé Connect' },
+      { path: 'patientes/:id/consultation', component: ConsultationComponent, canActivate: [connecteGuard, medecinGuard], title: 'Nouvelle consultation · AMI Santé Connect' },
+      { path: 'consultations/:cid', component: ConsultationComponent, canActivate: [connecteGuard, medecinGuard], title: 'Consultation · AMI Santé Connect' },
+      { path: 'rendez-vous', component: AppointmentsComponent, canActivate: [connecteGuard], title: 'Rendez-vous · AMI Santé Connect' },
       // Chargée à la demande : Leaflet n'alourdit pas les autres pages (préchargée par ShellComponent).
       { path: 'urgences', loadComponent: () => import('./pages/urgences/urgences.component').then(m => m.UrgencesComponent), title: 'Urgences · AMI Santé Connect' },
       { path: 'ambulances', component: AmbulancesComponent, title: 'Ambulances · AMI Santé Connect' },
       { path: 'chauffeurs', component: ChauffeursComponent, title: 'Chauffeurs · AMI Santé Connect' },
+      { path: 'discussions', component: DiscussionsComponent, canActivate: [connecteGuard], title: 'Discussions · AMI Santé Connect' },
       { path: 'messages', component: MessagesComponent, title: 'Messages · AMI Santé Connect' },
       { path: 'enfants', component: EnfantsComponent, title: 'Enfants vaccinés · AMI Santé Connect' },
       { path: 'agents', component: AgentsComponent, title: 'Agents de vaccination · AMI Santé Connect' },
       { path: 'doublons', component: DuplicatesComponent, title: 'Doublons · AMI Santé Connect' },
       { path: 'synchronisation', component: SyncComponent, title: 'Synchronisation · AMI Santé Connect' },
-      { path: 'audit', component: AuditComponent, title: 'Journal d’audit · AMI Santé Connect' },
+      { path: 'etablissements', component: EtablissementsComponent, canActivate: [superAdminGuard], title: 'Établissements sanitaires · AMI Santé Connect' },
+      { path: 'soignants', component: SoignantsComponent, canActivate: [superAdminGuard, connecteGuard], title: 'Médecins et infirmiers · AMI Santé Connect' },
+      { path: 'soignants/:id', component: SoignantDetailComponent, canActivate: [superAdminGuard, connecteGuard], title: 'Profil du soignant · AMI Santé Connect' },
+      { path: 'profil', component: ProfilComponent, canActivate: [connecteGuard], title: 'Mon profil · AMI Santé Connect' },
+      { path: 'audit', component: AuditComponent, canActivate: [connecteGuard], title: 'Journal d’audit · AMI Santé Connect' },
     ],
   },
 ];

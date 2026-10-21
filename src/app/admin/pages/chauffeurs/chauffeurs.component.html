@@ -3,7 +3,7 @@
   <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
     <div>
       <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Gestion des chauffeurs</h1>
-      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Chauffeurs d’ambulance, validité de leur permis et véhicule attitré.</p>
+      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Chauffeurs d’ambulance, validité de leur permis et véhicule attitré. Chaque chauffeur se connecte à l’<a href="/ambulance" target="_blank" class="font-medium text-brand-700 hover:underline dark:text-brand-300">application ambulance <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i></a> avec son matricule et son mot de passe.</p>
     </div>
     <button type="button" class="btn-primary" (click)="ouvrir()"><i class="fa-solid fa-user-plus"></i> Ajouter un chauffeur</button>
   </div>
@@ -78,6 +78,11 @@
                   <div>
                     <p class="whitespace-nowrap font-medium text-slate-900 dark:text-white">{{ c.prenom }} {{ c.nom }} <span class="text-slate-500 dark:text-slate-400">{{ c.postnom }}</span></p>
                     <p class="font-mono text-xs text-slate-500 dark:text-slate-400">{{ c.matricule }}</p>
+                    @if (c.derniereConnexion) {
+                      <p class="whitespace-nowrap text-[11px] text-slate-400"><i class="fa-solid fa-mobile-screen-button mr-1"></i>Connecté le {{ c.derniereConnexion }}</p>
+                    } @else {
+                      <p class="whitespace-nowrap text-[11px] text-amber-600 dark:text-amber-400"><i class="fa-solid fa-hourglass-half mr-1"></i>Jamais connecté</p>
+                    }
                   </div>
                 </div>
               </td>
@@ -113,7 +118,10 @@
                 }
               </td>
               <td class="table-td">
-                <div class="flex justify-end">
+                <div class="flex justify-end gap-1">
+                  <button type="button" class="btn-ghost px-2.5 py-1.5" title="Réinitialiser le mot de passe" (click)="reinitialiser(c)">
+                    <i class="fa-solid fa-key"></i><span class="sr-only">Réinitialiser le mot de passe</span>
+                  </button>
                   <button type="button" class="btn-ghost px-2.5 py-1.5" [disabled]="amb?.statut === 'En mission'"
                           [title]="amb?.statut === 'En mission' ? 'En mission : action impossible' : c.statut === 'Actif' ? 'Suspendre' : 'Réactiver'" (click)="basculer(c)">
                     <i class="fa-solid" [class]="c.statut === 'Actif' ? 'fa-user-lock text-rose-500' : 'fa-user-check text-accent-600'"></i>
@@ -139,7 +147,10 @@
     <form #f="ngForm" (ngSubmit)="enregistrer(f)" novalidate
           class="relative flex h-full w-full max-w-xl flex-col bg-white shadow-2xl dark:bg-slate-900">
       <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800 sm:px-6">
-        <h2 id="titre-ajout-ch" class="text-lg font-semibold text-slate-900 dark:text-white">Ajouter un chauffeur</h2>
+        <div>
+          <h2 id="titre-ajout-ch" class="text-lg font-semibold text-slate-900 dark:text-white">Ajouter un chauffeur</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Matricule (identifiant de connexion) : <span class="font-mono font-semibold text-slate-700 dark:text-slate-200">{{ matriculePropose }}</span></p>
+        </div>
         <button type="button" class="btn-ghost px-3" (click)="fermer()" aria-label="Fermer"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
 
@@ -227,12 +238,99 @@
             </div>
           </div>
         </section>
+
+        <!-- Accès à l'application ambulance -->
+        <section class="rounded-2xl border border-slate-200 p-4 dark:border-slate-800 sm:p-5">
+          <h3 class="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-lock"></i> Accès à l’application ambulance</h3>
+          <p class="mb-4 text-xs text-slate-500 dark:text-slate-400">
+            Le chauffeur se connectera avec son matricule <span class="font-mono font-semibold text-slate-700 dark:text-slate-200">{{ matriculePropose }}</span> et ce mot de passe pour recevoir ses missions et suivre l’itinéraire vers les patientes.
+          </p>
+
+          <div class="space-y-4">
+            <div>
+              <div class="flex items-center justify-between">
+                <label class="label" for="ch-mdp">Mot de passe temporaire <span class="req">*</span></label>
+                <button type="button" class="mb-1.5 text-xs font-semibold text-brand-600 hover:text-brand-800 dark:text-brand-400 dark:hover:text-brand-300" (click)="genererMotDePasse()">
+                  <i class="fa-solid fa-wand-magic-sparkles"></i> Générer
+                </button>
+              </div>
+              <div class="relative">
+                <i class="fa-solid fa-key pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input id="ch-mdp" name="motDePasse" [type]="afficherMdp ? 'text' : 'password'" class="input px-10 font-mono" autocomplete="new-password"
+                       [(ngModel)]="form.motDePasse" #mdp="ngModel" required
+                       [class.border-rose-400]="!motDePasseValide && (mdp.touched || f.submitted)">
+                <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" (click)="afficherMdp = !afficherMdp"
+                        [attr.aria-label]="afficherMdp ? 'Masquer le mot de passe' : 'Afficher le mot de passe'">
+                  <i class="fa-regular" [class]="afficherMdp ? 'fa-eye-slash' : 'fa-eye'"></i>
+                </button>
+              </div>
+              <div class="mt-2 grid grid-cols-4 gap-1.5" aria-hidden="true">
+                @for (i of [1, 2, 3, 4]; track i) {
+                  <div class="h-1.5 rounded-full transition"
+                       [class]="force >= i ? (force <= 1 ? 'bg-rose-500' : force <= 3 ? 'bg-amber-400' : 'bg-accent-500') : 'bg-slate-200 dark:bg-slate-700'"></div>
+                }
+              </div>
+              <ul class="mt-2 grid gap-1 text-xs sm:grid-cols-2">
+                @for (r of regles; track r.texte) {
+                  <li class="flex items-center gap-1.5" [class]="r.ok ? 'text-accent-700 dark:text-accent-400' : 'text-slate-500 dark:text-slate-400'">
+                    <i class="fa-solid text-[10px]" [class]="r.ok ? 'fa-circle-check' : 'fa-circle'"></i> {{ r.texte }}
+                  </li>
+                }
+              </ul>
+            </div>
+
+            <div>
+              <label class="label" for="ch-confirm">Confirmer le mot de passe <span class="req">*</span></label>
+              <input id="ch-confirm" name="confirmation" [type]="afficherMdp ? 'text' : 'password'" class="input font-mono" autocomplete="new-password"
+                     [(ngModel)]="form.confirmation" #conf="ngModel" required
+                     [class.border-rose-400]="!confirmationOk && (conf.touched || f.submitted)">
+              @if (!confirmationOk && (conf.touched || f.submitted)) {
+                <p class="mt-1.5 text-xs text-rose-600 dark:text-rose-400">Les deux mots de passe ne correspondent pas.</p>
+              }
+            </div>
+
+            <label class="flex items-start gap-3 text-sm text-slate-600 dark:text-slate-300">
+              <input type="checkbox" name="doitChanger" class="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-600" [(ngModel)]="form.doitChangerMotDePasse">
+              Obliger le chauffeur à changer ce mot de passe à sa première connexion (recommandé)
+            </label>
+          </div>
+        </section>
+
+        <p class="flex items-start gap-2 rounded-xl bg-slate-50 p-3 text-xs text-slate-600 dark:bg-slate-800/50 dark:text-slate-300">
+          <i class="fa-solid fa-shield-halved mt-0.5 text-brand-600 dark:text-brand-400"></i>
+          Remettez le matricule et le mot de passe au chauffeur en personne, jamais par SMS groupé ni affichés publiquement.
+        </p>
       </div>
 
       <div class="flex flex-col-reverse gap-2 border-t border-slate-100 px-5 py-4 dark:border-slate-800 sm:flex-row sm:justify-end sm:px-6">
         <button type="button" class="btn-secondary" (click)="fermer()">Annuler</button>
-        <button type="submit" class="btn-primary"><i class="fa-solid fa-user-plus"></i> Ajouter le chauffeur</button>
+        <button type="submit" class="btn-primary" [disabled]="enregistrement">
+          <i class="fa-solid" [class]="enregistrement ? 'fa-spinner fa-spin' : 'fa-user-plus'"></i> Créer le compte
+        </button>
       </div>
     </form>
+  </div>
+}
+
+<!-- Identifiants après réinitialisation : affichés une seule fois -->
+@if (identifiants; as id) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="titre-identifiants">
+    <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" (click)="identifiants = null"></div>
+    <div class="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
+      <h2 id="titre-identifiants" class="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-white"><i class="fa-solid fa-key text-brand-600 dark:text-brand-400"></i> Nouveau mot de passe</h2>
+      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Remettez ces identifiants à {{ id.nom }} en personne. Ils ne seront plus affichés ; il devra choisir son propre mot de passe à la connexion.</p>
+      <dl class="mt-5 space-y-3">
+        @for (l of [{ k: 'Matricule', v: id.matricule }, { k: 'Mot de passe temporaire', v: id.motDePasse }]; track l.k) {
+          <div class="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-800/60">
+            <div>
+              <dt class="text-xs text-slate-500 dark:text-slate-400">{{ l.k }}</dt>
+              <dd class="font-mono text-base font-semibold text-slate-900 dark:text-white">{{ l.v }}</dd>
+            </div>
+            <button type="button" class="btn-ghost px-2.5 py-1.5" (click)="copier(l.v)" [attr.aria-label]="'Copier ' + l.k"><i class="fa-regular fa-copy"></i></button>
+          </div>
+        }
+      </dl>
+      <button type="button" class="btn-primary mt-6 w-full" (click)="identifiants = null">C’est noté</button>
+    </div>
   </div>
 }

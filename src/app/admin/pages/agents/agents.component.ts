@@ -2,6 +2,7 @@ import { Component, computed, inject, OnDestroy, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { AvatarComponent } from '../../components/avatar.component';
 import { Agent, AgentsService, FonctionAgent } from '../../data/agents.service';
+import { genererMotDePasse, reglesMotDePasse } from '../../../shared/mot-de-passe';
 
 const PHOTO_MAX_OCTETS = 2 * 1024 * 1024;
 
@@ -70,13 +71,7 @@ export class AgentsComponent implements OnDestroy {
 
   /** Règles du mot de passe affichées sous le champ. */
   get regles() {
-    const m = this.form.motDePasse;
-    return [
-      { ok: m.length >= 10, texte: 'Au moins 10 caractères' },
-      { ok: /[A-Z]/.test(m) && /[a-z]/.test(m), texte: 'Majuscules et minuscules' },
-      { ok: /\d/.test(m), texte: 'Au moins un chiffre' },
-      { ok: /[^A-Za-z0-9]/.test(m), texte: 'Au moins un caractère spécial' },
-    ];
+    return reglesMotDePasse(this.form.motDePasse);
   }
 
   get force(): number {
@@ -125,18 +120,8 @@ export class AgentsComponent implements OnDestroy {
     this.photoApercu = null;
   }
 
-  /** Génère un mot de passe temporaire solide (sans caractères ambigus). */
   genererMotDePasse(): void {
-    const groupes = ['ABCDEFGHJKLMNPQRSTUVWXYZ', 'abcdefghijkmnpqrstuvwxyz', '23456789', '!@#$%&*?'];
-    const tous = groupes.join('');
-    const hasard = (n: number) => crypto.getRandomValues(new Uint32Array(1))[0] % n;
-    const car = groupes.map(g => g[hasard(g.length)]);
-    while (car.length < 12) car.push(tous[hasard(tous.length)]);
-    for (let i = car.length - 1; i > 0; i--) {
-      const j = hasard(i + 1);
-      [car[i], car[j]] = [car[j], car[i]];
-    }
-    this.form.motDePasse = this.form.confirmation = car.join('');
+    this.form.motDePasse = this.form.confirmation = genererMotDePasse();
     this.afficherMdp = true;
   }
 
