@@ -72,9 +72,11 @@ export class PresenceService implements OnDestroy {
   private ouvrir(): void {
     if (this.socket) return;
     // Hors zone Angular : les pings du socket ne relancent pas la détection de changements.
+    // Transports par défaut : requêtes HTTPS (polling) d'abord, puis passage automatique au
+    // WebSocket (WSS) si le serveur et le proxy (Nginx) le permettent. Le temps réel fonctionne
+    // ainsi même derrière un proxy qui bloque le WebSocket.
     this.socket = this.zone.runOutsideAngular(() => io(SERVEUR_URL, {
       auth: (cb) => cb({ jeton: this.session.jeton }),
-      transports: ['websocket'],
     }));
     // Autres événements : remis aux abonnés dans la zone Angular (mise à jour de l'affichage).
     this.socket.onAny((evenement: string, donnees: unknown) => {
