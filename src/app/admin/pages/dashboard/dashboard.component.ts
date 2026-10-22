@@ -6,6 +6,7 @@ import { RouterLink } from '@angular/router';
 import { AvatarComponent } from '../../components/avatar.component';
 import { CarteRdcComponent } from '../../components/carte-rdc.component';
 import { EnLigneComponent } from '../../components/en-ligne.component';
+import { RepartitionSexeComponent } from '../../components/repartition-sexe.component';
 import { formatDate, UTILISATEUR } from '../../data/mock-data';
 import { agLisible, heureFr, jourLocal } from '../../data/format';
 import { StatistiquesPatientes, StatistiquesService } from '../../data/statistiques.service';
@@ -16,13 +17,13 @@ const MOIS_COURTS = ['', 'jan', 'fév', 'mar', 'avr', 'mai', 'juin', 'juil', 'ao
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [RouterLink, AvatarComponent, CarteRdcComponent, EnLigneComponent],
+  imports: [RouterLink, AvatarComponent, CarteRdcComponent, EnLigneComponent, RepartitionSexeComponent],
   templateUrl: './dashboard.component.html',
 })
 export class DashboardComponent {
   // --- Chiffres du système (soignants et établissements enregistrés sur le serveur) ---
   session = inject(SessionService);
-  private soignantsService = inject(SoignantsService);
+  soignantsService = inject(SoignantsService);
   private etablissementsService = inject(EtablissementsService);
   private statistiquesService = inject(StatistiquesService);
   private systemeRecu = signal(false);
@@ -34,13 +35,14 @@ export class DashboardComponent {
     const soignants = this.soignantsService.soignants();
     const etablissements = this.etablissementsService.etablissements();
     const medecins = soignants.filter(s => categorieDuRole(s.role) === 'Médecin').length;
-    const infirmiers = soignants.length - medecins;
+    const infirmiers = soignants.filter(s => categorieDuRole(s.role) === 'Infirmier').length;
+    const sagesFemmes = soignants.filter(s => categorieDuRole(s.role) === 'Sage-femme').length;
     const actifs = etablissements.filter(e => e.statut === 'Actif').length;
     const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`;
     return [
       {
         label: 'Soignants ajoutés', valeur: soignants.length, lien: '/admin/soignants', icone: 'fa-users',
-        detail: `${pluriel(medecins, 'médecin')} · ${pluriel(infirmiers, 'infirmier')}`,
+        detail: `${pluriel(medecins, 'médecin')} · ${pluriel(infirmiers, 'infirmier')} · ${sagesFemmes} sage${sagesFemmes > 1 ? 's' : ''}-femme${sagesFemmes > 1 ? 's' : ''}`,
         couleur: 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',
       },
       {

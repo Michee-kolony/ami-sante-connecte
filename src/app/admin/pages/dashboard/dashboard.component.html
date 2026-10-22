@@ -58,8 +58,9 @@
   <!-- Personnel connecté à l'instant -->
   <app-en-ligne />
 
-  <!-- Chiffres du système (serveur) -->
-  <div class="grid gap-4 sm:grid-cols-3">
+  <!-- Chiffres du système (serveur) et répartition femmes / hommes -->
+  <div class="grid gap-6 lg:grid-cols-3">
+  <div class="grid content-start gap-4 sm:grid-cols-3 lg:grid-cols-1">
     @for (t of tuilesSysteme(); track t.label) {
       <a [routerLink]="t.lien" class="card group flex items-center gap-4 p-5 transition hover:-translate-y-0.5 hover:shadow-lg">
         <div class="flex h-12 w-12 flex-none items-center justify-center rounded-2xl text-lg {{ t.couleur }}">
@@ -84,6 +85,10 @@
         <i class="fa-solid fa-arrow-right text-xs text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-brand-600 dark:text-slate-600 dark:group-hover:text-brand-400"></i>
       </a>
     }
+  </div>
+  @if (session.connecte() && !systemeErreur()) {
+    <app-repartition-sexe class="block lg:col-span-2" [personnel]="soignantsService.soignants()" [chargement]="systemeEnChargement()" />
+  }
   </div>
 
   <div class="grid gap-6 lg:grid-cols-3">
