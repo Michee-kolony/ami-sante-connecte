@@ -17,6 +17,7 @@ export interface EtablissementSession {
   nom: string;
   type: string;
   province: string;
+  districtSanitaire?: string;
   zoneSante: string;
   aireSante: string;
   adresse: string;

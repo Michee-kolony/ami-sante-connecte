@@ -380,7 +380,7 @@
                 <div class="flex justify-between gap-3"><dt class="text-slate-500 dark:text-slate-400">E-mail</dt><dd class="truncate text-slate-900 dark:text-white">{{ p.email || '—' }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-slate-500 dark:text-slate-400">Espace patiente</dt><dd class="text-slate-900 dark:text-white">{{ p.espaceEnLigne }}</dd></div>
                 @if (p.contactUrgence.nom) {
-                  <div class="flex justify-between gap-3"><dt class="text-slate-500 dark:text-slate-400">Urgence</dt><dd class="text-right text-slate-900 dark:text-white">{{ p.contactUrgence.nom }}{{ p.contactUrgence.lien ? ' (' + p.contactUrgence.lien + ')' : '' }}<br><span class="text-xs">{{ p.contactUrgence.telephone }}</span></dd></div>
+                  <div class="flex justify-between gap-3"><dt class="text-slate-500 dark:text-slate-400">Urgence</dt><dd class="text-right text-slate-900 dark:text-white">{{ p.contactUrgence.nom }}{{ p.contactUrgence.lien ? ' (' + p.contactUrgence.lien + ')' : '' }}<br><span class="text-xs">{{ p.contactUrgence.telephone }}{{ p.contactUrgence.adresse ? ' · ' + p.contactUrgence.adresse : '' }}</span></dd></div>
                 }
               </dl>
             </div>
@@ -813,6 +813,7 @@
               <div class="sm:col-span-2"><label class="label" for="f-ave">Avenue / repère</label><input id="f-ave" class="input" [(ngModel)]="formInfos.avenue" name="fave"></div>
               <div><label class="label" for="f-un">Contact d’urgence</label><input id="f-un" class="input" [(ngModel)]="formInfos.urgenceNom" name="fun" placeholder="Nom"></div>
               <div><label class="label" for="f-ut">Téléphone d’urgence</label><input id="f-ut" class="input" [(ngModel)]="formInfos.urgenceTel" name="fut"></div>
+              <div><label class="label" for="f-ua">Adresse de la personne à contacter</label><input id="f-ua" class="input" [(ngModel)]="formInfos.urgenceAdresse" name="fua"></div>
               <div><label class="label" for="f-all">Allergies</label><input id="f-all" class="input" [(ngModel)]="formInfos.allergies" name="fall"></div>
               <div><label class="label" for="f-med">Médicaments en cours</label><input id="f-med" class="input" [(ngModel)]="formInfos.medicaments" name="fmed"></div>
             </div>

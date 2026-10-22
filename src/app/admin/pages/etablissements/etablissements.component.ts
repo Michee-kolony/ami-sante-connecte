@@ -14,7 +14,7 @@ const PHOTO_MAX_OCTETS = 5 * 1024 * 1024;
 function formulaireVide() {
   return {
     nom: '', type: '' as TypeEtablissement | '', secteur: '' as SecteurEtablissement | '',
-    province: 'Kinshasa', zoneSante: '', aireSante: '', adresse: '',
+    province: 'Kinshasa', districtSanitaire: '', zoneSante: '', aireSante: '', adresse: '',
     latitude: null as number | null, longitude: null as number | null,
     telephone: '', email: '', responsable: '', fonctionResponsable: '', lits: 0,
     services: new Set<ServiceEtablissement>(),
@@ -24,7 +24,7 @@ function formulaireVide() {
 function formulaireDepuis(e: Etablissement) {
   return {
     nom: e.nom, type: e.type as TypeEtablissement | '', secteur: e.secteur as SecteurEtablissement | '',
-    province: e.province, zoneSante: e.zoneSante, aireSante: e.aireSante, adresse: e.adresse,
+    province: e.province, districtSanitaire: e.districtSanitaire ?? '', zoneSante: e.zoneSante, aireSante: e.aireSante, adresse: e.adresse,
     latitude: e.latitude, longitude: e.longitude,
     telephone: e.telephone, email: e.email, responsable: e.responsable, fonctionResponsable: e.fonctionResponsable, lits: e.lits,
     services: new Set(e.services),
@@ -279,6 +279,7 @@ export class EtablissementsComponent implements OnDestroy {
       type: this.form.type as TypeEtablissement,
       secteur: this.form.secteur as SecteurEtablissement,
       province: this.form.province,
+      districtSanitaire: this.form.districtSanitaire.trim(),
       zoneSante: this.form.zoneSante.trim(),
       aireSante: this.form.aireSante.trim(),
       adresse: this.form.adresse.trim(),

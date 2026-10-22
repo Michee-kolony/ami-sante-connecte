@@ -96,6 +96,8 @@ export interface Antecedents {
   atcdObstetricaux: string[];
   plusGrosPoidsNaissanceG: number | null;
   dernierAccouchement: string | null;
+  /** « Test connu » (VIH) : date du test, de moins de 3 mois. */
+  testVihConnuLe?: string | null;
 }
 
 /** Champs de la fiche CPN propres à la patiente (identité complémentaire, biologie, antécédents cochés). */
@@ -103,6 +105,7 @@ export interface ProfilCpn {
   etatCivil: string;
   occupation: string;
   nomPartenaire: string;
+  occupationPartenaire: string;
   groupeSanguin: string;
   rhesus: string;
   tailleCm: number | null;
@@ -112,23 +115,24 @@ export interface ProfilCpn {
   atcdObstetricaux: string[];
   plusGrosPoidsNaissanceG: number | null;
   dernierAccouchement: string;
+  testVihConnuLe: string;
 }
 
 export function profilCpnVide(): ProfilCpn {
   return {
-    etatCivil: '', occupation: '', nomPartenaire: '', groupeSanguin: '', rhesus: '', tailleCm: null, electrophoreseHb: '',
-    atcdMedicaux: [], atcdGynecoChirurgicaux: [], atcdObstetricaux: [], plusGrosPoidsNaissanceG: null, dernierAccouchement: '',
+    etatCivil: '', occupation: '', nomPartenaire: '', occupationPartenaire: '', groupeSanguin: '', rhesus: '', tailleCm: null, electrophoreseHb: '',
+    atcdMedicaux: [], atcdGynecoChirurgicaux: [], atcdObstetricaux: [], plusGrosPoidsNaissanceG: null, dernierAccouchement: '', testVihConnuLe: '',
   };
 }
 
 export function profilCpnDe(p: Patiente): ProfilCpn {
   const a = p.antecedents;
   return {
-    etatCivil: p.etatCivil ?? '', occupation: p.occupation ?? '', nomPartenaire: p.nomPartenaire ?? '',
+    etatCivil: p.etatCivil ?? '', occupation: p.occupation ?? '', nomPartenaire: p.nomPartenaire ?? '', occupationPartenaire: p.occupationPartenaire ?? '',
     groupeSanguin: p.groupeSanguin ?? '', rhesus: p.rhesus ?? '', tailleCm: p.tailleCm ?? null, electrophoreseHb: p.electrophoreseHb ?? '',
     atcdMedicaux: [...(a?.atcdMedicaux ?? [])], atcdGynecoChirurgicaux: [...(a?.atcdGynecoChirurgicaux ?? [])],
     atcdObstetricaux: [...(a?.atcdObstetricaux ?? [])], plusGrosPoidsNaissanceG: a?.plusGrosPoidsNaissanceG ?? null,
-    dernierAccouchement: a?.dernierAccouchement ?? '',
+    dernierAccouchement: a?.dernierAccouchement ?? '', testVihConnuLe: a?.testVihConnuLe ?? '',
   };
 }
 
@@ -136,12 +140,13 @@ export function profilCpnDe(p: Patiente): ProfilCpn {
 export function profilCpnVersApi(f: ProfilCpn): { patiente: Partial<Patiente>; antecedents: Partial<Antecedents> } {
   return {
     patiente: {
-      etatCivil: f.etatCivil, occupation: f.occupation, nomPartenaire: f.nomPartenaire, groupeSanguin: f.groupeSanguin,
+      etatCivil: f.etatCivil, occupation: f.occupation, nomPartenaire: f.nomPartenaire, occupationPartenaire: f.occupationPartenaire, groupeSanguin: f.groupeSanguin,
       rhesus: f.rhesus, tailleCm: f.tailleCm, electrophoreseHb: f.electrophoreseHb,
     },
     antecedents: {
       atcdMedicaux: f.atcdMedicaux, atcdGynecoChirurgicaux: f.atcdGynecoChirurgicaux, atcdObstetricaux: f.atcdObstetricaux,
       plusGrosPoidsNaissanceG: f.plusGrosPoidsNaissanceG, dernierAccouchement: f.dernierAccouchement || null,
+      testVihConnuLe: f.testVihConnuLe || null,
     },
   };
 }
@@ -170,6 +175,7 @@ export interface Patiente {
   etatCivil: string;
   occupation: string;
   nomPartenaire: string;
+  occupationPartenaire?: string;
   groupeSanguin: string;
   rhesus: string;
   tailleCm: number | null;
@@ -178,7 +184,7 @@ export interface Patiente {
   telephonePartage: boolean;
   telephone2: string;
   email?: string;
-  contactUrgence: { nom: string; lien: string; telephone: string };
+  contactUrgence: { nom: string; lien: string; telephone: string; adresse?: string };
   consentements: Consentements;
   adresse: Adresse;
   antecedents: Antecedents;

@@ -32,6 +32,8 @@ export interface Etablissement {
   type: TypeEtablissement;
   secteur: SecteurEtablissement;
   province: string;
+  /** District sanitaire (en-tête de la fiche CPN). */
+  districtSanitaire: string;
   zoneSante: string;
   aireSante: string;
   adresse: string;

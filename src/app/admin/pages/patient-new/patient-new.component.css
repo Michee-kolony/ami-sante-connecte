@@ -1,0 +1,214 @@
+/*
+ * « Fiche de consultation prénatale » : rendu de la fiche papier du Ministère de la Santé, sur papier blanc.
+ * Champs sur lignes pointillées, cases carrées, encre noire. En mode sombre : feuille gris foncé, encre claire.
+ */
+.fiche {
+  --papier: #ffffff;
+  --papier-bord: #e2e8f0;
+  --encre: #111827;
+  --encre-douce: #4b5563;
+  --trait: #1f2937;
+  --pointille: rgba(31, 41, 55, 0.45);
+  --champ: #f8fafc;
+  --accent: #0055a5;
+  --rouge: #dc2626;
+  background: var(--papier);
+  color: var(--encre);
+  border: 1px solid var(--papier-bord);
+  font-family: Arial, Helvetica, sans-serif;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 12px 32px -12px rgba(15, 23, 42, 0.25);
+}
+
+:host-context(.dark) .fiche {
+  --papier: #0f172a;
+  --papier-bord: #1e293b;
+  --encre: #f1f5f9;
+  --encre-douce: #94a3b8;
+  --trait: #cbd5e1;
+  --pointille: rgba(203, 213, 225, 0.4);
+  --champ: rgba(255, 255, 255, 0.04);
+  --accent: #7cb4ff;
+  --rouge: #f87171;
+  box-shadow: none;
+}
+
+.fiche .entete {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+}
+
+.fiche .titre-fiche {
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.fiche .titre-section {
+  font-weight: 800;
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.fiche .sous-titre {
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.fiche .petit {
+  color: var(--encre-douce);
+  font-size: 0.72rem;
+}
+
+/* Ligne pointillée : un champ à remplir comme sur le papier. */
+.fiche .ligne {
+  min-width: 0;
+  flex: 1 1 8rem;
+  background: transparent;
+  border: 0;
+  border-bottom: 1.5px dotted var(--pointille);
+  border-radius: 0;
+  color: var(--encre);
+  font: inherit;
+  padding: 0.1rem 0.3rem;
+  outline: none;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+.fiche .ligne::placeholder {
+  color: var(--encre-douce);
+  opacity: 0.55;
+}
+.fiche .ligne:focus {
+  border-bottom: 1.5px solid var(--accent);
+  background: var(--champ);
+}
+.fiche .ligne:disabled {
+  opacity: 0.7;
+}
+.fiche select.ligne {
+  appearance: none;
+  cursor: pointer;
+  padding-right: 1rem;
+  background-image: linear-gradient(45deg, transparent 50%, var(--encre-douce) 50%), linear-gradient(135deg, var(--encre-douce) 50%, transparent 50%);
+  background-position: calc(100% - 7px) 55%, calc(100% - 3px) 55%;
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+}
+.fiche select.ligne option {
+  background: #fff;
+  color: #111;
+}
+.fiche .ligne.court {
+  flex: 0 1 5rem;
+}
+.fiche .ligne.nombre {
+  flex: 0 0 3.2rem;
+  text-align: center;
+}
+
+/* Valeur imprimée (non modifiable : vient de l'établissement). */
+.fiche .valeur {
+  flex: 1 1 8rem;
+  min-width: 0;
+  border-bottom: 1.5px dotted var(--pointille);
+  padding: 0.1rem 0.3rem;
+  font-weight: 600;
+}
+
+/* Case carrée à cocher. */
+.fiche .case {
+  appearance: none;
+  flex: none;
+  width: 1.05rem;
+  height: 1.05rem;
+  border: 1.5px solid var(--trait);
+  border-radius: 4px;
+  background: var(--champ);
+  cursor: pointer;
+  display: inline-grid;
+  place-content: center;
+  vertical-align: middle;
+}
+.fiche .case::after {
+  content: '';
+  width: 0.55rem;
+  height: 0.3rem;
+  border-left: 2px solid var(--papier);
+  border-bottom: 2px solid var(--papier);
+  transform: rotate(-45deg) translate(1px, -1px);
+  opacity: 0;
+}
+.fiche .case:checked {
+  background: var(--encre);
+  border-color: var(--encre);
+}
+.fiche .case:checked::after {
+  opacity: 1;
+}
+.fiche .case:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.fiche .item-case {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* Cadre arrondi de la fiche (rendez-vous, photo). */
+.fiche .cadre {
+  border: 1.5px solid var(--trait);
+  border-radius: 6px;
+}
+.fiche .tableau {
+  width: 100%;
+  border-collapse: collapse;
+}
+.fiche .tableau th,
+.fiche .tableau td {
+  border: 1px solid var(--trait);
+  padding: 0.3rem;
+  text-align: center;
+  vertical-align: middle;
+}
+.fiche .tableau th {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.fiche .tableau .vide {
+  height: 2rem;
+}
+
+.fiche .bouton-papier {
+  border: 1.5px solid var(--trait);
+  border-radius: 6px;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: var(--champ);
+  cursor: pointer;
+}
+.fiche .bouton-papier:hover {
+  background: var(--encre);
+  color: var(--papier);
+}
+
+/* Champ obligatoire vide (après « Prévisualiser la fiche »). */
+.fiche .manquant {
+  border-bottom-color: var(--rouge) !important;
+  border-bottom-style: solid !important;
+}
+.fiche .cadre.manquant {
+  border-color: var(--rouge);
+  border-style: dashed;
+}
+.fiche .obligatoire {
+  color: var(--rouge);
+  font-weight: 700;
+}

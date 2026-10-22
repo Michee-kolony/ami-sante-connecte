@@ -350,7 +350,7 @@ export class PatientDetailComponent implements OnChanges, OnDestroy {
       this.formInfos = {
         telephone: p.telephone, telephone2: p.telephone2, email: p.email ?? '',
         province: p.adresse.province, commune: p.adresse.commune, quartier: p.adresse.quartier, avenue: p.adresse.avenue, repere: p.adresse.repere,
-        urgenceNom: p.contactUrgence?.nom ?? '', urgenceLien: p.contactUrgence?.lien ?? '', urgenceTel: p.contactUrgence?.telephone ?? '',
+        urgenceNom: p.contactUrgence?.nom ?? '', urgenceLien: p.contactUrgence?.lien ?? '', urgenceTel: p.contactUrgence?.telephone ?? '', urgenceAdresse: p.contactUrgence?.adresse ?? '',
         allergies: p.antecedents?.allergies ?? '', medicaments: p.antecedents?.medicaments ?? '',
       };
     }
@@ -513,7 +513,7 @@ export class PatientDetailComponent implements OnChanges, OnDestroy {
   // Informations administratives
   formInfos = {
     telephone: '', telephone2: '', email: '', province: '', commune: '', quartier: '', avenue: '', repere: '',
-    urgenceNom: '', urgenceLien: '', urgenceTel: '',
+    urgenceNom: '', urgenceLien: '', urgenceTel: '', urgenceAdresse: '',
     allergies: '', medicaments: '',
   };
 
@@ -524,7 +524,7 @@ export class PatientDetailComponent implements OnChanges, OnDestroy {
     this.executer(() => this.service.modifier(p.numero, {
       telephone: f.telephone, telephone2: f.telephone2, email: f.email,
       adresse: { ...p.adresse, province: f.province, commune: f.commune, quartier: f.quartier, avenue: f.avenue, repere: f.repere },
-      contactUrgence: { nom: f.urgenceNom, lien: f.urgenceLien, telephone: f.urgenceTel },
+      contactUrgence: { nom: f.urgenceNom, lien: f.urgenceLien, telephone: f.urgenceTel, adresse: f.urgenceAdresse },
       antecedents: { ...p.antecedents, allergies: f.allergies, medicaments: f.medicaments },
     }), 'Informations mises à jour. La modification est tracée.');
   }

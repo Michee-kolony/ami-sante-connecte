@@ -2,18 +2,19 @@ import { Component, OnDestroy, computed, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { aujourdhui, dateHeureChiffres, dpaNaegele, jourChiffres, jourFr } from '../../data/format';
-import { Doublon, FACTEURS_RISQUE, PatientesService, SaisieDatation, doublonsDe, profilCpnVersApi, profilCpnVide } from '../../data/patientes.service';
-import { FicheCpnPatienteComponent } from '../../components/fiche-cpn-patiente.component';
+import { Doublon, PatientesService, SaisieDatation, doublonsDe, profilCpnVersApi, profilCpnVide } from '../../data/patientes.service';
 import { EtablissementsService } from '../../data/etablissements.service';
 import { ReferentielsService } from '../../data/referentiels.service';
 import { SessionService, messageErreur } from '../../data/session.service';
 
-interface Step {
-  title: string;
-  subtitle: string;
-  icon: string;
-  clinical?: boolean;
+/** Case de la fiche papier : libellé court imprimé, valeur du référentiel enregistrée. */
+interface CaseFiche {
+  l: string;
+  v: string;
 }
+
+/** Libellé imprimé sur la fiche : l'abréviation entre parenthèses si elle existe (« Tuberculose (TBC) » → TBC). */
+const libelleCourt = (v: string) => v.match(/\(([^)]+)\)$/)?.[1] ?? v;
 
 const DAY = 86_400_000;
 
@@ -44,14 +45,16 @@ async function enJpeg(fichier: File, cote = 1000): Promise<File> {
 }
 
 /**
- * Enregistrement d'une patiente (médecin) : dossier, grossesse en cours et datation validée,
- * premier rendez-vous facultatif. Les doublons possibles sont vérifiés pendant la saisie puis
- * par le serveur. La première consultation se fait ensuite depuis le dossier.
+ * Enregistrement d'une patiente (médecin) présenté comme la « Fiche de consultation prénatale »
+ * papier du Ministère de la Santé : identité, DDR/DPA, antécédents cochés et rendez-vous, plus la
+ * photo et le compte de l'espace patiente. Les doublons possibles sont vérifiés pendant la saisie
+ * puis par le serveur ; la fiche est prévisualisée avant l'enregistrement.
  */
 @Component({
   selector: 'app-patient-new',
   standalone: true,
-  imports: [FormsModule, RouterLink, FicheCpnPatienteComponent],
+  imports: [FormsModule, RouterLink],
+  styleUrl: './patient-new.component.css',
   templateUrl: './patient-new.component.html',
 })
 export class PatientNewComponent implements OnDestroy {
@@ -65,26 +68,46 @@ export class PatientNewComponent implements OnDestroy {
   chargementEtablissements = true;
   fmt = jourFr;
   today = aujourdhui();
-  step = 0;
-  /** Étape dépliée : aucune à l'arrivée, le médecin ouvre lui-même la première (-1 = toutes fermées). */
-  ouverte = -1;
   envoi = false;
   erreur = '';
 
-  steps: Step[] = [
-    { title: 'Identité', subtitle: 'Femme enceinte, DDR et DPA', icon: 'fa-id-card', clinical: true },
-    { title: 'Contact', subtitle: 'Téléphone, compte et personne à contacter', icon: 'fa-phone' },
-    { title: 'Résidence', subtitle: 'Adresse et structure de prise en charge', icon: 'fa-location-dot' },
-    { title: 'Antécédents obstétricaux', subtitle: 'Gestité, parité, enfants vivants, complications', icon: 'fa-baby', clinical: true },
-    { title: 'Antécédents médicaux', subtitle: 'Maladies, allergies, médicaments en cours', icon: 'fa-stethoscope', clinical: true },
-    { title: 'Antécédents gynéco-chirurgicaux', subtitle: 'Interventions et chirurgies antérieures', icon: 'fa-user-doctor', clinical: true },
-    { title: 'Grossesse', subtitle: 'Grossesse multiple, facteurs de risque, fiche CPN', icon: 'fa-person-pregnant', clinical: true },
-    { title: 'Suivi', subtitle: 'Premier rendez-vous et validation', icon: 'fa-calendar-check' },
-  ];
-
-  readonly facteursProposes = FACTEURS_RISQUE;
-  /** Fiche CPN : identité (étape Identité), antécédents à cocher (une étape par catégorie), biologie (étape Grossesse). */
+  /** Fiche CPN : identité complémentaire, biologie et antécédents cochés (référentiel du serveur). */
   fiche = profilCpnVide();
+  /** Date imprimée en tête de la fiche. */
+  readonly dateFiche = jourChiffres(aujourdhui());
+  readonly annee = aujourdhui().slice(0, 4);
+  /** Après une tentative de prévisualisation incomplète : les champs obligatoires vides passent en rouge. */
+  tentative = false;
+
+  /** Cases de la fiche, dans l'ordre imprimé (valeurs du référentiel servi par le serveur). */
+  casesFiche(ref: 'ATCD_MEDICAUX' | 'ATCD_GYNECO_CHIRURGICAUX'): CaseFiche[] {
+    return (this.referentiels.cpn()?.[ref] ?? []).map(v => ({ l: libelleCourt(v), v }));
+  }
+
+  coche(liste: 'atcdMedicaux' | 'atcdGynecoChirurgicaux' | 'atcdObstetricaux', v: string): boolean {
+    return this.fiche[liste].includes(v);
+  }
+
+  basculer(liste: 'atcdMedicaux' | 'atcdGynecoChirurgicaux' | 'atcdObstetricaux', v: string): void {
+    const l = this.fiche[liste];
+    this.fiche[liste] = l.includes(v) ? l.filter(x => x !== v) : [...l, v];
+  }
+
+  /** Complication post-partum (NON / OUI) : case « Complication du post-partum » du référentiel. */
+  get complicationPostPartum(): boolean | null {
+    return this.coche('atcdObstetricaux', 'Complication du post-partum') ? true : this.complicationNon ? false : null;
+  }
+  private complicationNon = false;
+
+  choisirComplication(oui: boolean): void {
+    const v = 'Complication du post-partum';
+    if (oui !== this.coche('atcdObstetricaux', v)) this.basculer('atcdObstetricaux', v);
+    this.complicationNon = !oui;
+  }
+
+  get etablissement() {
+    return this.etablissementsActifs().find(e => e.id === this.form.etablissementId) ?? null;
+  }
 
   form = {
     nom: '', postnom: '', prenom: '',
@@ -94,7 +117,7 @@ export class PatientNewComponent implements OnDestroy {
     tel1: '', tel1Partage: false, tel2: '', email: '',
     /** Saisis par la patiente : identifiants de son espace en ligne. */
     motDePasse: '', confirmation: '',
-    urgenceNom: '', urgenceLien: '', urgenceTel: '',
+    urgenceNom: '', urgenceLien: '', urgenceTel: '', urgenceAdresse: '',
     // Par défaut, la province de l'établissement de connexion (à corriger si la patiente vit ailleurs).
     province: '', commune: '', quartier: '', avenue: '', repere: '',
     aire: '',
@@ -135,6 +158,7 @@ export class PatientNewComponent implements OnDestroy {
 
   constructor() {
     this.chargerProvinces();
+    this.referentiels.chargerCpn().catch(() => {});
     this.etablissementsService.charger(true)
       .then(() => {
         const id = this.session.etablissement()?.id;
@@ -192,10 +216,6 @@ export class PatientNewComponent implements OnDestroy {
         this.verificationDoublons = false;
       }
     }, 500);
-  }
-
-  get progress(): number {
-    return Math.round(((this.step + 1) / this.steps.length) * 100);
   }
 
   get structureNom(): string {
@@ -340,10 +360,6 @@ export class PatientNewComponent implements OnDestroy {
     };
   }
 
-  basculerFacteur(f: string): void {
-    this.form.facteurs = this.form.facteurs.includes(f) ? this.form.facteurs.filter(x => x !== f) : [...this.form.facteurs, f];
-  }
-
   // --- Synthèse ----------------------------------------------------------
   get manquants(): string[] {
     const m: string[] = [];
@@ -376,7 +392,11 @@ export class PatientNewComponent implements OnDestroy {
   apercuOuvert = false;
 
   ouvrirApercu(): void {
-    if (this.manquants.length) return;
+    if (this.manquants.length) {
+      this.tentative = true;
+      setTimeout(() => document.querySelector('.fiche .manquant')?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+      return;
+    }
     this.apercuOuvert = true;
     document.body.style.overflow = 'hidden';
   }
@@ -386,11 +406,10 @@ export class PatientNewComponent implements OnDestroy {
     document.body.style.overflow = '';
   }
 
-  /** « Modifier » dans l'aperçu : revient à l'étape concernée. */
-  modifierEtape(i: number): void {
+  /** « Modifier » dans l'aperçu : revient à la section de la fiche. */
+  allerA(id: string): void {
     this.fermerApercu();
-    this.ouverte = -1;
-    this.goTo(i);
+    setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   }
 
   async confirmerEnregistrement(): Promise<void> {
@@ -399,72 +418,79 @@ export class PatientNewComponent implements OnDestroy {
     this.fermerApercu();
   }
 
-  /** Fiche telle qu'elle sera enregistrée, par étape (valeurs vides affichées « — »). */
-  get sectionsApercu(): { titre: string; icone: string; etape: number; lignes: { l: string; v: string }[] }[] {
+  /** Fiche telle qu'elle sera enregistrée, dans l'ordre de la fiche papier (valeurs vides : « — »). */
+  get sectionsApercu(): { titre: string; icone: string; ancre: string; lignes: { l: string; v: string }[] }[] {
     const f = this.form;
     const c = this.fiche;
     const v = (x: unknown) => (x === null || x === undefined || x === '' || (Array.isArray(x) && !x.length) ? '—' : Array.isArray(x) ? x.join(', ') : String(x));
     const j = (iso: string | null | undefined) => (iso ? jourChiffres(iso) : '—');
     const ag = this.agCalcule;
+    const e = this.etablissement;
     const datation = f.ddrConnue
       ? [{ l: 'DDR', v: j(f.ddr) }, { l: 'Fiabilité de la DDR', v: f.ddr ? f.ddrFiabilite : '—' }]
-      : [{ l: 'Méthode', v: f.agSemaines === null ? '—' : f.agMethode }, { l: 'Date de l’examen', v: f.agSemaines === null ? '—' : j(f.dateReference) },
-        { l: 'Âge gestationnel à l’examen', v: f.agSemaines === null ? '—' : `${f.agSemaines} SA + ${f.agJours ?? 0} j` }];
+      : [{ l: 'Datation', v: f.agSemaines === null ? '—' : `${f.agMethode} du ${j(f.dateReference)} : ${f.agSemaines} SA + ${f.agJours ?? 0} j` }];
+    const obst = c.atcdObstetricaux.filter(x => !x.startsWith('Primipare'));
     return [
-      { titre: 'Identité', icone: 'fa-id-card', etape: 0, lignes: [
-        { l: 'Nom', v: v(f.nom.toUpperCase()) }, { l: 'Postnom', v: v(f.postnom.toUpperCase()) }, { l: 'Prénom', v: v(f.prenom) },
+      { titre: 'En-tête', icone: 'fa-hospital', ancre: 'fiche-entete', lignes: [
+        { l: 'Formation sanitaire', v: e?.nom ?? '—' }, { l: 'Province', v: v(e?.province) }, { l: 'District sanitaire', v: v(e?.districtSanitaire) },
+        { l: 'Zone de santé', v: v(e?.zoneSante) }, { l: 'A.S.', v: v(f.aire) },
+      ] },
+      { titre: 'Identité', icone: 'fa-id-card', ancre: 'fiche-identite', lignes: [
+        { l: 'Nom et postnom', v: v(`${f.nom} ${f.postnom}`.trim().toUpperCase()) }, { l: 'Prénom', v: v(f.prenom) },
+        { l: 'État matrimonial', v: v(c.etatCivil) },
         { l: f.ageMode === 'date' ? 'Date de naissance' : 'Âge déclaré', v: f.ageMode === 'date' ? j(f.dateNaissance) : v(f.ageDeclare != null ? `${f.ageDeclare} ans` : '') },
-        { l: 'Âge', v: v(this.ageCalcule != null ? `${this.ageCalcule} ans` : '') }, { l: 'Pièce d’identité', v: v(f.piece) },
-        { l: 'État civil', v: v(c.etatCivil) }, { l: 'Occupation', v: v(c.occupation) }, { l: 'Nom du partenaire', v: v(c.nomPartenaire) },
-        ...datation,
-        { l: 'Âge gestationnel aujourd’hui', v: ag ? `${ag.sa} SA + ${ag.j} j` : '—' },
-        { l: 'DPA calculée', v: j(this.dpaCalculee) }, { l: 'DPA retenue', v: j(f.dpaSaisie || this.dpaCalculee) },
-        ...(this.ecartSensible ? [{ l: 'Justification de la DPA', v: v(f.dpaJustification) }] : []),
-      ] },
-      { titre: 'Contact', icone: 'fa-phone', etape: 1, lignes: [
-        { l: 'Téléphone principal', v: v(f.tel1 ? `+243 ${f.tel1}${f.tel1Partage ? ' (partagé)' : ''}` : '') }, { l: 'Téléphone secondaire', v: v(f.tel2 ? `+243 ${f.tel2}` : '') },
-        { l: 'E-mail (compte patiente)', v: v(f.email) }, { l: 'Mot de passe', v: f.motDePasse ? 'Défini (non affiché)' : '—' },
-        { l: 'Personne à contacter', v: v([f.urgenceNom, f.urgenceLien && `(${f.urgenceLien})`, f.urgenceTel].filter(Boolean).join(' ')) },
-      ] },
-      { titre: 'Résidence', icone: 'fa-location-dot', etape: 2, lignes: [
-        { l: 'Province', v: v(f.province) }, { l: 'Commune', v: v(f.commune) }, { l: 'Quartier', v: v(f.quartier) }, { l: 'Avenue / n°', v: v(f.avenue) },
-        { l: 'Repère', v: v(f.repere) }, { l: 'Établissement', v: this.structureNom }, { l: 'Aire de santé', v: v(f.aire) },
-      ] },
-      { titre: 'Antécédents obstétricaux', icone: 'fa-baby', etape: 3, lignes: [
-        { l: 'Antécédents cochés', v: v(c.atcdObstetricaux) },
-        { l: 'Gestité', v: v(f.gestite) }, { l: 'Parité', v: v(f.parite) }, { l: 'Enfants vivants', v: v(f.enfantsVivants) },
-        { l: 'Avortements', v: v(f.avortements) }, { l: 'Césariennes', v: v(f.cesariennes) },
-        { l: 'Plus gros poids de naissance', v: v(c.plusGrosPoidsNaissanceG != null ? `${c.plusGrosPoidsNaissanceG} g` : '') },
-        { l: 'Dernier accouchement', v: j(c.dernierAccouchement) }, { l: 'Complications', v: v(f.complications) },
-      ] },
-      { titre: 'Antécédents médicaux', icone: 'fa-stethoscope', etape: 4, lignes: [
-        { l: 'Antécédents cochés', v: v(c.atcdMedicaux) }, { l: 'Autres antécédents médicaux', v: v(f.antecedentsMedicaux) },
-        { l: 'Allergies', v: v(f.allergies) }, { l: 'Médicaments en cours', v: v(f.medicaments) },
-      ] },
-      { titre: 'Antécédents gynéco-chirurgicaux', icone: 'fa-user-doctor', etape: 5, lignes: [
-        { l: 'Antécédents cochés', v: v(c.atcdGynecoChirurgicaux) }, { l: 'Autres antécédents chirurgicaux', v: v(f.antecedentsChirurgicaux) },
-      ] },
-      { titre: 'Grossesse', icone: 'fa-person-pregnant', etape: 6, lignes: [
-        { l: 'Grossesse multiple', v: f.grossesseMultiple === null ? 'Non confirmé' : f.grossesseMultiple ? 'Multiple' : 'Unique' },
-        { l: 'Facteurs de risque', v: v(f.facteurs) },
-        { l: 'Groupe sanguin / rhésus', v: v([c.groupeSanguin, c.rhesus].filter(Boolean).join(' ')) },
+        { l: 'Âge', v: v(this.ageCalcule != null ? `${this.ageCalcule} ans` : '') }, { l: 'Occupation/F', v: v(c.occupation) },
+        { l: 'Adresse', v: v([f.avenue, f.quartier, f.commune, f.province].filter(Boolean).join(', ')) },
+        { l: 'Tél', v: v(f.tel1 ? `+243 ${f.tel1}${f.tel1Partage ? ' (partagé)' : ''}${f.tel2 ? ' / +243 ' + f.tel2 : ''}` : '') },
+        { l: 'GS / Rh', v: v([c.groupeSanguin, c.rhesus].filter(Boolean).join(' ')) },
         { l: 'Taille', v: v(c.tailleCm != null ? `${c.tailleCm} cm` : '') }, { l: 'Électrophorèse Hb', v: v(c.electrophoreseHb) },
+        { l: 'Nom du partenaire', v: v(c.nomPartenaire) }, { l: 'Occupation/H', v: v(c.occupationPartenaire) },
+        { l: 'Personne à contacter', v: v([f.urgenceNom, f.urgenceLien && `(${f.urgenceLien})`].filter(Boolean).join(' ')) },
+        { l: 'Adresse/Tél (urgence)', v: v([f.urgenceAdresse, f.urgenceTel].filter(Boolean).join(' · ')) },
+        ...datation,
+        { l: 'DPA', v: j(f.dpaSaisie || this.dpaCalculee) },
+        { l: 'Âge gestationnel aujourd’hui', v: ag ? `${ag.sa} SA + ${ag.j} j` : '—' },
+        ...(this.ecartSensible ? [{ l: 'Justification de la DPA', v: v(f.dpaJustification) }] : []),
+        { l: 'Primipare', v: v(c.atcdObstetricaux.filter(x => x.startsWith('Primipare'))) },
       ] },
-      { titre: 'Suivi', icone: 'fa-calendar-check', etape: 7, lignes: [
-        { l: 'Premier rendez-vous', v: f.prochainRdv ? dateHeureChiffres(new Date(f.prochainRdv)) : 'Aucun (consultation immédiate)' },
-        ...(f.prochainRdv ? [{ l: 'Motif', v: v(f.motifRdv) }] : []),
+      { titre: '1) Antécédents médicaux', icone: 'fa-stethoscope', ancre: 'fiche-atcd', lignes: [
+        { l: 'Cochés', v: v(c.atcdMedicaux.map(libelleCourt)) }, { l: 'Test connu', v: j(c.testVihConnuLe) },
+        { l: 'Autres', v: v(f.antecedentsMedicaux) },
+      ] },
+      { titre: '2) Gynécologiques et chirurgicaux', icone: 'fa-user-doctor', ancre: 'fiche-atcd', lignes: [
+        { l: 'Cochés', v: v(c.atcdGynecoChirurgicaux.map(libelleCourt)) }, { l: 'Autres', v: v(f.antecedentsChirurgicaux) },
+      ] },
+      { titre: '3) Obstétricaux', icone: 'fa-baby', ancre: 'fiche-atcd-obst', lignes: [
+        { l: 'Parité', v: v(f.parite) }, { l: 'Gestité', v: v(f.gestite) }, { l: 'Enfants en vie', v: v(f.enfantsVivants) },
+        { l: 'Avortements', v: v(f.avortements) }, { l: 'Cochés', v: v(obst) },
+        { l: 'Plus gros poids de naissance', v: v(c.plusGrosPoidsNaissanceG != null ? `${c.plusGrosPoidsNaissanceG} g` : '') },
+        { l: 'Dernier accouchement', v: j(c.dernierAccouchement) },
+        { l: 'Complication post-partum', v: this.complicationPostPartum === null ? '—' : this.complicationPostPartum ? 'OUI' : 'NON' },
+        ...(this.complicationPostPartum ? [{ l: 'Lesquelles', v: v(f.complications) }] : []),
+      ] },
+      { titre: 'Rendez-vous', icone: 'fa-calendar-check', ancre: 'fiche-rdv', lignes: [
+        { l: 'CS', v: f.prochainRdv ? dateHeureChiffres(new Date(f.prochainRdv)) : 'Aucun (consultation immédiate)' },
+      ] },
+      { titre: 'Espace patiente', icone: 'fa-mobile-screen', ancre: 'fiche-compte', lignes: [
+        { l: 'E-mail', v: v(f.email) }, { l: 'Mot de passe', v: f.motDePasse ? 'Défini (non affiché)' : '—' },
+        { l: 'Photo', v: this.photoFichier ? 'Ajoutée' : '—' },
       ] },
     ];
   }
 
-  next(): void { if (this.step < this.steps.length - 1) this.goTo(this.step + 1); }
-  prev(): void { if (this.step > 0) this.goTo(this.step - 1); }
-  /** Ouvre l'étape (bandeaux en accordéon) et fait défiler jusqu'à son bandeau ; un second clic la referme. */
-  goTo(i: number): void {
-    if (this.ouverte === i) { this.ouverte = -1; return; }
-    this.step = i;
-    this.ouverte = i;
-    setTimeout(() => document.getElementById(`etape-${i}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  /** Champ obligatoire vide, signalé en rouge après une tentative de prévisualisation. */
+  manque(champ: 'nom' | 'age' | 'photo' | 'email' | 'mdp' | 'province' | 'etablissement'): boolean {
+    if (!this.tentative) return false;
+    const f = this.form;
+    switch (champ) {
+      case 'nom': return !f.nom.trim();
+      case 'age': return this.ageCalcule === null;
+      case 'photo': return !this.photoFichier;
+      case 'email': return !f.email.trim() || this.emailInvalide;
+      case 'mdp': return this.reglesMdp.some(r => !r.ok);
+      case 'province': return !this.referentiels.provinces().includes(f.province);
+      case 'etablissement': return !this.etablissementsActifs().some(e => e.id === f.etablissementId);
+    }
   }
 
   async enregistrer(): Promise<void> {
@@ -481,7 +507,7 @@ export class PatientNewComponent implements OnDestroy {
           dateNaissance: f.ageMode === 'date' ? f.dateNaissance || null : null,
           ageDeclare: f.ageMode === 'age' ? f.ageDeclare : null,
           pieceIdentite: f.piece, telephone: f.tel1, telephonePartage: f.tel1Partage, telephone2: f.tel2, email: f.email,
-          contactUrgence: { nom: f.urgenceNom, lien: f.urgenceLien, telephone: f.urgenceTel },
+          contactUrgence: { nom: f.urgenceNom, lien: f.urgenceLien, telephone: f.urgenceTel, adresse: f.urgenceAdresse },
           adresse: { province: f.province, commune: f.commune, quartier: f.quartier, avenue: f.avenue, repere: f.repere, aireSante: f.aire },
           antecedents: {
             gestite: f.gestite, parite: f.parite, enfantsVivants: f.enfantsVivants, avortements: f.avortements, cesariennes: f.cesariennes,
