@@ -7,6 +7,51 @@ import { EtablissementsService } from '../../data/etablissements.service';
 import { ReferentielsService } from '../../data/referentiels.service';
 import { SessionService, messageErreur } from '../../data/session.service';
 
+interface Step {
+  title: string;
+  subtitle: string;
+  icon: string;
+  /** Couleur de la carte (Tailwind : classes écrites en entier pour être générées). */
+  teinte: Teinte;
+  clinical?: boolean;
+}
+
+interface Teinte {
+  /** Fond et bordure de la carte, barre de gauche. */
+  carte: string;
+  /** Pastille de l'icône. */
+  icone: string;
+  /** Titre. */
+  titre: string;
+}
+
+const TEINTES: Record<string, Teinte> = {
+  bleu: {
+    carte: 'border-l-brand-600 bg-brand-50/60 dark:border-l-brand-400 dark:bg-brand-500/5',
+    icone: 'bg-gradient-to-br from-brand-500 to-brand-700 text-white', titre: 'text-brand-800 dark:text-brand-300',
+  },
+  vert: {
+    carte: 'border-l-teal-500 bg-teal-50/60 dark:border-l-teal-400 dark:bg-teal-500/5',
+    icone: 'bg-gradient-to-br from-teal-400 to-emerald-600 text-white', titre: 'text-teal-800 dark:text-teal-300',
+  },
+  violet: {
+    carte: 'border-l-violet-500 bg-violet-50/60 dark:border-l-violet-400 dark:bg-violet-500/5',
+    icone: 'bg-gradient-to-br from-violet-400 to-purple-600 text-white', titre: 'text-violet-800 dark:text-violet-300',
+  },
+  ambre: {
+    carte: 'border-l-amber-500 bg-amber-50/60 dark:border-l-amber-400 dark:bg-amber-500/5',
+    icone: 'bg-gradient-to-br from-amber-400 to-orange-600 text-white', titre: 'text-amber-800 dark:text-amber-300',
+  },
+  rose: {
+    carte: 'border-l-pink-500 bg-pink-50/60 dark:border-l-pink-400 dark:bg-pink-500/5',
+    icone: 'bg-gradient-to-br from-pink-400 to-rose-600 text-white', titre: 'text-pink-800 dark:text-pink-300',
+  },
+  indigo: {
+    carte: 'border-l-indigo-500 bg-indigo-50/60 dark:border-l-indigo-400 dark:bg-indigo-500/5',
+    icone: 'bg-gradient-to-br from-indigo-400 to-blue-700 text-white', titre: 'text-indigo-800 dark:text-indigo-300',
+  },
+};
+
 /** Case de la fiche papier : libellé court imprimé, valeur du référentiel enregistrée. */
 interface CaseFiche {
   l: string;
@@ -45,10 +90,10 @@ async function enJpeg(fichier: File, cote = 1000): Promise<File> {
 }
 
 /**
- * Enregistrement d'une patiente (médecin) présenté comme la « Fiche de consultation prénatale »
- * papier du Ministère de la Santé : identité, DDR/DPA, antécédents cochés et rendez-vous, plus la
- * photo et le compte de l'espace patiente. Les doublons possibles sont vérifiés pendant la saisie
- * puis par le serveur ; la fiche est prévisualisée avant l'enregistrement.
+ * Enregistrement d'une patiente (médecin) : les données de la « Fiche de consultation prénatale »
+ * papier du Ministère (identité, DDR/DPA, antécédents cochés, rendez-vous), plus la photo et le
+ * compte de l'espace patiente, saisies étape par étape. La fiche papier remplie est prévisualisée
+ * avant l'enregistrement. Les doublons possibles sont vérifiés pendant la saisie puis par le serveur.
  */
 @Component({
   selector: 'app-patient-new',
@@ -67,17 +112,31 @@ export class PatientNewComponent implements OnDestroy {
   etablissementsActifs = computed(() => this.etablissementsService.etablissements().filter(e => e.statut === 'Actif'));
   chargementEtablissements = true;
   fmt = jourFr;
+  /** Affichage de la fiche papier en aperçu : dates en chiffres, cases abrégées comme à l'impression. */
+  jc = (iso: string | null | undefined) => (iso ? jourChiffres(iso) : '');
+  dhc = (v: string) => (v ? dateHeureChiffres(new Date(v)) : '');
+  court = libelleCourt;
   today = aujourdhui();
+  step = 0;
+  /** Étape dépliée : aucune à l'arrivée, le médecin ouvre lui-même la première (-1 = toutes fermées). */
+  ouverte = -1;
   envoi = false;
   erreur = '';
+
+  steps: Step[] = [
+    { title: 'Identité', subtitle: 'Femme enceinte, contact, biologie, DDR et DPA', icon: 'fa-id-card', teinte: TEINTES['bleu'], clinical: true },
+    { title: 'Résidence', subtitle: 'Adresse et formation sanitaire', icon: 'fa-location-dot', teinte: TEINTES['vert'] },
+    { title: 'Antécédents médicaux', subtitle: 'TBC, HTA, SCA/SS, VIH… et test connu', icon: 'fa-stethoscope', teinte: TEINTES['violet'], clinical: true },
+    { title: 'Antécédents gynéco-chirurgicaux', subtitle: 'Césarienne, cerclage, fibrome, GEU…', icon: 'fa-user-doctor', teinte: TEINTES['ambre'], clinical: true },
+    { title: 'Antécédents obstétricaux', subtitle: 'Parité, gestité, accouchements antérieurs', icon: 'fa-baby', teinte: TEINTES['rose'], clinical: true },
+    { title: 'Rendez-vous', subtitle: 'Premier rendez-vous et prévisualisation de la fiche', icon: 'fa-calendar-check', teinte: TEINTES['indigo'] },
+  ];
 
   /** Fiche CPN : identité complémentaire, biologie et antécédents cochés (référentiel du serveur). */
   fiche = profilCpnVide();
   /** Date imprimée en tête de la fiche. */
   readonly dateFiche = jourChiffres(aujourdhui());
   readonly annee = aujourdhui().slice(0, 4);
-  /** Après une tentative de prévisualisation incomplète : les champs obligatoires vides passent en rouge. */
-  tentative = false;
 
   /** Cases de la fiche, dans l'ordre imprimé (valeurs du référentiel servi par le serveur). */
   casesFiche(ref: 'ATCD_MEDICAUX' | 'ATCD_GYNECO_CHIRURGICAUX'): CaseFiche[] {
@@ -103,6 +162,38 @@ export class PatientNewComponent implements OnDestroy {
     const v = 'Complication du post-partum';
     if (oui !== this.coche('atcdObstetricaux', v)) this.basculer('atcdObstetricaux', v);
     this.complicationNon = !oui;
+  }
+
+  /** Pastille à cocher (saisie des antécédents). */
+  pastille(actif: boolean): string {
+    return actif
+      ? 'border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-300'
+      : 'border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800/50';
+  }
+
+  /** Cases obstétricales suggérées par l'âge, la parité, le poids et l'intervalle (jamais cochées seules). */
+  get suggestionsObst(): string[] {
+    const s: string[] = [];
+    const primipare = this.form.parite === 0;
+    const age = this.ageCalcule;
+    if (primipare && age != null && age < 19) s.push('Primipare de moins de 19 ans');
+    if (primipare && age != null && age > 35) s.push('Primipare de plus de 35 ans');
+    if ((this.fiche.plusGrosPoidsNaissanceG ?? 0) > 4000) s.push('Enfant de plus de 4 kg');
+    if (this.fiche.dernierAccouchement) {
+      const mois = (Date.now() - Date.parse(this.fiche.dernierAccouchement)) / (30.44 * DAY);
+      if (mois >= 0 && mois < 36) s.push('Intervalle inférieur à 3 ans');
+    }
+    return s.filter(x => !this.fiche.atcdObstetricaux.includes(x));
+  }
+
+  /** Lignes « Adresse » et « Adresse/Tél » de la fiche en aperçu. */
+  get adresseApercu(): string {
+    const f = this.form;
+    return [f.avenue, f.quartier, f.commune, f.province].filter(Boolean).join(', ');
+  }
+
+  get contactApercu(): string {
+    return [this.form.urgenceAdresse, this.form.urgenceTel].filter(Boolean).join(' · ');
   }
 
   get etablissement() {
@@ -392,11 +483,7 @@ export class PatientNewComponent implements OnDestroy {
   apercuOuvert = false;
 
   ouvrirApercu(): void {
-    if (this.manquants.length) {
-      this.tentative = true;
-      setTimeout(() => document.querySelector('.fiche .manquant')?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
-      return;
-    }
+    if (this.manquants.length) return;
     this.apercuOuvert = true;
     document.body.style.overflow = 'hidden';
   }
@@ -406,10 +493,11 @@ export class PatientNewComponent implements OnDestroy {
     document.body.style.overflow = '';
   }
 
-  /** « Modifier » dans l'aperçu : revient à la section de la fiche. */
-  allerA(id: string): void {
+  /** « Modifier » dans l'aperçu : revient à l'étape concernée. */
+  modifierEtape(i: number): void {
     this.fermerApercu();
-    setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    this.ouverte = -1;
+    this.goTo(i);
   }
 
   async confirmerEnregistrement(): Promise<void> {
@@ -418,79 +506,55 @@ export class PatientNewComponent implements OnDestroy {
     this.fermerApercu();
   }
 
-  /** Fiche telle qu'elle sera enregistrée, dans l'ordre de la fiche papier (valeurs vides : « — »). */
-  get sectionsApercu(): { titre: string; icone: string; ancre: string; lignes: { l: string; v: string }[] }[] {
+  // --- État de chaque étape (icône verte, rouge ou bleue) ----------------------
+  /** Étapes déjà ouvertes, et la plus avancée atteinte. */
+  private visitees = new Set<number>();
+  private etapeMax = -1;
+
+  /** Informations essentielles manquantes dans une étape (les autres doivent seulement avoir été ouvertes). */
+  manquantsEtape(i: number): string[] {
     const f = this.form;
-    const c = this.fiche;
-    const v = (x: unknown) => (x === null || x === undefined || x === '' || (Array.isArray(x) && !x.length) ? '—' : Array.isArray(x) ? x.join(', ') : String(x));
-    const j = (iso: string | null | undefined) => (iso ? jourChiffres(iso) : '—');
-    const ag = this.agCalcule;
-    const e = this.etablissement;
-    const datation = f.ddrConnue
-      ? [{ l: 'DDR', v: j(f.ddr) }, { l: 'Fiabilité de la DDR', v: f.ddr ? f.ddrFiabilite : '—' }]
-      : [{ l: 'Datation', v: f.agSemaines === null ? '—' : `${f.agMethode} du ${j(f.dateReference)} : ${f.agSemaines} SA + ${f.agJours ?? 0} j` }];
-    const obst = c.atcdObstetricaux.filter(x => !x.startsWith('Primipare'));
-    return [
-      { titre: 'En-tête', icone: 'fa-hospital', ancre: 'fiche-entete', lignes: [
-        { l: 'Formation sanitaire', v: e?.nom ?? '—' }, { l: 'Province', v: v(e?.province) }, { l: 'District sanitaire', v: v(e?.districtSanitaire) },
-        { l: 'Zone de santé', v: v(e?.zoneSante) }, { l: 'A.S.', v: v(f.aire) },
-      ] },
-      { titre: 'Identité', icone: 'fa-id-card', ancre: 'fiche-identite', lignes: [
-        { l: 'Nom et postnom', v: v(`${f.nom} ${f.postnom}`.trim().toUpperCase()) }, { l: 'Prénom', v: v(f.prenom) },
-        { l: 'État matrimonial', v: v(c.etatCivil) },
-        { l: f.ageMode === 'date' ? 'Date de naissance' : 'Âge déclaré', v: f.ageMode === 'date' ? j(f.dateNaissance) : v(f.ageDeclare != null ? `${f.ageDeclare} ans` : '') },
-        { l: 'Âge', v: v(this.ageCalcule != null ? `${this.ageCalcule} ans` : '') }, { l: 'Occupation/F', v: v(c.occupation) },
-        { l: 'Adresse', v: v([f.avenue, f.quartier, f.commune, f.province].filter(Boolean).join(', ')) },
-        { l: 'Tél', v: v(f.tel1 ? `+243 ${f.tel1}${f.tel1Partage ? ' (partagé)' : ''}${f.tel2 ? ' / +243 ' + f.tel2 : ''}` : '') },
-        { l: 'GS / Rh', v: v([c.groupeSanguin, c.rhesus].filter(Boolean).join(' ')) },
-        { l: 'Taille', v: v(c.tailleCm != null ? `${c.tailleCm} cm` : '') }, { l: 'Électrophorèse Hb', v: v(c.electrophoreseHb) },
-        { l: 'Nom du partenaire', v: v(c.nomPartenaire) }, { l: 'Occupation/H', v: v(c.occupationPartenaire) },
-        { l: 'Personne à contacter', v: v([f.urgenceNom, f.urgenceLien && `(${f.urgenceLien})`].filter(Boolean).join(' ')) },
-        { l: 'Adresse/Tél (urgence)', v: v([f.urgenceAdresse, f.urgenceTel].filter(Boolean).join(' · ')) },
-        ...datation,
-        { l: 'DPA', v: j(f.dpaSaisie || this.dpaCalculee) },
-        { l: 'Âge gestationnel aujourd’hui', v: ag ? `${ag.sa} SA + ${ag.j} j` : '—' },
-        ...(this.ecartSensible ? [{ l: 'Justification de la DPA', v: v(f.dpaJustification) }] : []),
-        { l: 'Primipare', v: v(c.atcdObstetricaux.filter(x => x.startsWith('Primipare'))) },
-      ] },
-      { titre: '1) Antécédents médicaux', icone: 'fa-stethoscope', ancre: 'fiche-atcd', lignes: [
-        { l: 'Cochés', v: v(c.atcdMedicaux.map(libelleCourt)) }, { l: 'Test connu', v: j(c.testVihConnuLe) },
-        { l: 'Autres', v: v(f.antecedentsMedicaux) },
-      ] },
-      { titre: '2) Gynécologiques et chirurgicaux', icone: 'fa-user-doctor', ancre: 'fiche-atcd', lignes: [
-        { l: 'Cochés', v: v(c.atcdGynecoChirurgicaux.map(libelleCourt)) }, { l: 'Autres', v: v(f.antecedentsChirurgicaux) },
-      ] },
-      { titre: '3) Obstétricaux', icone: 'fa-baby', ancre: 'fiche-atcd-obst', lignes: [
-        { l: 'Parité', v: v(f.parite) }, { l: 'Gestité', v: v(f.gestite) }, { l: 'Enfants en vie', v: v(f.enfantsVivants) },
-        { l: 'Avortements', v: v(f.avortements) }, { l: 'Cochés', v: v(obst) },
-        { l: 'Plus gros poids de naissance', v: v(c.plusGrosPoidsNaissanceG != null ? `${c.plusGrosPoidsNaissanceG} g` : '') },
-        { l: 'Dernier accouchement', v: j(c.dernierAccouchement) },
-        { l: 'Complication post-partum', v: this.complicationPostPartum === null ? '—' : this.complicationPostPartum ? 'OUI' : 'NON' },
-        ...(this.complicationPostPartum ? [{ l: 'Lesquelles', v: v(f.complications) }] : []),
-      ] },
-      { titre: 'Rendez-vous', icone: 'fa-calendar-check', ancre: 'fiche-rdv', lignes: [
-        { l: 'CS', v: f.prochainRdv ? dateHeureChiffres(new Date(f.prochainRdv)) : 'Aucun (consultation immédiate)' },
-      ] },
-      { titre: 'Espace patiente', icone: 'fa-mobile-screen', ancre: 'fiche-compte', lignes: [
-        { l: 'E-mail', v: v(f.email) }, { l: 'Mot de passe', v: f.motDePasse ? 'Défini (non affiché)' : '—' },
-        { l: 'Photo', v: this.photoFichier ? 'Ajoutée' : '—' },
-      ] },
-    ];
+    const m: string[] = [];
+    if (!this.visitees.has(i)) return ['étape non ouverte'];
+    if (i === 0) {
+      if (!f.nom.trim()) m.push('nom');
+      if (this.ageCalcule === null) m.push('âge');
+      if (!this.photoFichier) m.push('photo');
+      if (this.ddrApresReference || this.referenceFuture) m.push('datation à corriger');
+      if (this.ecartSensible && !f.dpaJustification.trim()) m.push('justification de la DPA');
+      if (!f.email.trim() || this.emailInvalide) m.push('e-mail');
+      if (this.reglesMdp.some(r => !r.ok)) m.push('mot de passe');
+    }
+    if (i === 1) {
+      if (!this.referentiels.provinces().includes(f.province)) m.push('province');
+      if (!this.etablissementsActifs().some(e => e.id === f.etablissementId)) m.push('formation sanitaire');
+    }
+    if (i === 4) {
+      if (f.gestite === null) m.push('gestité');
+      if (f.parite === null) m.push('parité');
+    }
+    return m;
   }
 
-  /** Champ obligatoire vide, signalé en rouge après une tentative de prévisualisation. */
-  manque(champ: 'nom' | 'age' | 'photo' | 'email' | 'mdp' | 'province' | 'etablissement'): boolean {
-    if (!this.tentative) return false;
-    const f = this.form;
-    switch (champ) {
-      case 'nom': return !f.nom.trim();
-      case 'age': return this.ageCalcule === null;
-      case 'photo': return !this.photoFichier;
-      case 'email': return !f.email.trim() || this.emailInvalide;
-      case 'mdp': return this.reglesMdp.some(r => !r.ok);
-      case 'province': return !this.referentiels.provinces().includes(f.province);
-      case 'etablissement': return !this.etablissementsActifs().some(e => e.id === f.etablissementId);
-    }
+  /**
+   * « valide » (vert) : étape ouverte et complète ; « incomplet » (rouge) : étape dépassée sans
+   * être ouverte ou remplie ; « neutre » (bleu) : étape ouverte en ce moment ou pas encore atteinte.
+   */
+  statutEtape(i: number): 'valide' | 'incomplet' | 'neutre' {
+    if (i === this.ouverte || i > this.etapeMax) return 'neutre';
+    return this.manquantsEtape(i).length ? 'incomplet' : 'valide';
+  }
+
+  next(): void { if (this.step < this.steps.length - 1) this.goTo(this.step + 1); }
+  prev(): void { if (this.step > 0) this.goTo(this.step - 1); }
+  /** Ouvre l'étape (cartes en accordéon) et fait défiler jusqu'à sa carte ; un second clic la referme. */
+  goTo(i: number): void {
+    if (this.ouverte === i) { this.ouverte = -1; return; }
+    this.step = i;
+    this.ouverte = i;
+    this.visitees.add(i);
+    this.etapeMax = Math.max(this.etapeMax, i);
+    setTimeout(() => document.getElementById(`etape-${i}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   }
 
   async enregistrer(): Promise<void> {

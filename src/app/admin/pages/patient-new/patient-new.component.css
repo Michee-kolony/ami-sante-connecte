@@ -147,6 +147,9 @@
 .fiche .case:checked::after {
   opacity: 1;
 }
+.fiche .case:disabled {
+  cursor: default;
+}
 .fiche .case:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;

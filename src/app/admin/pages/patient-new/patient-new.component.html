@@ -53,310 +53,419 @@
     </div>
   }
 
-  <div class="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_20rem]">
-    <!-- Fiche de consultation prénatale : reproduction de la fiche papier jaune -->
-    <form class="fiche mx-auto w-full max-w-4xl rounded-md px-4 py-6 text-[0.85rem] leading-relaxed sm:px-8 sm:py-8" (ngSubmit)="ouvrirApercu()" novalidate>
-
-      <!-- En-tête du Ministère -->
-      <div id="fiche-entete" class="flex scroll-mt-24 flex-col gap-4 sm:flex-row sm:justify-between">
-        <div class="entete min-w-0 flex-1 space-y-1">
-          <p>République Démocratique du Congo</p>
-          <p>Ministère de la Santé Publique</p>
-          <p class="flex items-baseline gap-2"><span class="whitespace-nowrap">Province :</span> <span class="valeur normal-case">{{ etablissement?.province }}</span></p>
-          <p class="flex items-baseline gap-2"><span class="whitespace-nowrap">District sanitaire :</span> <span class="valeur normal-case">{{ etablissement?.districtSanitaire }}</span></p>
-          <p class="flex items-baseline gap-2"><span class="whitespace-nowrap">Zone de santé :</span> <span class="valeur normal-case">{{ etablissement?.zoneSante }}</span></p>
-          <p class="flex items-baseline gap-2"><span class="whitespace-nowrap">A.S. :</span> <input class="ligne normal-case" name="aire" [(ngModel)]="form.aire" aria-label="Aire de santé"></p>
-          <p class="flex items-baseline gap-2">
-            <span class="whitespace-nowrap">Formation sanitaire<span class="obligatoire">*</span> :</span>
-            <select class="ligne normal-case" name="etablissementId" [(ngModel)]="form.etablissementId" (ngModelChange)="choisirEtablissement()"
-                    [class.manquant]="manque('etablissement')" [disabled]="!etablissementsActifs().length" aria-label="Formation sanitaire">
-              <option value="" disabled>{{ chargementEtablissements ? 'Chargement…' : 'Choisir' }}</option>
-              @for (e of etablissementsActifs(); track e.id) { <option [value]="e.id">{{ e.nom }}</option> }
-            </select>
-          </p>
-        </div>
-        <div class="entete flex-none space-y-1 sm:text-right">
-          <p>N° : <span class="valeur normal-case font-normal">attribué à l’enregistrement</span> /{{ annee }}</p>
-          <p>Date : <span class="valeur normal-case">{{ dateFiche }}</span></p>
-        </div>
-      </div>
-
-      <h2 class="titre-fiche mt-6 text-center text-lg sm:text-xl">Fiche de consultation prénatale</h2>
-
-      <!-- IDENTITÉ -->
-      <section id="fiche-identite" class="mt-5 scroll-mt-24">
-        <div class="flex flex-col-reverse gap-4 sm:flex-row">
-          <div class="min-w-0 flex-1 space-y-2.5">
-            <p class="titre-section">Identité</p>
-            <div class="flex flex-wrap items-baseline gap-x-3 gap-y-2">
-              <span class="whitespace-nowrap font-semibold">NOM ET POSTNOM<span class="obligatoire">*</span> :</span>
-              <input class="ligne uppercase" name="nom" [(ngModel)]="form.nom" (ngModelChange)="verifierDoublons()" [class.manquant]="manque('nom')" placeholder="Nom" aria-label="Nom">
-              <input class="ligne uppercase" name="postnom" [(ngModel)]="form.postnom" placeholder="Postnom" aria-label="Postnom">
-            </div>
-            <div class="flex flex-wrap items-baseline gap-x-3 gap-y-2">
-              <span class="whitespace-nowrap">Prénom :</span>
-              <input class="ligne" name="prenom" [(ngModel)]="form.prenom" (ngModelChange)="verifierDoublons()" aria-label="Prénom">
-              <span class="whitespace-nowrap">Etat matrimonial :</span>
-              <select class="ligne" name="etatCivil" [(ngModel)]="fiche.etatCivil" aria-label="État matrimonial">
-                <option value="">—</option>
-                @for (v of referentiels.cpn()?.ETATS_CIVILS ?? []; track v) { <option [value]="v">{{ v }}</option> }
-              </select>
-            </div>
-            <div class="flex flex-wrap items-baseline gap-x-3 gap-y-2">
-              @if (form.ageMode === 'date') {
-                <span class="whitespace-nowrap">Date de naissance<span class="obligatoire">*</span> :</span>
-                <input type="date" class="ligne" name="ddn" [(ngModel)]="form.dateNaissance" (ngModelChange)="verifierDoublons()" [max]="today" [class.manquant]="manque('age')" aria-label="Date de naissance">
-                <span class="whitespace-nowrap">Âge :</span>
-                <span class="valeur court">{{ ageCalcule ?? '' }}{{ ageCalcule !== null ? ' ans' : '' }}</span>
-                <button type="button" class="petit underline" (click)="form.ageMode = 'age'">date inconnue ?</button>
-              } @else {
-                <span class="whitespace-nowrap">Âge<span class="obligatoire">*</span> :</span>
-                <input type="number" class="ligne nombre" name="age" [(ngModel)]="form.ageDeclare" min="8" max="70" [class.manquant]="manque('age')" aria-label="Âge déclaré"> <span>ans</span>
-                <button type="button" class="petit underline" (click)="form.ageMode = 'date'">saisir la date de naissance</button>
-              }
-              <span class="whitespace-nowrap">Occupation/F :</span>
-              <input class="ligne" name="occupation" [(ngModel)]="fiche.occupation" aria-label="Occupation de la femme">
-            </div>
-            @if (ageImprobable) { <p class="petit" style="color: var(--rouge)">Âge improbable : à vérifier.</p> }
-          </div>
-
-          <!-- Photo d'identification (obligatoire) -->
-          <div class="flex flex-none flex-col items-center gap-2 self-center sm:self-start">
-            <div class="cadre flex h-32 w-28 items-center justify-center overflow-hidden" [class.manquant]="manque('photo')">
-              @if (photoApercu) {
-                <img [src]="photoApercu" alt="Photo de la patiente" class="h-full w-full object-cover">
-              } @else {
-                <span class="petit px-2 text-center font-bold uppercase">Photo<span class="obligatoire">*</span></span>
-              }
-            </div>
-            <div class="flex flex-wrap justify-center gap-1.5">
-              <label class="bouton-papier"><i class="fa-solid fa-camera"></i><span class="sr-only">Prendre une photo</span>
-                <input type="file" accept="image/*" capture="user" class="sr-only" (change)="choisirPhoto($event)"></label>
-              <label class="bouton-papier"><i class="fa-solid fa-image"></i><span class="sr-only">Choisir un fichier</span>
-                <input type="file" accept="image/jpeg,image/png,image/webp" class="sr-only" (change)="choisirPhoto($event)"></label>
-              @if (photoFichier) { <button type="button" class="bouton-papier" (click)="retirerPhoto()" aria-label="Retirer la photo"><i class="fa-solid fa-trash"></i></button> }
-            </div>
-            @if (photoErreur) { <p class="petit max-w-[9rem] text-center" style="color: var(--rouge)">{{ photoErreur }}</p> }
-          </div>
-        </div>
-
-        <div class="mt-2.5 space-y-2.5">
-          <div class="flex flex-wrap items-baseline gap-x-3 gap-y-2">
-            <span class="whitespace-nowrap">Adresse :</span>
-            <input class="ligne" name="avenue" [(ngModel)]="form.avenue" placeholder="Avenue, n°" aria-label="Avenue et numéro">
-            <input class="ligne" name="quartier" [(ngModel)]="form.quartier" placeholder="Quartier" aria-label="Quartier">
-            <input class="ligne" name="commune" [(ngModel)]="form.commune" list="liste-communes" placeholder="Commune" aria-label="Commune">
-            <datalist id="liste-communes">@for (c of communes[form.province] ?? []; track c) { <option [value]="c"></option> }</datalist>
-            <select class="ligne" name="province" [(ngModel)]="form.province" (ngModelChange)="form.commune = ''" [class.manquant]="manque('province')"
-                    [disabled]="!referentiels.provinces().length" aria-label="Province de résidence">
-              <option value="" disabled>{{ referentiels.provinces().length ? 'Province*' : 'Provinces…' }}</option>
-              @for (p of referentiels.provinces(); track p) { <option [value]="p">{{ p }}</option> }
-            </select>
-          </div>
-          <div class="flex flex-wrap items-baseline gap-x-3 gap-y-2">
-            <span class="whitespace-nowrap">Tél :</span>
-            <input class="ligne" name="tel1" [(ngModel)]="form.tel1" (ngModelChange)="verifierDoublons()" placeholder="+243 81 234 5678" inputmode="tel" aria-label="Téléphone">
-            <label class="item-case petit"><input type="checkbox" class="case" name="partage" [(ngModel)]="form.tel1Partage"> partagé</label>
-            <input class="ligne" name="tel2" [(ngModel)]="form.tel2" placeholder="2e numéro (facultatif)" inputmode="tel" aria-label="Téléphone secondaire">
-          </div>
-          @if (telInvalide) { <p class="petit" style="color: var(--rouge)">Longueur du numéro inhabituelle : vérifiez.</p> }
-          <div class="flex flex-wrap items-baseline gap-x-3 gap-y-2">
-            <span class="whitespace-nowrap">Taille/Cm :</span>
-            <input type="number" class="ligne nombre" name="taille" [(ngModel)]="fiche.tailleCm" min="100" max="220" aria-label="Taille en centimètres">
-            <span>GS :</span>
-            <select class="ligne court" name="gs" [(ngModel)]="fiche.groupeSanguin" aria-label="Groupe sanguin">
-              <option value="">—</option>@for (v of referentiels.cpn()?.GROUPES_SANGUINS ?? []; track v) { <option [value]="v">{{ v }}</option> }
-            </select>
-            <span>Rh :</span>
-            <select class="ligne court" name="rh" [(ngModel)]="fiche.rhesus" aria-label="Rhésus">
-              <option value="">—</option>@for (v of referentiels.cpn()?.RHESUS ?? []; track v) { <option [value]="v">{{ v }}</option> }
-            </select>
-            <span class="whitespace-nowrap">Electrophorèse Hb :</span>
-            <select class="ligne court" name="elec" [(ngModel)]="fiche.electrophoreseHb" aria-label="Électrophorèse de l’hémoglobine">
-              <option value="">—</option>@for (v of referentiels.cpn()?.ELECTROPHORESES ?? []; track v) { <option [value]="v">{{ v }}</option> }
-            </select>
-          </div>
-          @if (fiche.tailleCm != null && fiche.tailleCm < 150) { <p class="petit" style="color: var(--rouge)">Taille inférieure à 150 cm : penser à évaluer le bassin.</p> }
-          <div class="flex flex-wrap items-baseline gap-x-3 gap-y-2">
-            <span class="whitespace-nowrap">Nom du partenaire :</span>
-            <input class="ligne" name="partenaire" [(ngModel)]="fiche.nomPartenaire" aria-label="Nom du partenaire">
-            <span class="whitespace-nowrap">Occupation/H :</span>
-            <input class="ligne" name="occupationH" [(ngModel)]="fiche.occupationPartenaire" aria-label="Occupation du partenaire">
-          </div>
-          <div class="flex flex-wrap items-baseline gap-x-3 gap-y-2">
-            <span class="whitespace-nowrap">Personne à contacter en cas d’urgence :</span>
-            <input class="ligne" name="urgenceNom" [(ngModel)]="form.urgenceNom" placeholder="Nom" aria-label="Personne à contacter">
-            <input class="ligne court" name="urgenceLien" [(ngModel)]="form.urgenceLien" placeholder="Lien" aria-label="Lien avec la patiente">
-          </div>
-          <div class="flex flex-wrap items-baseline gap-x-3 gap-y-2">
-            <span class="whitespace-nowrap">Adresse/Tél :</span>
-            <input class="ligne" name="urgenceAdresse" [(ngModel)]="form.urgenceAdresse" placeholder="Adresse" aria-label="Adresse de la personne à contacter">
-            <input class="ligne" name="urgenceTel" [(ngModel)]="form.urgenceTel" placeholder="Téléphone" inputmode="tel" aria-label="Téléphone de la personne à contacter">
-          </div>
-
-          <!-- DDR / DPA -->
-          <div class="flex flex-wrap items-baseline gap-x-3 gap-y-2">
-            @if (form.ddrConnue) {
-              <span class="font-semibold">DDR :</span>
-              <input type="date" class="ligne" name="ddr" [ngModel]="form.ddr" (ngModelChange)="majDatation({ ddr: $event })" [max]="today" [class.manquant]="ddrApresReference" aria-label="Date des dernières règles">
-              <select class="ligne court petit" name="fiabilite" [(ngModel)]="form.ddrFiabilite" aria-label="Fiabilité de la DDR">
-                <option value="Fiable">fiable</option><option value="Incertaine">incertaine</option><option value="Inconnue">inconnue</option>
-              </select>
-            } @else {
-              <span class="font-semibold">Datation :</span>
-              <select class="ligne court" name="agm" [(ngModel)]="form.agMethode" aria-label="Méthode de datation">
-                <option>Échographie</option><option>Examen clinique</option>
-              </select>
-              <span>du</span>
-              <input type="date" class="ligne" name="dref" [ngModel]="form.dateReference" (ngModelChange)="majDatation({ dateReference: $event })" [max]="today" [class.manquant]="referenceFuture" aria-label="Date de l’examen">
-              <input type="number" class="ligne nombre" name="ags" [ngModel]="form.agSemaines" (ngModelChange)="majDatation({ agSemaines: $event })" min="0" max="44" aria-label="Semaines d’aménorrhée"> <span>SA</span>
-              <input type="number" class="ligne nombre" name="agj" [ngModel]="form.agJours" (ngModelChange)="majDatation({ agJours: $event })" min="0" max="6" aria-label="Jours"> <span>j</span>
+  <div class="grid gap-6 lg:grid-cols-3">
+    <!-- Saisie : une étape = une carte blanche (titre et icône bleus) ; elle s'ouvre dessous (accordéon) -->
+    <form class="space-y-3 lg:col-span-2" (ngSubmit)="next()">
+      @for (s of steps; track s.title; let i = $index) {
+        @let statut = statutEtape(i);
+        <button type="button" [id]="'etape-' + i" (click)="goTo(i)" [attr.aria-expanded]="i === ouverte"
+                class="flex w-full scroll-mt-24 items-center gap-4 rounded-2xl border border-l-4 px-4 py-3.5 text-left shadow-card transition hover:-translate-y-0.5 hover:shadow-md dark:shadow-none sm:px-5"
+                [class]="s.teinte.carte + ' ' + (i === ouverte ? 'border-slate-300 ring-2 ring-slate-400/20 dark:border-slate-600' : statut === 'incomplet' ? 'border-rose-300 dark:border-rose-500/50' : 'border-slate-200/80 dark:border-slate-800')">
+          <span class="flex h-12 w-12 flex-none items-center justify-center rounded-xl text-xl"
+                [class]="statut === 'valide' ? 'bg-emerald-500 text-white shadow-sm dark:bg-emerald-600' : statut === 'incomplet' ? 'bg-rose-500 text-white shadow-sm dark:bg-rose-600' : s.teinte.icone + ' shadow-sm'">
+            @switch (statut) {
+              @case ('valide') { <i class="fa-solid fa-check" aria-label="Étape complète"></i> }
+              @case ('incomplet') { <i class="fa-solid fa-exclamation" aria-label="Étape incomplète"></i> }
+              @default { <i class="fa-solid {{ s.icon }}"></i> }
             }
-            <span class="font-semibold">DPA :</span>
-            <input type="date" class="ligne" name="dpa" [(ngModel)]="form.dpaSaisie" [class.manquant]="ecartSensible" aria-label="Date prévue d’accouchement">
-          </div>
-          <p class="petit">
-            <button type="button" class="underline" (click)="majDatation({ ddrConnue: !form.ddrConnue })">{{ form.ddrConnue ? 'DDR inconnue ? Dater par échographie ou examen' : 'DDR connue ? Revenir à la DDR' }}</button>
-            @if (agCalcule) { · Âge gestationnel aujourd’hui : <strong>{{ agCalcule.sa }} SA + {{ agCalcule.j }} j</strong> }
-            @if (dpaCalculee) { · DPA calculée : <strong>{{ fmt(dpaCalculee) }}</strong> ({{ form.ddrConnue ? 'DDR + 7 j + 9 mois' : '280 j − AG' }}) }
-          </p>
-          @if (ddrApresReference) { <p class="petit" style="color: var(--rouge)">La DDR ne peut pas être dans le futur.</p> }
-          @if (ecartSensible) {
-            <div class="flex flex-wrap items-baseline gap-x-3 gap-y-2">
-              <span class="whitespace-nowrap" style="color: var(--rouge)">Justification (écart de {{ ecartDpa }} j)<span class="obligatoire">*</span> :</span>
-              <input class="ligne" name="just" [(ngModel)]="form.dpaJustification" [class.manquant]="tentative && !form.dpaJustification.trim()" placeholder="ex. Échographie du premier trimestre" aria-label="Justification de la DPA">
+          </span>
+          <span class="min-w-0 flex-1">
+            <span class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-base font-bold sm:text-lg" [class]="s.teinte.titre">
+              {{ i + 1 }}. {{ s.title }}
+              @if (s.clinical) { <span class="rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-slate-600 ring-1 ring-slate-200 dark:bg-slate-900/60 dark:text-slate-300 dark:ring-slate-700"><i class="fa-solid fa-user-doctor mr-1"></i>Médecin</span> }
+            </span>
+            @if (statut === 'incomplet') {
+              <span class="block text-xs font-medium text-rose-600 dark:text-rose-400 sm:text-sm"><i class="fa-solid fa-circle-exclamation mr-1"></i>À compléter : {{ manquantsEtape(i).join(', ') }}</span>
+            } @else {
+              <span class="block truncate text-xs text-slate-500 dark:text-slate-400 sm:text-sm">{{ s.subtitle }}</span>
+            }
+          </span>
+          <i class="fa-solid fa-chevron-right transition" [class]="s.teinte.titre" [class.rotate-90]="i === ouverte"></i>
+        </button>
+
+        @if (i === ouverte) {
+        <div class="card">
+        <div class="space-y-6 p-4 sm:p-6">
+        @switch (step) {
+          <!-- ÉTAPE 1 : Identité -->
+          @case (0) {
+            <p class="section-titre !mb-0"><i class="fa-solid fa-person-pregnant"></i> Informations sur la femme enceinte</p>
+            <div class="grid gap-5 sm:grid-cols-3">
+              <div><label class="label" for="nom">Nom <span class="req">*</span></label><input id="nom" name="nom" class="input uppercase" [(ngModel)]="form.nom" (ngModelChange)="verifierDoublons()" placeholder="ex. KABEYA"></div>
+              <div><label class="label" for="postnom">Postnom</label><input id="postnom" name="postnom" class="input uppercase" [(ngModel)]="form.postnom" placeholder="ex. MUJINGA"></div>
+              <div><label class="label" for="prenom">Prénom</label><input id="prenom" name="prenom" class="input" [(ngModel)]="form.prenom" (ngModelChange)="verifierDoublons()" placeholder="ex. Esther"></div>
+            </div>
+
+            <div>
+              <span class="label">Date de naissance ou âge déclaré <span class="req">*</span></span>
+              <div class="inline-flex rounded-xl bg-slate-100 p-1 text-sm dark:bg-slate-800">
+                <button type="button" class="rounded-lg px-4 py-1.5 font-medium transition" [class]="form.ageMode === 'date' ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'" (click)="form.ageMode = 'date'">Date de naissance</button>
+                <button type="button" class="rounded-lg px-4 py-1.5 font-medium transition" [class]="form.ageMode === 'age' ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'" (click)="form.ageMode = 'age'">Âge déclaré</button>
+              </div>
+              <div class="mt-3 grid gap-5 sm:grid-cols-2">
+                @if (form.ageMode === 'date') {
+                  <input type="date" name="ddn" class="input" [(ngModel)]="form.dateNaissance" (ngModelChange)="verifierDoublons()" [max]="today" aria-label="Date de naissance">
+                } @else {
+                  <div class="relative"><input type="number" name="age" class="input pr-14" [(ngModel)]="form.ageDeclare" min="8" max="70" placeholder="ex. 24" aria-label="Âge déclaré"><span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-slate-400">ans</span></div>
+                }
+                @if (ageCalcule !== null) {
+                  <div class="flex items-center gap-2 rounded-xl px-3.5 text-sm" [class]="ageImprobable ? 'bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-300' : 'bg-slate-50 text-slate-600 dark:bg-slate-800/50 dark:text-slate-300'">
+                    <i class="fa-solid" [class]="ageImprobable ? 'fa-triangle-exclamation text-amber-500' : 'fa-cake-candles text-slate-400'"></i>
+                    {{ ageCalcule }} ans{{ ageImprobable ? ' — valeur improbable, à vérifier' : '' }}
+                  </div>
+                }
+              </div>
+            </div>
+
+            <div class="grid gap-5 sm:grid-cols-2">
+              <div>
+                <label class="label" for="ec">État matrimonial</label>
+                <select id="ec" name="etatCivil" class="input" [(ngModel)]="fiche.etatCivil">
+                  <option value="">Non renseigné</option>
+                  @for (v of referentiels.cpn()?.ETATS_CIVILS ?? []; track v) { <option [value]="v">{{ v }}</option> }
+                </select>
+              </div>
+              <div><label class="label" for="occ">Occupation</label><input id="occ" name="occupation" class="input" [(ngModel)]="fiche.occupation" placeholder="ex. Commerçante"></div>
+            </div>
+
+            <!-- Photo d'identification (obligatoire) -->
+            <div>
+              <p class="section-titre"><i class="fa-solid fa-camera"></i> Photo de la patiente <span class="req">*</span></p>
+              <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
+                @if (photoApercu) {
+                  <img [src]="photoApercu" alt="Photo de la patiente" class="h-28 w-28 flex-none rounded-2xl object-cover shadow ring-1 ring-slate-200 dark:ring-slate-700">
+                } @else {
+                  <span class="flex h-28 w-28 flex-none flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-slate-300 text-slate-400 dark:border-slate-700"><i class="fa-solid fa-user text-2xl"></i><span class="text-[11px]">Aucune photo</span></span>
+                }
+                <div class="space-y-2">
+                  <div class="flex flex-wrap gap-2">
+                    <label class="btn-primary cursor-pointer py-2 text-xs"><i class="fa-solid fa-camera"></i> Prendre une photo<input type="file" accept="image/*" capture="user" class="sr-only" (change)="choisirPhoto($event)"></label>
+                    <label class="btn-secondary cursor-pointer py-2 text-xs"><i class="fa-solid fa-image"></i> Choisir un fichier<input type="file" accept="image/jpeg,image/png,image/webp" class="sr-only" (change)="choisirPhoto($event)"></label>
+                    @if (photoFichier) { <button type="button" class="btn-ghost py-2 text-xs text-rose-600" (click)="retirerPhoto()"><i class="fa-solid fa-trash"></i> Retirer</button> }
+                  </div>
+                  <p class="text-xs" [class]="photoErreur ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500 dark:text-slate-400'">{{ photoErreur || 'JPG, PNG ou WebP, 2 Mo max. Visage bien éclairé, de face.' }}</p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <p class="section-titre"><i class="fa-solid fa-droplet"></i> Profil biologique</p>
+              <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                <div><label class="label text-xs" for="taille">Taille (cm)</label><input id="taille" type="number" min="100" max="220" class="input" name="taille" [(ngModel)]="fiche.tailleCm"></div>
+                <div>
+                  <label class="label text-xs" for="gs">Groupe sanguin</label>
+                  <select id="gs" class="input" name="gs" [(ngModel)]="fiche.groupeSanguin"><option value="">—</option>@for (v of referentiels.cpn()?.GROUPES_SANGUINS ?? []; track v) { <option [value]="v">{{ v }}</option> }</select>
+                </div>
+                <div>
+                  <label class="label text-xs" for="rh">Rhésus</label>
+                  <select id="rh" class="input" name="rh" [(ngModel)]="fiche.rhesus"><option value="">—</option>@for (v of referentiels.cpn()?.RHESUS ?? []; track v) { <option [value]="v">{{ v }}</option> }</select>
+                </div>
+                <div>
+                  <label class="label text-xs" for="elec">Électrophorèse Hb</label>
+                  <select id="elec" class="input" name="elec" [(ngModel)]="fiche.electrophoreseHb"><option value="">—</option>@for (v of referentiels.cpn()?.ELECTROPHORESES ?? []; track v) { <option [value]="v">{{ v }}</option> }</select>
+                </div>
+              </div>
+              @if (fiche.tailleCm != null && fiche.tailleCm < 150) { <p class="mt-2 text-xs text-amber-700 dark:text-amber-300"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Taille inférieure à 150 cm : penser à évaluer le bassin.</p> }
+            </div>
+
+            <!-- DDR et DPA -->
+            <div>
+              <div class="section-titre flex-wrap justify-between">
+                <span class="flex items-center gap-2"><i class="fa-regular fa-calendar"></i> Date des dernières règles (DDR)</span>
+                <div class="inline-flex rounded-xl bg-slate-100 p-1 text-xs font-semibold dark:bg-slate-800">
+                  <button type="button" class="rounded-lg px-3 py-1.5 transition" [class]="form.ddrConnue ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'" (click)="majDatation({ ddrConnue: true })">Connue</button>
+                  <button type="button" class="rounded-lg px-3 py-1.5 transition" [class]="!form.ddrConnue ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'" (click)="majDatation({ ddrConnue: false })">Inconnue</button>
+                </div>
+              </div>
+              @if (form.ddrConnue) {
+                <div class="grid gap-5 sm:grid-cols-2">
+                  <div>
+                    <label class="label" for="ddr">DDR</label>
+                    <input id="ddr" type="date" name="ddr" class="input" [class.border-rose-400]="ddrApresReference" [ngModel]="form.ddr" (ngModelChange)="majDatation({ ddr: $event })" [max]="today">
+                    @if (ddrApresReference) { <p class="mt-1.5 text-xs text-rose-700 dark:text-rose-300"><i class="fa-solid fa-circle-exclamation mr-1"></i>La DDR ne peut pas être dans le futur.</p> }
+                  </div>
+                  <div>
+                    <span class="label">Fiabilité de la DDR</span>
+                    <div class="grid grid-cols-3 gap-2">
+                      @for (f of ['Fiable', 'Incertaine', 'Inconnue']; track f) {
+                        <button type="button" class="rounded-xl border px-2 py-2.5 text-xs font-semibold transition"
+                                [class]="form.ddrFiabilite === f ? 'border-brand-600 bg-brand-50 text-brand-800 ring-2 ring-brand-500/20 dark:bg-brand-500/10 dark:text-brand-300' : 'border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800/50'"
+                                (click)="form.ddrFiabilite = $any(f)">{{ f }}</button>
+                      }
+                    </div>
+                  </div>
+                </div>
+              } @else {
+                <div class="rounded-xl bg-slate-50 p-4 dark:bg-slate-800/50">
+                  <p class="text-sm text-slate-600 dark:text-slate-300"><i class="fa-solid fa-circle-info mr-1 text-brand-600 dark:text-brand-400"></i>Aucune date ne sera inventée. Saisissez l’âge gestationnel estimé, la méthode et la date de l’examen, ou laissez vide pour dater en consultation.</p>
+                  <div class="mt-4 grid gap-4 sm:grid-cols-4">
+                    <div><label class="label" for="agm">Méthode</label><select id="agm" name="agm" class="input" [(ngModel)]="form.agMethode"><option>Échographie</option><option>Examen clinique</option></select></div>
+                    <div><label class="label" for="dref">Date de l’examen</label><input id="dref" type="date" name="dref" class="input" [class.border-amber-400]="referenceFuture" [ngModel]="form.dateReference" (ngModelChange)="majDatation({ dateReference: $event })" [max]="today"></div>
+                    <div><label class="label" for="ags">Semaines (SA)</label><input id="ags" type="number" name="ags" class="input" [ngModel]="form.agSemaines" (ngModelChange)="majDatation({ agSemaines: $event })" min="0" max="44" placeholder="16"></div>
+                    <div><label class="label" for="agj">Jours</label><input id="agj" type="number" name="agj" class="input" [ngModel]="form.agJours" (ngModelChange)="majDatation({ agJours: $event })" min="0" max="6" placeholder="0"></div>
+                  </div>
+                </div>
+              }
+            </div>
+
+            @if (agCalcule || dpaCalculee) {
+              <div class="grid grid-cols-2 gap-3 rounded-2xl bg-brand-50 p-4 text-brand-900 dark:bg-brand-500/10 dark:text-brand-100" aria-live="polite">
+                <div><p class="text-xs">Âge gestationnel aujourd’hui</p><p class="text-xl font-bold">{{ agCalcule ? agCalcule.sa + ' SA + ' + agCalcule.j + ' j' : '—' }}</p></div>
+                <div><p class="text-xs">DPA calculée</p><p class="text-xl font-bold">{{ dpaCalculee ? fmt(dpaCalculee) : '—' }}</p></div>
+              </div>
+            }
+
+            <div class="grid gap-5 sm:grid-cols-2">
+              <div>
+                <label class="label" for="dpa">DPA validée cliniquement <span class="text-xs font-normal text-slate-400">(si différente)</span></label>
+                <input id="dpa" type="date" name="dpa" class="input" [class.border-amber-400]="ecartSensible" [(ngModel)]="form.dpaSaisie">
+                @if (ecartSensible) { <p class="mt-1.5 text-xs text-amber-700 dark:text-amber-300"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Écart de {{ ecartDpa }} jours avec la DPA calculée.</p> }
+              </div>
+            </div>
+            @if (ecartSensible) {
+              <div>
+                <label class="label" for="just">Justification clinique de la correction <span class="req">*</span></label>
+                <textarea id="just" name="just" rows="2" class="input" [(ngModel)]="form.dpaJustification" placeholder="ex. Échographie du premier trimestre réalisée le…"></textarea>
+              </div>
+            }
+
+            <div class="flex flex-wrap gap-2">
+              @for (v of ['Primipare de moins de 19 ans', 'Primipare de plus de 35 ans']; track v) {
+                <button type="button" class="rounded-full border px-3 py-1.5 text-xs font-semibold transition" [class]="pastille(coche('atcdObstetricaux', v))" (click)="basculer('atcdObstetricaux', v)">
+                  @if (coche('atcdObstetricaux', v)) { <i class="fa-solid fa-check mr-1"></i> } {{ v === 'Primipare de moins de 19 ans' ? 'Primipare de 19 ans ou moins' : '35 ans ou plus' }}
+                </button>
+              }
+            </div>
+          
+
+            <!-- Contact (fusionné dans l’identité) -->
+            <div>
+            <p class="section-titre"><i class="fa-solid fa-phone"></i> Contact</p>
+            <div class="grid gap-5 sm:grid-cols-2">
+              <div>
+                <label class="label" for="tel1">Téléphone principal</label>
+                <div class="flex">
+                  <span class="inline-flex items-center gap-1.5 rounded-l-xl border border-r-0 border-slate-300 bg-slate-50 px-3 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300">🇨🇩 +243</span>
+                  <input id="tel1" name="tel1" class="input rounded-l-none" [class.border-amber-400]="telInvalide" [(ngModel)]="form.tel1" (ngModelChange)="verifierDoublons()" placeholder="81 234 5678" inputmode="tel">
+                </div>
+                @if (telInvalide) { <p class="mt-1.5 text-xs text-amber-700 dark:text-amber-300"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Longueur inhabituelle : vérifiez le numéro.</p> }
+                <label class="mt-2.5 flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300"><input type="checkbox" name="partage" class="h-4 w-4 rounded border-slate-300 text-brand-600" [(ngModel)]="form.tel1Partage"> Numéro partagé (conjoint, famille…)</label>
+              </div>
+              <div>
+                <label class="label" for="tel2">Téléphone secondaire <span class="text-xs font-normal text-slate-400">(facultatif)</span></label>
+                <div class="flex">
+                  <span class="inline-flex items-center rounded-l-xl border border-r-0 border-slate-300 bg-slate-50 px-3 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300">+243</span>
+                  <input id="tel2" name="tel2" class="input rounded-l-none" [(ngModel)]="form.tel2" placeholder="99 000 0000" inputmode="tel">
+                </div>
+              </div>
+            </div>
+
+            </div>
+
+            <div>
+              <p class="section-titre"><i class="fa-solid fa-user-group"></i> Partenaire</p>
+              <div class="grid gap-4 sm:grid-cols-2">
+                <div><label class="label" for="part">Nom du partenaire</label><input id="part" name="partenaire" class="input" [(ngModel)]="fiche.nomPartenaire"></div>
+                <div><label class="label" for="occh">Occupation du partenaire</label><input id="occh" name="occupationH" class="input" [(ngModel)]="fiche.occupationPartenaire"></div>
+              </div>
+            </div>
+
+            <div>
+              <p class="section-titre"><i class="fa-solid fa-user-shield"></i> Personne à contacter en cas d’urgence <span class="text-xs font-normal opacity-70">(facultatif)</span></p>
+              <div class="grid gap-4 sm:grid-cols-2">
+                <input name="urgenceNom" class="input" [(ngModel)]="form.urgenceNom" placeholder="Nom" aria-label="Nom de la personne à contacter">
+                <input name="urgenceLien" class="input" [(ngModel)]="form.urgenceLien" placeholder="Lien (conjoint, mère…)" aria-label="Lien">
+                <input name="urgenceAdresse" class="input" [(ngModel)]="form.urgenceAdresse" placeholder="Adresse" aria-label="Adresse de la personne à contacter">
+                <input name="urgenceTel" class="input" [(ngModel)]="form.urgenceTel" placeholder="Téléphone" inputmode="tel" aria-label="Téléphone de la personne à contacter">
+              </div>
+            </div>
+
+            <!-- Espace patiente : identifiants de l'application mobile -->
+            <div class="rounded-2xl bg-brand-50/60 p-4 ring-1 ring-brand-100 dark:bg-brand-500/5 dark:ring-brand-500/20 sm:p-5">
+              <p class="flex items-center gap-2 text-sm font-semibold text-brand-900 dark:text-white"><i class="fa-solid fa-mobile-screen"></i> Compte de la patiente (application mobile)</p>
+              <p class="mt-1 text-xs text-slate-600 dark:text-slate-300">La patiente saisit elle-même son e-mail et son mot de passe. Le mot de passe est chiffré et n’est jamais affiché ni envoyé.</p>
+              <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                <div class="sm:col-span-2">
+                  <label class="label" for="email">Adresse e-mail <span class="req">*</span></label>
+                  <input id="email" name="email" type="email" class="input" [class.border-rose-400]="emailInvalide" [(ngModel)]="form.email" placeholder="ex. esther.kabeya@exemple.cd" autocomplete="off" inputmode="email">
+                  @if (emailInvalide) { <p class="mt-1.5 text-xs text-rose-600 dark:text-rose-400">Adresse e-mail invalide.</p> }
+                </div>
+                <div>
+                  <label class="label" for="mdp">Mot de passe <span class="req">*</span></label>
+                  <div class="relative">
+                    <input id="mdp" name="mdp" [type]="afficherMdp ? 'text' : 'password'" class="input pr-11" [(ngModel)]="form.motDePasse" autocomplete="new-password">
+                    <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-slate-400 hover:text-slate-600" (click)="afficherMdp = !afficherMdp" [attr.aria-label]="afficherMdp ? 'Masquer' : 'Afficher'"><i class="fa-solid" [class]="afficherMdp ? 'fa-eye-slash' : 'fa-eye'"></i></button>
+                  </div>
+                </div>
+                <div>
+                  <label class="label" for="mdp2">Confirmer le mot de passe <span class="req">*</span></label>
+                  <input id="mdp2" name="mdp2" [type]="afficherMdp ? 'text' : 'password'" class="input" [class.border-rose-400]="!!form.confirmation && form.confirmation !== form.motDePasse" [(ngModel)]="form.confirmation" autocomplete="new-password">
+                </div>
+                <ul class="space-y-1 text-xs sm:col-span-2">
+                  @for (r of reglesMdp; track r.label) { <li [class]="r.ok ? 'text-accent-700 dark:text-accent-400' : 'text-slate-500 dark:text-slate-400'"><i class="fa-solid mr-1.5" [class]="r.ok ? 'fa-circle-check' : 'fa-circle'"></i>{{ r.label }}</li> }
+                </ul>
+              </div>
+            </div>
+          
+          }
+
+          <!-- ÉTAPE 2 : Résidence et formation sanitaire -->
+          @case (1) {
+            <p class="section-titre !mb-0"><i class="fa-solid fa-location-dot"></i> Adresse complète</p>
+            <div class="grid gap-5 sm:grid-cols-2">
+              <div>
+                <label class="label" for="province">Province de résidence <span class="req">*</span></label>
+                <select id="province" name="province" class="input" [(ngModel)]="form.province" (ngModelChange)="form.commune = ''" [disabled]="!referentiels.provinces().length">
+                  <option value="" disabled>{{ referentiels.provinces().length ? 'Choisir parmi les 26 provinces' : 'Chargement des provinces…' }}</option>
+                  @for (p of referentiels.provinces(); track p) { <option [value]="p">{{ p }}</option> }
+                </select>
+                @if (referentiels.erreurProvinces()) { <p class="mt-1.5 text-xs text-rose-600 dark:text-rose-400">Liste des provinces indisponible. <button type="button" class="font-semibold underline" (click)="chargerProvinces()">Réessayer</button></p> }
+              </div>
+              <div>
+                <label class="label" for="commune">Ville / commune</label>
+                <input id="commune" name="commune" class="input" [(ngModel)]="form.commune" list="liste-communes" placeholder="ex. Ngaliema">
+                <datalist id="liste-communes">@for (c of communes[form.province] ?? []; track c) { <option [value]="c"></option> }</datalist>
+              </div>
+              <div><label class="label" for="quartier">Quartier</label><input id="quartier" name="quartier" class="input" [(ngModel)]="form.quartier" placeholder="ex. Camp Tshatshi"></div>
+              <div><label class="label" for="avenue">Avenue / n°</label><input id="avenue" name="avenue" class="input" [(ngModel)]="form.avenue" placeholder="ex. Av. de la Libération, 12"></div>
+              <div class="sm:col-span-2"><label class="label" for="repere">Repère de localisation <span class="text-xs font-normal text-slate-400">(seulement si utile au suivi)</span></label><textarea id="repere" name="repere" rows="2" class="input" [(ngModel)]="form.repere" placeholder="ex. Derrière l’église, portail bleu"></textarea></div>
+            </div>
+
+            <div>
+              <p class="section-titre"><i class="fa-solid fa-hospital"></i> Formation sanitaire</p>
+              <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label class="label" for="structure">Établissement sanitaire <span class="req">*</span></label>
+                  <select id="structure" name="etablissementId" class="input" [(ngModel)]="form.etablissementId" (ngModelChange)="choisirEtablissement()" [disabled]="!etablissementsActifs().length">
+                    <option value="" disabled>{{ chargementEtablissements ? 'Chargement des établissements…' : etablissementsActifs().length ? 'Choisir l’établissement' : 'Aucun établissement actif' }}</option>
+                    @for (e of etablissementsActifs(); track e.id) { <option [value]="e.id">{{ e.nom }} · {{ e.province }}</option> }
+                  </select>
+                </div>
+                <div><label class="label" for="aire">Aire de santé (A.S.)</label><input id="aire" name="aire" class="input" [(ngModel)]="form.aire" [placeholder]="session.etablissement()?.aireSante || 'ex. AS Camp Tshatshi'"></div>
+              </div>
+              @if (etablissement; as e) {
+                <p class="hint">Province : {{ e.province }} · District sanitaire : {{ e.districtSanitaire || '—' }} · Zone de santé : {{ e.zoneSante }}</p>
+              }
             </div>
           }
-          <div class="flex flex-wrap items-center gap-x-5 gap-y-2">
-            <label class="item-case">Primipare de 19 Ans ou moins <input type="checkbox" class="case" [checked]="coche('atcdObstetricaux', 'Primipare de moins de 19 ans')" (change)="basculer('atcdObstetricaux', 'Primipare de moins de 19 ans')"></label>
-            <label class="item-case">35 Ans ou plus <input type="checkbox" class="case" [checked]="coche('atcdObstetricaux', 'Primipare de plus de 35 ans')" (change)="basculer('atcdObstetricaux', 'Primipare de plus de 35 ans')"></label>
-          </div>
-        </div>
-      </section>
 
-      <!-- ANTÉCÉDENTS + RENDEZ-VOUS -->
-      <div class="mt-6 space-y-6">
-        <section id="fiche-atcd" class="scroll-mt-24 space-y-3">
-          <p class="titre-section">Antécédents</p>
-
-          <div>
-            <p><span class="sous-titre">1) Médicaux :</span> <span class="petit">(cocher)</span></p>
-            <div class="mt-1.5 flex flex-wrap gap-x-4 gap-y-2">
+          <!-- ÉTAPE 3 : Antécédents médicaux -->
+          @case (2) {
+            <p class="section-titre !mb-0"><i class="fa-solid fa-stethoscope"></i> Antécédents médicaux <span class="text-xs font-normal opacity-70">(cocher)</span></p>
+            <div class="flex flex-wrap gap-2">
               @for (c of casesFiche('ATCD_MEDICAUX'); track c.v) {
-                <label class="item-case" [title]="c.v">{{ c.l }} <input type="checkbox" class="case" [checked]="coche('atcdMedicaux', c.v)" (change)="basculer('atcdMedicaux', c.v)"></label>
-              } @empty { <span class="petit">Chargement des antécédents…</span> }
+                <button type="button" class="rounded-full border px-3 py-1.5 text-xs font-semibold transition" [class]="pastille(coche('atcdMedicaux', c.v))" [attr.aria-pressed]="coche('atcdMedicaux', c.v)" (click)="basculer('atcdMedicaux', c.v)">
+                  @if (coche('atcdMedicaux', c.v)) { <i class="fa-solid fa-check mr-1"></i> } {{ c.v }}
+                </button>
+              } @empty { <p class="text-sm text-slate-500 dark:text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Chargement des antécédents…</p> }
             </div>
-            <div class="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-2">
-              <span class="petit">Test connu</span>
-              <input type="date" class="ligne court !basis-36" name="testVih" [(ngModel)]="fiche.testVihConnuLe" [max]="today" aria-label="Date du test connu">
-              <span class="petit">(date être de moins de 3 mois)</span>
+            <div class="grid gap-5 sm:grid-cols-2">
+              <div>
+                <label class="label" for="testVih">Test connu <span class="text-xs font-normal text-slate-400">(date de moins de 3 mois)</span></label>
+                <input id="testVih" type="date" name="testVih" class="input" [(ngModel)]="fiche.testVihConnuLe" [max]="today">
+              </div>
             </div>
-            <div class="mt-1.5 flex flex-wrap items-baseline gap-x-3"><span class="petit">Autres :</span><input class="ligne" name="atcdmed" [(ngModel)]="form.antecedentsMedicaux" aria-label="Autres antécédents médicaux"></div>
-          </div>
+            <div><label class="label" for="atcdmed">Autres antécédents médicaux</label><textarea id="atcdmed" name="atcdmed" rows="2" class="input" [(ngModel)]="form.antecedentsMedicaux" placeholder="ex. Asthme, épilepsie…"></textarea></div>
+          }
 
-          <div>
-            <p><span class="sous-titre">2) Gynécologiques et Chirurgicaux :</span> <span class="petit">(Cocher)</span></p>
-            <div class="mt-1.5 flex flex-wrap gap-x-4 gap-y-2">
+          <!-- ÉTAPE 4 : Antécédents gynéco-chirurgicaux -->
+          @case (3) {
+            <p class="section-titre !mb-0"><i class="fa-solid fa-user-doctor"></i> Antécédents gynécologiques et chirurgicaux <span class="text-xs font-normal opacity-70">(cocher)</span></p>
+            <div class="flex flex-wrap gap-2">
               @for (c of casesFiche('ATCD_GYNECO_CHIRURGICAUX'); track c.v) {
-                <label class="item-case" [title]="c.v">{{ c.l }} <input type="checkbox" class="case" [checked]="coche('atcdGynecoChirurgicaux', c.v)" (change)="basculer('atcdGynecoChirurgicaux', c.v)"></label>
+                <button type="button" class="rounded-full border px-3 py-1.5 text-xs font-semibold transition" [class]="pastille(coche('atcdGynecoChirurgicaux', c.v))" [attr.aria-pressed]="coche('atcdGynecoChirurgicaux', c.v)" (click)="basculer('atcdGynecoChirurgicaux', c.v)">
+                  @if (coche('atcdGynecoChirurgicaux', c.v)) { <i class="fa-solid fa-check mr-1"></i> } {{ c.v }}
+                </button>
               }
             </div>
-            <div class="mt-1.5 flex flex-wrap items-baseline gap-x-3"><span class="petit">Autres :</span><input class="ligne" name="atcdchir" [(ngModel)]="form.antecedentsChirurgicaux" aria-label="Autres antécédents chirurgicaux"></div>
-          </div>
+            <div><label class="label" for="atcdchir">Autres antécédents chirurgicaux</label><textarea id="atcdchir" name="atcdchir" rows="2" class="input" [(ngModel)]="form.antecedentsChirurgicaux" placeholder="ex. Appendicectomie…"></textarea></div>
+          }
 
-          <div id="fiche-atcd-obst" class="scroll-mt-24 space-y-2">
-            <p class="sous-titre">3) Obstétricaux</p>
-            <div class="flex flex-wrap items-baseline gap-x-4 gap-y-2">
-              <label class="item-case">Parité <input type="number" class="ligne nombre" name="parite" [(ngModel)]="form.parite" min="0" max="30"></label>
-              <label class="item-case">Gestité <input type="number" class="ligne nombre" name="gestite" [(ngModel)]="form.gestite" min="0" max="30"></label>
-              <label class="item-case">Enfants en vie <input type="number" class="ligne nombre" name="vivants" [(ngModel)]="form.enfantsVivants" min="0" max="30"></label>
-              <label class="item-case">Avortements <input type="number" class="ligne nombre" name="avortements" [(ngModel)]="form.avortements" min="0" max="30"></label>
-            </div>
-            <div class="flex flex-wrap items-center gap-x-5 gap-y-2">
-              @for (v of ['Dystocie', 'Eutocie']; track v) {
-                <label class="item-case">{{ v }} <input type="checkbox" class="case" [checked]="coche('atcdObstetricaux', v)" (change)="basculer('atcdObstetricaux', v)"></label>
+          <!-- ÉTAPE 5 : Antécédents obstétricaux -->
+          @case (4) {
+            <p class="section-titre !mb-0"><i class="fa-solid fa-baby"></i> Antécédents obstétricaux</p>
+            <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              @for (c of [{ k: 'parite', l: 'Parité' }, { k: 'gestite', l: 'Gestité' }, { k: 'enfantsVivants', l: 'Enfants en vie' }, { k: 'avortements', l: 'Avortements' }]; track c.k) {
+                <div><label class="label text-xs" [for]="'ant-' + c.k">{{ c.l }}</label><input [id]="'ant-' + c.k" type="number" min="0" max="30" class="input" [name]="c.k" [(ngModel)]="$any(form)[c.k]"></div>
               }
             </div>
-            <div class="flex flex-wrap items-baseline gap-x-3 gap-y-2">
-              <span>Plus gros poids de naissance</span>
-              <input type="number" class="ligne nombre !basis-20" name="poids" [(ngModel)]="fiche.plusGrosPoidsNaissanceG" min="300" max="7000" step="50" aria-label="Plus gros poids de naissance en grammes"> <span class="petit">g</span>
-              <label class="item-case">plus de 4kg <input type="checkbox" class="case" [checked]="coche('atcdObstetricaux', 'Enfant de plus de 4 kg')" (change)="basculer('atcdObstetricaux', 'Enfant de plus de 4 kg')"></label>
-            </div>
-            <div class="flex flex-wrap items-center gap-x-5 gap-y-2">
-              @for (c of [{ l: 'Prématuré', v: 'Prématuré' }, { l: 'Post-mature', v: 'Post-mature' }, { l: 'Mort-né', v: 'Mort-né' }, { l: 'Mort avant 7 jours', v: 'Décès avant 7 jours' }]; track c.v) {
-                <label class="item-case">{{ c.l }} <input type="checkbox" class="case" [checked]="coche('atcdObstetricaux', c.v)" (change)="basculer('atcdObstetricaux', c.v)"></label>
+            <div class="flex flex-wrap gap-2">
+              @for (c of [{ l: 'Dystocie', v: 'Dystocie' }, { l: 'Eutocie', v: 'Eutocie' }, { l: 'Plus de 4 kg', v: 'Enfant de plus de 4 kg' }, { l: 'Prématuré', v: 'Prématuré' }, { l: 'Post-mature', v: 'Post-mature' }, { l: 'Mort-né', v: 'Mort-né' }, { l: 'Mort avant 7 jours', v: 'Décès avant 7 jours' }, { l: 'Intervalle < 3 ans', v: 'Intervalle inférieur à 3 ans' }]; track c.v) {
+                <button type="button" class="rounded-full border px-3 py-1.5 text-xs font-semibold transition" [class]="pastille(coche('atcdObstetricaux', c.v))" [attr.aria-pressed]="coche('atcdObstetricaux', c.v)" (click)="basculer('atcdObstetricaux', c.v)">
+                  @if (coche('atcdObstetricaux', c.v)) { <i class="fa-solid fa-check mr-1"></i> } {{ c.l }}
+                </button>
               }
             </div>
-            <div class="flex flex-wrap items-baseline gap-x-3 gap-y-2">
-              <span class="whitespace-nowrap">Dernier Accouchement Date</span>
-              <input type="date" class="ligne court !basis-36" name="dernier" [(ngModel)]="fiche.dernierAccouchement" [max]="today" aria-label="Date du dernier accouchement">
-              <label class="item-case">Intervalle &lt; 3 Ans <input type="checkbox" class="case" [checked]="coche('atcdObstetricaux', 'Intervalle inférieur à 3 ans')" (change)="basculer('atcdObstetricaux', 'Intervalle inférieur à 3 ans')"></label>
+            <div class="grid gap-5 sm:grid-cols-2">
+              <div><label class="label" for="poids">Plus gros poids de naissance (g)</label><input id="poids" type="number" min="300" max="7000" step="50" class="input" name="poids" [(ngModel)]="fiche.plusGrosPoidsNaissanceG" placeholder="ex. 3400"></div>
+              <div><label class="label" for="dernier">Date du dernier accouchement</label><input id="dernier" type="date" class="input" name="dernier" [(ngModel)]="fiche.dernierAccouchement" [max]="today"></div>
             </div>
-            <div class="flex flex-wrap items-center gap-x-5 gap-y-2">
-              <span>Complication post-partum</span>
-              <label class="item-case">NON <input type="radio" class="case !rounded-full" name="cpp" [checked]="complicationPostPartum === false" (change)="choisirComplication(false)"></label>
-              <label class="item-case">OUI <input type="radio" class="case !rounded-full" name="cpp" [checked]="complicationPostPartum === true" (change)="choisirComplication(true)"></label>
+            <div>
+              <span class="label">Complication post-partum</span>
+              <div class="grid max-w-xs grid-cols-2 gap-2">
+                @for (o of [{ v: false, l: 'NON' }, { v: true, l: 'OUI' }]; track o.l) {
+                  <button type="button" class="rounded-xl border px-2 py-2.5 text-xs font-semibold transition"
+                          [class]="complicationPostPartum === o.v ? 'border-brand-600 bg-brand-50 text-brand-800 ring-2 ring-brand-500/20 dark:bg-brand-500/10 dark:text-brand-300' : 'border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800/50'"
+                          (click)="choisirComplication(o.v)">{{ o.l }}</button>
+                }
+              </div>
             </div>
             @if (complicationPostPartum) {
-              <div class="flex flex-wrap items-baseline gap-x-3"><span class="whitespace-nowrap">Si Oui, lesquelles :</span><input class="ligne" name="compl" [(ngModel)]="form.complications" aria-label="Complications du post-partum"></div>
+              <div><label class="label" for="compl">Si oui, lesquelles</label><textarea id="compl" name="compl" rows="2" class="input" [(ngModel)]="form.complications" placeholder="ex. Hémorragie, infection…"></textarea></div>
             }
-          </div>
-        </section>
+            @if (suggestionsObst.length) {
+              <ul class="space-y-1.5 rounded-xl bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
+                @for (s of suggestionsObst; track s) {
+                  <li class="flex flex-wrap items-center gap-2"><i class="fa-solid fa-lightbulb text-amber-500"></i> {{ s }} ? <button type="button" class="text-xs font-semibold underline" (click)="basculer('atcdObstetricaux', s)">Cocher</button></li>
+                }
+                <li class="text-xs text-amber-700 dark:text-amber-300">Suggestions d’après les données saisies : à confirmer par le médecin.</li>
+              </ul>
+            }
+          }
 
-        <!-- Rendez-vous (date) -->
-        <section id="fiche-rdv" class="max-w-xl scroll-mt-24">
-          <table class="tableau">
-            <thead>
-              <tr><th colspan="3">Rendez-vous (date)</th></tr>
-              <tr><th>CS</th><th>Médecin</th><th>Mater<br><span class="font-normal normal-case">8è mois</span></th></tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td class="!p-1"><input type="datetime-local" class="ligne w-full" name="rdv" [(ngModel)]="form.prochainRdv" aria-label="Premier rendez-vous de consultation"></td>
-                <td></td><td></td>
-              </tr>
-              @for (i of [1, 2, 3]; track i) { <tr><td class="vide"></td><td></td><td></td></tr> }
-            </tbody>
-          </table>
-          <p class="petit mt-1.5">1er rendez-vous facultatif (laisser vide si la consultation a lieu tout de suite). Les suivants se fixent en consultation.</p>
-        </section>
-      </div>
+          <!-- ÉTAPE 6 : Rendez-vous et validation -->
+          @case (5) {
+            <p class="section-titre !mb-0"><i class="fa-solid fa-calendar-check"></i> Premier rendez-vous</p>
+            <div class="grid gap-5 sm:grid-cols-2">
+              <div>
+                <label class="label" for="rdv">Premier rendez-vous (CS) <span class="text-xs font-normal text-slate-400">(facultatif)</span></label>
+                <input id="rdv" type="datetime-local" name="rdv" class="input" [(ngModel)]="form.prochainRdv">
+                <p class="hint">Laissez vide si la première consultation a lieu tout de suite.</p>
+              </div>
+              <div><label class="label" for="motifRdv">Motif</label><input id="motifRdv" name="motifRdv" class="input" [(ngModel)]="form.motifRdv" [disabled]="!form.prochainRdv"></div>
+            </div>
 
-      <!-- Ajout de l'application : espace patiente -->
-      <section id="fiche-compte" class="cadre mt-6 scroll-mt-24 space-y-2.5 p-4">
-        <p class="titre-section">Espace patiente <span class="petit normal-case no-underline">(application mobile, saisi par la patiente)</span></p>
-        <div class="flex flex-wrap items-baseline gap-x-3 gap-y-2">
-          <span class="whitespace-nowrap">E-mail<span class="obligatoire">*</span> :</span>
-          <input type="email" class="ligne" name="email" [(ngModel)]="form.email" [class.manquant]="manque('email') || emailInvalide" autocomplete="off" inputmode="email" aria-label="Adresse e-mail de la patiente">
+            <div class="rounded-2xl border p-4" [class]="manquants.length ? 'border-amber-200 bg-amber-50/60 dark:border-amber-500/30 dark:bg-amber-500/10' : 'border-accent-200 bg-accent-50/60 dark:border-accent-500/30 dark:bg-accent-500/10'">
+              <p class="flex items-center gap-2 text-sm font-semibold" [class]="manquants.length ? 'text-amber-900 dark:text-amber-300' : 'text-accent-900 dark:text-accent-300'">
+                <i class="fa-solid" [class]="manquants.length ? 'fa-list-check' : 'fa-circle-check'"></i>
+                {{ manquants.length ? 'À compléter avant l’enregistrement' : 'Prêt : prévisualisez la fiche' }}
+              </p>
+              @if (manquants.length) {
+                <ul class="mt-2 flex flex-wrap gap-2">@for (m of manquants; track m) { <li class="badge bg-white text-amber-800 ring-1 ring-amber-200 dark:bg-slate-900 dark:text-amber-300 dark:ring-amber-500/30">{{ m }}</li> }</ul>
+              } @else {
+                <p class="mt-1 text-xs text-accent-800 dark:text-accent-300">La fiche de consultation prénatale remplie s’affiche pour vérification, puis vous enregistrez le dossier.</p>
+              }
+            </div>
+          }
+        }
         </div>
-        <div class="flex flex-wrap items-baseline gap-x-3 gap-y-2">
-          <span class="whitespace-nowrap">Mot de passe<span class="obligatoire">*</span> :</span>
-          <input [type]="afficherMdp ? 'text' : 'password'" class="ligne" name="mdp" [(ngModel)]="form.motDePasse" [class.manquant]="manque('mdp')" autocomplete="new-password" aria-label="Mot de passe">
-          <span class="whitespace-nowrap">Confirmer :</span>
-          <input [type]="afficherMdp ? 'text' : 'password'" class="ligne" name="mdp2" [(ngModel)]="form.confirmation" [class.manquant]="manque('mdp') || (!!form.confirmation && form.confirmation !== form.motDePasse)" autocomplete="new-password" aria-label="Confirmer le mot de passe">
-          <button type="button" class="bouton-papier" (click)="afficherMdp = !afficherMdp" [attr.aria-label]="afficherMdp ? 'Masquer' : 'Afficher'"><i class="fa-solid" [class]="afficherMdp ? 'fa-eye-slash' : 'fa-eye'"></i></button>
-        </div>
-        <p class="petit">
-          @for (r of reglesMdp; track r.label) { <span class="mr-3 whitespace-nowrap"><i class="fa-solid mr-1" [class]="r.ok ? 'fa-circle-check' : 'fa-circle'"></i>{{ r.label }}</span> }
-        </p>
-        <p class="petit">Mot de passe chiffré, jamais affiché ni envoyé.</p>
-      </section>
 
-      <!-- Validation -->
-      <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div class="min-w-0">
-          @if (tentative && manquants.length) {
-            <p class="font-semibold" style="color: var(--rouge)"><i class="fa-solid fa-circle-exclamation mr-1"></i>À compléter : {{ manquants.join(', ') }}</p>
+        <!-- Actions -->
+        <div class="flex flex-col-reverse gap-3 border-t border-slate-100 px-5 py-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <button type="button" class="btn-ghost" (click)="prev()" [disabled]="step === 0"><i class="fa-solid fa-arrow-left"></i> Précédent</button>
+          @if (step < steps.length - 1) {
+            <button type="submit" class="btn-primary">Continuer <i class="fa-solid fa-arrow-right"></i></button>
           } @else {
-            <p class="petit">Vérifiez la fiche dans l’aperçu, puis enregistrez le dossier.</p>
+            <button type="button" class="btn-primary" [disabled]="manquants.length > 0 || envoi" (click)="ouvrirApercu()"><i class="fa-solid fa-eye"></i> Prévisualiser la fiche</button>
           }
         </div>
-        <button type="submit" class="btn-primary flex-none" [disabled]="envoi"><i class="fa-solid fa-eye"></i> Prévisualiser la fiche</button>
-      </div>
+        </div>
+        }
+      }
     </form>
 
     <!-- Panneau latéral -->
-    <aside class="mx-auto w-full max-w-4xl space-y-4 2xl:sticky 2xl:top-24 2xl:self-start">
+    <aside class="space-y-4 lg:sticky lg:top-24 lg:self-start">
       <!-- Datation -->
       <div class="card overflow-hidden">
         <div class="bg-gradient-to-br from-brand-700 to-brand-900 p-5 text-white">
@@ -433,49 +542,169 @@
   </div>
 </div>
 
-<!-- Prévisualisation de la fiche : vérification avant l'enregistrement du dossier -->
+<!-- Prévisualisation : la « Fiche de consultation prénatale » papier, remplie avec les données saisies -->
 @if (apercuOuvert) {
   <div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="apercu-titre">
-    <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" (click)="fermerApercu()"></div>
-    <div class="relative flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl dark:bg-slate-900 sm:rounded-2xl">
-      <!-- En-tête : photo et identité -->
-      <div class="flex items-center gap-4 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
-        @if (photoApercu) {
-          <img [src]="photoApercu" alt="Photo de la patiente" class="h-16 w-16 flex-none rounded-full object-cover ring-2 ring-brand-100 dark:ring-brand-500/30">
-        }
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" (click)="fermerApercu()"></div>
+    <div class="relative flex max-h-[94vh] w-full max-w-4xl flex-col overflow-hidden rounded-t-2xl bg-slate-100 shadow-2xl dark:bg-slate-950 sm:rounded-2xl">
+      <div class="flex items-center gap-3 border-b border-slate-200 bg-white px-5 py-3 dark:border-slate-800 dark:bg-slate-900">
         <div class="min-w-0 flex-1">
-          <p class="text-xs font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">Prévisualisation de la fiche</p>
-          <h2 id="apercu-titre" class="truncate text-lg font-bold text-slate-900 dark:text-white">{{ form.prenom }} {{ form.nom.toUpperCase() }} {{ form.postnom.toUpperCase() }}</h2>
-          <p class="text-xs text-slate-500 dark:text-slate-400">Vérifiez chaque section avant d’enregistrer le dossier.</p>
+          <p id="apercu-titre" class="text-sm font-semibold text-slate-900 dark:text-white"><i class="fa-solid fa-eye mr-1 text-brand-600 dark:text-brand-400"></i> Prévisualisation de la fiche</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Vérifiez la fiche remplie. « Modifier » ramène à l’étape concernée.</p>
         </div>
         <button type="button" class="btn-ghost flex-none px-2.5" (click)="fermerApercu()" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
       </div>
 
-      <div class="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+      <div class="flex-1 overflow-y-auto p-3 sm:p-6">
         @if (alertes.length) {
-          <ul class="space-y-1 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
+          <ul class="mx-auto mb-4 max-w-3xl space-y-1 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
             @for (a of alertes; track a) { <li><i class="fa-solid fa-triangle-exclamation mr-1 text-amber-500"></i>{{ a }}</li> }
           </ul>
         }
-        @for (sec of sectionsApercu; track sec.titre) {
-          <section class="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
-            <div class="flex items-center justify-between gap-2 bg-brand-50 px-4 py-2 dark:bg-brand-500/10">
-              <h3 class="flex items-center gap-2 text-sm font-semibold text-brand-800 dark:text-brand-200"><i class="fa-solid {{ sec.icone }}"></i> {{ sec.titre }}</h3>
-              <button type="button" class="text-xs font-semibold text-brand-700 hover:underline dark:text-brand-300" (click)="allerA(sec.ancre)"><i class="fa-solid fa-pen mr-1"></i>Modifier</button>
+
+        <!-- La feuille -->
+        <article class="fiche mx-auto max-w-3xl rounded-md px-4 py-6 text-[0.82rem] leading-relaxed sm:px-8 sm:py-8">
+          @let e = etablissement;
+          <div class="flex flex-col gap-4 sm:flex-row sm:justify-between">
+            <div class="entete min-w-0 flex-1 space-y-1">
+              <p>République Démocratique du Congo</p>
+              <p>Ministère de la Santé Publique</p>
+              <p class="flex items-baseline gap-2"><span class="whitespace-nowrap">Province :</span> <span class="valeur normal-case">{{ e?.province }}</span></p>
+              <p class="flex items-baseline gap-2"><span class="whitespace-nowrap">District sanitaire :</span> <span class="valeur normal-case">{{ e?.districtSanitaire }}</span></p>
+              <p class="flex items-baseline gap-2"><span class="whitespace-nowrap">Zone de santé :</span> <span class="valeur normal-case">{{ e?.zoneSante }}</span></p>
+              <p class="flex items-baseline gap-2"><span class="whitespace-nowrap">A.S. :</span> <span class="valeur normal-case">{{ form.aire }}</span></p>
+              <p class="flex items-baseline gap-2"><span class="whitespace-nowrap">Formation sanitaire :</span> <span class="valeur normal-case">{{ e?.nom }}</span></p>
             </div>
-            <dl class="grid gap-x-6 sm:grid-cols-2">
-              @for (l of sec.lignes; track l.l) {
-                <div class="flex justify-between gap-3 border-t border-slate-100 px-4 py-2 text-sm first:border-t-0 dark:border-slate-800 sm:[&:nth-child(2)]:border-t-0">
-                  <dt class="flex-none text-slate-500 dark:text-slate-400">{{ l.l }}</dt>
-                  <dd class="min-w-0 break-words text-right font-medium" [class]="l.v === '—' ? 'text-slate-300 dark:text-slate-600' : 'text-slate-900 dark:text-white'">{{ l.v }}</dd>
-                </div>
-              }
-            </dl>
+            <div class="entete flex-none space-y-1 sm:text-right">
+              <p>N° : <span class="valeur normal-case font-normal">attribué à l’enregistrement</span> /{{ annee }}</p>
+              <p>Date : <span class="valeur normal-case">{{ dateFiche }}</span></p>
+            </div>
+          </div>
+
+          <h2 class="titre-fiche mt-6 text-center text-lg sm:text-xl">Fiche de consultation prénatale</h2>
+
+          <!-- IDENTITÉ -->
+          <section class="mt-5">
+            <div class="flex flex-col-reverse gap-4 sm:flex-row">
+              <div class="min-w-0 flex-1 space-y-2">
+                <p class="flex items-center justify-between gap-2"><span class="titre-section">Identité</span> <button type="button" class="petit underline" (click)="modifierEtape(0)">Modifier</button></p>
+                <p class="flex flex-wrap items-baseline gap-x-2"><span class="font-semibold">NOM ET POSTNOM :</span> <span class="valeur uppercase">{{ form.nom }} {{ form.postnom }}</span></p>
+                <p class="flex flex-wrap items-baseline gap-x-2"><span>Prénom :</span> <span class="valeur">{{ form.prenom }}</span> <span>Etat matrimonial :</span> <span class="valeur">{{ fiche.etatCivil }}</span></p>
+                <p class="flex flex-wrap items-baseline gap-x-2">
+                  <span>Date de naissance :</span> <span class="valeur">{{ form.ageMode === 'date' ? jc(form.dateNaissance) : 'non connue' }}</span>
+                  <span>Âge :</span> <span class="valeur court">{{ ageCalcule ?? '' }}{{ ageCalcule !== null ? ' ans' : '' }}</span>
+                  <span>Occupation/F :</span> <span class="valeur">{{ fiche.occupation }}</span>
+                </p>
+              </div>
+              <div class="cadre flex h-32 w-28 flex-none items-center justify-center self-center overflow-hidden sm:self-start">
+                @if (photoApercu) { <img [src]="photoApercu" alt="Photo de la patiente" class="h-full w-full object-cover"> } @else { <span class="petit font-bold uppercase">Photo</span> }
+              </div>
+            </div>
+            <div class="mt-2 space-y-2">
+              <p class="flex flex-wrap items-baseline gap-x-2"><span>Adresse :</span> <span class="valeur">{{ adresseApercu }}</span></p>
+              <p class="flex flex-wrap items-baseline gap-x-2"><span>Tél :</span> <span class="valeur">{{ form.tel1 ? '+243 ' + form.tel1 : '' }}{{ form.tel1Partage ? ' (partagé)' : '' }}{{ form.tel2 ? ' / +243 ' + form.tel2 : '' }}</span></p>
+              <p class="flex flex-wrap items-baseline gap-x-2">
+                <span>Taille/Cm :</span> <span class="valeur court">{{ fiche.tailleCm ?? '' }}</span>
+                <span>GS :</span> <span class="valeur court">{{ fiche.groupeSanguin }}</span>
+                <span>Rh :</span> <span class="valeur court">{{ fiche.rhesus }}</span>
+                <span>Electrophorèse Hb :</span> <span class="valeur court">{{ fiche.electrophoreseHb }}</span>
+              </p>
+              <p class="flex flex-wrap items-baseline gap-x-2"><span>Nom du partenaire :</span> <span class="valeur">{{ fiche.nomPartenaire }}</span> <span>Occupation/H :</span> <span class="valeur">{{ fiche.occupationPartenaire }}</span></p>
+              <p class="flex flex-wrap items-baseline gap-x-2"><span>Personne à contacter en cas d’urgence :</span> <span class="valeur">{{ form.urgenceNom }}{{ form.urgenceLien ? ' (' + form.urgenceLien + ')' : '' }}</span></p>
+              <p class="flex flex-wrap items-baseline gap-x-2"><span>Adresse/Tél :</span> <span class="valeur">{{ contactApercu }}</span></p>
+              <p class="flex flex-wrap items-baseline gap-x-2">
+                @if (form.ddrConnue) {
+                  <span class="font-semibold">DDR :</span> <span class="valeur">{{ jc(form.ddr) }}{{ form.ddr && form.ddrFiabilite !== 'Fiable' ? ' (' + form.ddrFiabilite.toLowerCase() + ')' : '' }}</span>
+                } @else {
+                  <span class="font-semibold">Datation :</span> <span class="valeur">{{ form.agSemaines !== null ? form.agMethode + ' du ' + jc(form.dateReference) + ' : ' + form.agSemaines + ' SA + ' + (form.agJours ?? 0) + ' j' : '' }}</span>
+                }
+                <span class="font-semibold">DPA :</span> <span class="valeur">{{ jc(form.dpaSaisie || dpaCalculee) }}</span>
+              </p>
+              @if (agCalcule) { <p class="petit">Âge gestationnel aujourd’hui : <strong>{{ agCalcule.sa }} SA + {{ agCalcule.j }} j</strong></p> }
+              @if (ecartSensible) { <p class="flex flex-wrap items-baseline gap-x-2"><span>Justification de la DPA :</span> <span class="valeur">{{ form.dpaJustification }}</span></p> }
+              <p class="flex flex-wrap items-center gap-x-5 gap-y-1">
+                <span class="item-case">Primipare de 19 Ans ou moins <input type="checkbox" class="case" disabled [checked]="coche('atcdObstetricaux', 'Primipare de moins de 19 ans')"></span>
+                <span class="item-case">35 Ans ou plus <input type="checkbox" class="case" disabled [checked]="coche('atcdObstetricaux', 'Primipare de plus de 35 ans')"></span>
+              </p>
+            </div>
           </section>
-        }
+
+          <!-- ANTÉCÉDENTS -->
+          <section class="mt-6 space-y-3">
+            <p class="titre-section">Antécédents</p>
+            <div>
+              <p class="flex items-center justify-between gap-2"><span><span class="sous-titre">1) Médicaux :</span> <span class="petit">(cocher)</span></span> <button type="button" class="petit underline" (click)="modifierEtape(2)">Modifier</button></p>
+              <div class="mt-1.5 flex flex-wrap gap-x-4 gap-y-2">
+                @for (c of casesFiche('ATCD_MEDICAUX'); track c.v) { <span class="item-case" [title]="c.v">{{ c.l }} <input type="checkbox" class="case" disabled [checked]="coche('atcdMedicaux', c.v)"></span> }
+              </div>
+              <p class="mt-1.5 flex flex-wrap items-baseline gap-x-2"><span class="petit">Test connu</span> <span class="valeur court">{{ jc(fiche.testVihConnuLe) }}</span> <span class="petit">(date être de moins de 3 mois)</span></p>
+              @if (form.antecedentsMedicaux) { <p class="flex flex-wrap items-baseline gap-x-2"><span class="petit">Autres :</span> <span class="valeur">{{ form.antecedentsMedicaux }}</span></p> }
+            </div>
+            <div>
+              <p class="flex items-center justify-between gap-2"><span><span class="sous-titre">2) Gynécologiques et Chirurgicaux :</span> <span class="petit">(Cocher)</span></span> <button type="button" class="petit underline" (click)="modifierEtape(3)">Modifier</button></p>
+              <div class="mt-1.5 flex flex-wrap gap-x-4 gap-y-2">
+                @for (c of casesFiche('ATCD_GYNECO_CHIRURGICAUX'); track c.v) { <span class="item-case" [title]="c.v">{{ c.l }} <input type="checkbox" class="case" disabled [checked]="coche('atcdGynecoChirurgicaux', c.v)"></span> }
+              </div>
+              @if (form.antecedentsChirurgicaux) { <p class="mt-1.5 flex flex-wrap items-baseline gap-x-2"><span class="petit">Autres :</span> <span class="valeur">{{ form.antecedentsChirurgicaux }}</span></p> }
+            </div>
+            <div class="space-y-2">
+              <p class="flex items-center justify-between gap-2"><span class="sous-titre">3) Obstétricaux</span> <button type="button" class="petit underline" (click)="modifierEtape(4)">Modifier</button></p>
+              <p class="flex flex-wrap items-baseline gap-x-2">
+                <span>Parité</span> <span class="valeur court">{{ form.parite ?? '' }}</span>
+                <span>Gestité</span> <span class="valeur court">{{ form.gestite ?? '' }}</span>
+                <span>Enfants en vie</span> <span class="valeur court">{{ form.enfantsVivants ?? '' }}</span>
+                <span>Avortements</span> <span class="valeur court">{{ form.avortements ?? '' }}</span>
+              </p>
+              <p class="flex flex-wrap items-center gap-x-5 gap-y-1">
+                @for (v of ['Dystocie', 'Eutocie']; track v) { <span class="item-case">{{ v }} <input type="checkbox" class="case" disabled [checked]="coche('atcdObstetricaux', v)"></span> }
+              </p>
+              <p class="flex flex-wrap items-baseline gap-x-2">
+                <span>Plus gros poids de naissance</span> <span class="valeur court">{{ fiche.plusGrosPoidsNaissanceG != null ? fiche.plusGrosPoidsNaissanceG + ' g' : '' }}</span>
+                <span class="item-case">plus de 4kg <input type="checkbox" class="case" disabled [checked]="coche('atcdObstetricaux', 'Enfant de plus de 4 kg')"></span>
+              </p>
+              <p class="flex flex-wrap items-center gap-x-5 gap-y-1">
+                @for (c of [{ l: 'Prématuré', v: 'Prématuré' }, { l: 'Post-mature', v: 'Post-mature' }, { l: 'Mort-né', v: 'Mort-né' }, { l: 'Mort avant 7 jours', v: 'Décès avant 7 jours' }]; track c.v) {
+                  <span class="item-case">{{ c.l }} <input type="checkbox" class="case" disabled [checked]="coche('atcdObstetricaux', c.v)"></span>
+                }
+              </p>
+              <p class="flex flex-wrap items-baseline gap-x-2">
+                <span>Dernier Accouchement Date</span> <span class="valeur court">{{ jc(fiche.dernierAccouchement) }}</span>
+                <span class="item-case">Intervalle &lt; 3 Ans <input type="checkbox" class="case" disabled [checked]="coche('atcdObstetricaux', 'Intervalle inférieur à 3 ans')"></span>
+              </p>
+              <p class="flex flex-wrap items-center gap-x-5 gap-y-1">
+                <span>Complication post-partum</span>
+                <span class="item-case">NON <input type="checkbox" class="case" disabled [checked]="complicationPostPartum === false"></span>
+                <span class="item-case">OUI <input type="checkbox" class="case" disabled [checked]="complicationPostPartum === true"></span>
+              </p>
+              @if (complicationPostPartum) { <p class="flex flex-wrap items-baseline gap-x-2"><span>Si Oui, lesquelles :</span> <span class="valeur">{{ form.complications }}</span></p> }
+            </div>
+          </section>
+
+          <!-- RENDEZ-VOUS -->
+          <section class="mt-6 max-w-xl">
+            <p class="mb-1 flex justify-end"><button type="button" class="petit underline" (click)="modifierEtape(5)">Modifier</button></p>
+            <table class="tableau">
+              <thead>
+                <tr><th colspan="3">Rendez-vous (date)</th></tr>
+                <tr><th>CS</th><th>Médecin</th><th>Mater<br><span class="font-normal normal-case">8è mois</span></th></tr>
+              </thead>
+              <tbody>
+                <tr><td class="vide font-semibold">{{ dhc(form.prochainRdv) }}</td><td></td><td></td></tr>
+                @for (i of [1, 2, 3]; track i) { <tr><td class="vide"></td><td></td><td></td></tr> }
+              </tbody>
+            </table>
+          </section>
+
+          <!-- ESPACE PATIENTE (ajout de l'application) -->
+          <section class="cadre mt-6 space-y-2 p-4">
+            <p class="flex items-center justify-between gap-2"><span class="titre-section">Espace patiente</span> <button type="button" class="petit underline" (click)="modifierEtape(0)">Modifier</button></p>
+            <p class="flex flex-wrap items-baseline gap-x-2"><span>E-mail :</span> <span class="valeur">{{ form.email }}</span></p>
+            <p class="flex flex-wrap items-baseline gap-x-2"><span>Mot de passe :</span> <span class="valeur">{{ form.motDePasse ? 'défini (non affiché)' : '' }}</span></p>
+          </section>
+        </article>
       </div>
 
-      <div class="flex flex-col-reverse gap-2 border-t border-slate-100 px-5 py-4 dark:border-slate-800 sm:flex-row sm:justify-end">
+      <div class="flex flex-col-reverse gap-2 border-t border-slate-200 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:justify-end">
         <button type="button" class="btn-secondary" (click)="fermerApercu()"><i class="fa-solid fa-arrow-left"></i> Revenir au formulaire</button>
         <button type="button" class="btn bg-accent-600 text-white hover:bg-accent-700" [disabled]="envoi" (click)="confirmerEnregistrement()">
           <i class="fa-solid" [class]="envoi ? 'fa-spinner fa-spin' : 'fa-circle-check'"></i> Enregistrer le dossier
