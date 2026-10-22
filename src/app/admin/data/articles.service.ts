@@ -35,9 +35,14 @@ export interface Article {
   cible: CibleArticle;
   medias: MediaArticle[];
   auteur: Auteur;
+  /** « En attente » jusqu'à l'approbation du médecin chef (visible de l'auteur et du chef seulement). */
+  statut: 'En attente' | 'Approuvé';
+  approbation?: { par: Auteur; le: string };
   nbJaimes: number;
   jAime: boolean;
+  /** Médecin chef seulement (l'article et ses médias sont supprimés). */
   peutSupprimer: boolean;
+  peutApprouver: boolean;
   /** Seul l'auteur de l'article répond aux commentaires. */
   peutRepondre: boolean;
   commentaires: CommentaireArticle[];
@@ -49,21 +54,25 @@ export interface PageArticles {
   total: number;
   page: number;
   parPage: number;
+  /** Articles en attente d'approbation (médecin chef ; null pour les autres). */
+  enAttente: number | null;
   articles: Article[];
 }
 
 /**
- * Articles de conseils (backend-ami-connecte) : médecins seulement. Chacun ne supprime que ce
- * qu'il a publié ; le médecin chef peut tout supprimer. Le serveur applique ces règles.
+ * Articles de conseils (backend-ami-connecte) : médecins seulement. Un article attend
+ * l'approbation du médecin chef avant d'être visible de tous ; seul le médecin chef approuve ou
+ * supprime un article. Le serveur applique ces règles.
  */
 @Injectable({ providedIn: 'root' })
 export class ArticlesService {
   private http = inject(HttpClient);
   private url = `${API_URL}/articles`;
 
-  lister(page = 1, cible = ''): Promise<PageArticles> {
+  lister(page = 1, cible = '', enAttente = false): Promise<PageArticles> {
     const params: Record<string, string> = { page: String(page) };
     if (cible) params['cible'] = cible;
+    if (enAttente) params['statut'] = 'En attente';
     return firstValueFrom(this.http.get<PageArticles>(this.url, { params }));
   }
 
@@ -75,6 +84,11 @@ export class ArticlesService {
     f.append('cible', corps.cible);
     for (const m of medias) f.append('medias', m);
     return firstValueFrom(this.http.post<Article>(this.url, f));
+  }
+
+  /** Médecin chef : rend l'article visible de tous. */
+  approuver(id: string): Promise<Article> {
+    return firstValueFrom(this.http.post<Article>(`${this.url}/${id}/approuver`, {}));
   }
 
   supprimer(id: string): Promise<void> {

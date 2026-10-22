@@ -14,8 +14,9 @@ interface Apercu {
 
 /**
  * Conseils publiés par les médecins pour les femmes en CPN ou ayant accouché.
- * Tous les médecins voient toutes les publications, aiment et commentent ; l'auteur répond aux
- * commentaires ; chacun supprime ce qu'il a publié, le médecin chef peut tout supprimer.
+ * Un article attend l'approbation du médecin chef avant d'être visible de tous ; seul le médecin
+ * chef approuve ou supprime un article (photos et vidéo comprises). Une fois approuvé, tous les
+ * médecins l'aiment et le commentent ; l'auteur répond aux commentaires.
  */
 @Component({
   selector: 'app-articles',
@@ -35,6 +36,9 @@ export class ArticlesComponent implements OnDestroy {
   total = 0;
   page = 1;
   filtre: CibleArticle | '' = '';
+  /** Médecin chef : file des articles en attente d'approbation. */
+  aApprouver = false;
+  nbEnAttente: number | null = null;
   chargement = true;
   chargementSuite = false;
   erreur = '';
@@ -68,9 +72,10 @@ export class ArticlesComponent implements OnDestroy {
     this.chargement = true;
     this.erreur = '';
     try {
-      const r = await this.service.lister(1, this.filtre);
+      const r = await this.service.lister(1, this.filtre, this.aApprouver);
       this.articles = r.articles;
       this.total = r.total;
+      this.nbEnAttente = r.enAttente;
       this.page = 1;
     } catch (err) {
       this.erreur = messageErreur(err);
@@ -82,7 +87,7 @@ export class ArticlesComponent implements OnDestroy {
   async chargerSuite(): Promise<void> {
     this.chargementSuite = true;
     try {
-      const r = await this.service.lister(this.page + 1, this.filtre);
+      const r = await this.service.lister(this.page + 1, this.filtre, this.aApprouver);
       this.articles = [...this.articles, ...r.articles.filter(a => !this.articles.some(x => x.id === a.id))];
       this.total = r.total;
       this.page = r.page;
@@ -95,6 +100,13 @@ export class ArticlesComponent implements OnDestroy {
 
   filtrer(c: CibleArticle | ''): void {
     this.filtre = c;
+    this.aApprouver = false;
+    this.charger();
+  }
+
+  voirAApprouver(): void {
+    this.filtre = '';
+    this.aApprouver = true;
     this.charger();
   }
 
@@ -141,11 +153,13 @@ export class ArticlesComponent implements OnDestroy {
       this.apercus.forEach(x => URL.revokeObjectURL(x.url));
       this.apercus = [];
       this.form = { titre: '', contenu: '', cible: this.form.cible };
-      if (!this.filtre || this.filtre === a.cible) {
+      if (!this.aApprouver && (!this.filtre || this.filtre === a.cible)) {
         this.articles = [a, ...this.articles];
         this.total++;
       }
-      this.notification = 'Article publié. Il est visible par tous les médecins.';
+      this.notification = a.statut === 'En attente'
+        ? 'Article envoyé au médecin chef : il sera visible de tous les médecins après son approbation.'
+        : 'Article publié. Il est visible par tous les médecins.';
     } catch (err) {
       this.erreurEnvoi = messageErreur(err);
     } finally {
@@ -166,6 +180,18 @@ export class ArticlesComponent implements OnDestroy {
     } catch (err) {
       this.notification = messageErreur(err);
     }
+  }
+
+  /** Médecin chef : l'article devient visible de tous les médecins. */
+  approuver(a: Article): void {
+    this.agir(() => this.service.approuver(a.id), () => {
+      if (this.aApprouver) {
+        this.articles = this.articles.filter(x => x.id !== a.id);
+        this.total--;
+      }
+      if (this.nbEnAttente) this.nbEnAttente--;
+      this.notification = `« ${a.titre} » est approuvé : il est maintenant visible de tous les médecins.`;
+    });
   }
 
   aimer(a: Article): void {
@@ -203,7 +229,8 @@ export class ArticlesComponent implements OnDestroy {
       await this.agir(() => this.service.supprimer(c.article.id), () => {
         this.articles = this.articles.filter(x => x.id !== c.article.id);
         this.total--;
-        this.notification = 'Article supprimé.';
+        if (c.article.statut === 'En attente' && this.nbEnAttente) this.nbEnAttente--;
+        this.notification = 'Article supprimé, avec ses photos et sa vidéo.';
       });
     } else if (c.type === 'commentaire') {
       await this.agir(() => this.service.supprimerCommentaire(c.article.id, c.cid!));
