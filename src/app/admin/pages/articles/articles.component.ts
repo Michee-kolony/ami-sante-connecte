@@ -1,4 +1,4 @@
-import { Component, OnDestroy, inject } from '@angular/core';
+import { Component, Input, OnDestroy, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { dateHeureFr } from '../../data/format';
 import {
@@ -31,6 +31,12 @@ export class ArticlesComponent implements OnDestroy {
   readonly cibles = CIBLES_ARTICLE;
   readonly filtres: (CibleArticle | '')[] = ['', ...CIBLES_ARTICLE];
   readonly photosMax = PHOTOS_MAX;
+
+  /** Onglets : formulaire de publication, ou fil des articles à gérer (?onglet=gerer). */
+  onglet: 'publier' | 'gerer' = 'publier';
+  @Input('onglet') set ongletInitial(v: string | undefined) {
+    if (v === 'gerer' || v === 'publier') this.onglet = v;
+  }
 
   articles: Article[] = [];
   total = 0;

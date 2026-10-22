@@ -12,6 +12,22 @@
     </div>
   }
 
+  <!-- Onglets -->
+  <div class="flex gap-1 rounded-2xl bg-slate-100 p-1 dark:bg-slate-800" role="tablist">
+    <button type="button" role="tab" class="flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition"
+            [attr.aria-selected]="onglet === 'publier'" (click)="onglet = 'publier'"
+            [class]="onglet === 'publier' ? 'bg-white text-brand-800 shadow-sm dark:bg-slate-900 dark:text-brand-300' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100'">
+      <i class="fa-solid fa-pen-to-square"></i> Publier un article
+    </button>
+    <button type="button" role="tab" class="flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition"
+            [attr.aria-selected]="onglet === 'gerer'" (click)="onglet = 'gerer'"
+            [class]="onglet === 'gerer' ? 'bg-white text-brand-800 shadow-sm dark:bg-slate-900 dark:text-brand-300' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100'">
+      <i class="fa-solid fa-list-check"></i> Gérer les articles
+      @if (nbEnAttente) { <span class="rounded-full bg-amber-500 px-1.5 text-[11px] text-white">{{ nbEnAttente }}</span> }
+    </button>
+  </div>
+
+  @if (onglet === 'publier') {
   <!-- Nouvelle publication -->
   <section class="card p-5 sm:p-6">
     <h2 class="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white"><i class="fa-solid fa-pen-to-square text-brand-600 dark:text-brand-400"></i> Publier un article conseil</h2>
@@ -55,6 +71,7 @@
       }
     </div>
   </section>
+  } @else {
 
   <!-- Filtres -->
   <div class="flex flex-wrap gap-2">
@@ -187,6 +204,7 @@
         <i class="fa-solid" [class]="chargementSuite ? 'fa-spinner fa-spin' : 'fa-angles-down'"></i> Voir plus d’articles
       </button>
     }
+  }
   }
 </div>
 
