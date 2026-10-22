@@ -94,7 +94,7 @@
               <input id="c-date" type="datetime-local" class="input" [class.border-rose-400]="dateFuture" [(ngModel)]="form.date" name="date">
             </div>
             <div class="sm:col-span-2"><label class="label" for="c-motif">Motif</label><input id="c-motif" class="input" [(ngModel)]="form.motif" name="motif" placeholder="ex. CPN 2, contrôle tensionnel…"></div>
-            <div class="sm:col-span-2"><label class="label" for="c-sympt">Symptômes et données rapportées</label><textarea id="c-sympt" rows="2" class="input" [(ngModel)]="form.symptomes" name="symptomes"></textarea></div>
+            <div class="sm:col-span-2"><label class="label" for="c-sympt">Plaintes à noter</label><textarea id="c-sympt" rows="2" class="input" [(ngModel)]="form.symptomes" name="symptomes"></textarea></div>
           </div>
         </section>
 
@@ -111,7 +111,10 @@
               </div>
             </div>
             <div><label class="label text-xs" for="k-temp">Température (°C)</label><input id="k-temp" type="number" step="0.1" class="input" [(ngModel)]="form.constantes.temperature" name="temp"></div>
-            <div><label class="label text-xs" for="k-pouls">Pouls (bpm)</label><input id="k-pouls" type="number" class="input" [(ngModel)]="form.constantes.pouls" name="pouls"></div>
+            <div><label class="label text-xs" for="k-pouls">FC (bpm)</label><input id="k-pouls" type="number" class="input" [(ngModel)]="form.constantes.pouls" name="pouls"></div>
+            <div><label class="label text-xs" for="k-sao2">SaO2 (%)</label><input id="k-sao2" type="number" class="input" [(ngModel)]="form.constantes.saO2" name="sao2"></div>
+            <div><label class="label text-xs" for="k-fr">FR (/min)</label><input id="k-fr" type="number" class="input" [(ngModel)]="form.constantes.frequenceRespiratoire" name="fr"></div>
+            <div><label class="label text-xs" for="k-pb">Périmètre brachial (cm)</label><input id="k-pb" type="number" step="0.1" class="input" [(ngModel)]="form.examenCpn.perimetreBrachialCm" name="pb"></div>
             <div><label class="label text-xs" for="k-hu">Hauteur utérine (cm)</label><input id="k-hu" type="number" class="input" [(ngModel)]="form.constantes.hauteurUterineCm" name="hu"></div>
             <div><label class="label text-xs" for="k-bcf">BCF (bpm)</label><input id="k-bcf" type="number" class="input" [(ngModel)]="form.constantes.bcf" name="bcf"></div>
           </div>
@@ -121,6 +124,84 @@
               <li class="text-xs text-amber-700 dark:text-amber-300">Repères d’attention uniquement : aucune conclusion n’est tirée automatiquement.</li>
             </ul>
           }
+        </section>
+
+        <!-- Fiche CPN : examen à chaque visite -->
+        <section class="card p-5 sm:p-6">
+          <h2 class="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-list-check"></i> Examen CPN</h2>
+          <div class="mb-5 grid gap-4 sm:grid-cols-3">
+            <div>
+              <span class="label">État général</span>
+              <div class="grid grid-cols-2 gap-2">
+                @for (e of referentiels.cpn()?.ETATS_GENERAUX ?? []; track e) {
+                  <button type="button" class="rounded-xl border px-2 py-2 text-xs font-semibold transition disabled:cursor-default"
+                          [class]="form.examenCpn.etatGeneral === e ? (e === 'Bon' ? 'border-accent-500 bg-accent-50 text-accent-800 dark:bg-accent-500/10 dark:text-accent-300' : 'border-rose-400 bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300') : 'border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300'"
+                          (click)="form.examenCpn.etatGeneral = form.examenCpn.etatGeneral === e ? '' : e">{{ e }}</button>
+                }
+              </div>
+            </div>
+            <div><label class="label" for="c-mf">Mouvements fœtaux</label><input id="c-mf" class="input" [(ngModel)]="form.examenCpn.mouvementsFoetaux" name="mf" placeholder="ex. présents, 10 / 2 h"></div>
+            <div>
+              <label class="label" for="c-pres">Présentation</label>
+              <select id="c-pres" class="input" [(ngModel)]="form.examenCpn.presentation" name="presentation">
+                <option value="">Non renseignée</option>
+                @for (x of referentiels.cpn()?.PRESENTATIONS ?? []; track x) { <option [value]="x">{{ x }}</option> }
+              </select>
+            </div>
+          </div>
+          <div class="grid gap-x-8 gap-y-5 sm:grid-cols-2">
+            @for (bloc of signesGroupes; track bloc.groupe) {
+              <div>
+                <p class="mb-2 text-xs font-semibold text-brand-700 dark:text-brand-300">{{ bloc.groupe }}</p>
+                <ul class="space-y-2">
+                  @for (s of bloc.elements; track s.code) {
+                    <li class="flex items-center justify-between gap-3 text-sm text-slate-700 dark:text-slate-200">
+                      <span>{{ s.libelle }}</span>
+                      <app-oui-non [(valeur)]="form.examenCpn.signes[s.code]" />
+                    </li>
+                  }
+                </ul>
+              </div>
+            }
+          </div>
+          <p class="hint">Un second clic sur la réponse choisie la remet à « non évalué ».</p>
+        </section>
+
+        <!-- Fiche CPN : mesures préventives -->
+        <section class="card p-5 sm:p-6">
+          <h2 class="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-shield-heart"></i> Mesures préventives</h2>
+          <div class="space-y-5">
+            @for (bloc of mesuresGroupes; track bloc.groupe) {
+              <div>
+                <p class="mb-2 text-xs font-semibold text-brand-700 dark:text-brand-300">{{ bloc.groupe }}</p>
+                <ul class="divide-y divide-slate-100 rounded-xl border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
+                  @for (m of bloc.elements; track m.code) {
+                    <li class="flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-center">
+                      <div class="min-w-0 flex-1 text-sm">
+                        <p class="text-slate-800 dark:text-slate-100">{{ m.libelle }}</p>
+                        <p class="text-xs">
+                          @if (dejaFaite(m.code); as d) {
+                            <span class="text-accent-700 dark:text-accent-300"><i class="fa-solid fa-circle-check mr-1"></i>Déjà fait le {{ dateHeure(d.date) }}{{ d.valeur ? ' · ' + d.valeur : '' }}</span>
+                          } @else if (attendue(m.code, m.semaine)) {
+                            <span class="font-semibold text-amber-700 dark:text-amber-300"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Attendue {{ m.repere?.toLowerCase() }}</span>
+                          } @else if (m.repere) {
+                            <span class="text-slate-400">{{ m.repere }}</span>
+                          }
+                        </p>
+                      </div>
+                      @if (m.saisie && form.mesuresPreventives[m.code]) {
+                        <input class="input py-1.5 text-sm sm:w-44" [(ngModel)]="form.mesuresPreventives[m.code].valeur" [name]="'mv-' + m.code" [placeholder]="m.saisie" [attr.aria-label]="m.libelle + ' : ' + m.saisie">
+                      }
+                      @if (form.mesuresPreventives[m.code]) {
+                        <app-oui-non [(valeur)]="form.mesuresPreventives[m.code].reponse" />
+                      }
+                    </li>
+                  }
+                </ul>
+              </div>
+            }
+          </div>
+          <p class="hint">Datées par cette visite. Le dossier récapitule les mesures réalisées sur toute la grossesse.</p>
         </section>
 
         <section class="card p-5 sm:p-6">
@@ -138,7 +219,7 @@
                 }
               </div>
             </div>
-            <div><label class="label" for="c-dec">Décisions</label><textarea id="c-dec" rows="2" class="input" [(ngModel)]="form.decisions" name="decisions"></textarea></div>
+            <div><label class="label" for="c-dec">Conduite à tenir</label><textarea id="c-dec" rows="2" class="input" [(ngModel)]="form.decisions" name="decisions"></textarea></div>
           </div>
         </section>
 
@@ -163,6 +244,18 @@
               <button type="button" class="btn-secondary" (click)="ajouterExamen()"><i class="fa-solid fa-plus"></i></button>
             </div>
           }
+          <p class="label mt-5">Examens de laboratoire (résultats)</p>
+          <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            @for (e of referentiels.cpn()?.EXAMENS_LABO ?? []; track e.code) {
+              @if (form.laboratoire[e.code] !== undefined) {
+                <div [class.sm:col-span-2]="e.code === 'autres'">
+                  <label class="label text-xs" [for]="'lab-' + e.code">{{ e.libelle }}</label>
+                  <input [id]="'lab-' + e.code" class="input" [(ngModel)]="form.laboratoire[e.code]" [name]="'lab-' + e.code">
+                </div>
+              }
+            }
+          </div>
+          <div class="mt-4"><label class="label" for="c-echo">Échographie obstétricale</label><textarea id="c-echo" rows="2" class="input" [(ngModel)]="form.echographie" name="echographie" placeholder="Compte rendu de l’échographie"></textarea></div>
           <div class="mt-4"><label class="label" for="c-res">Résultats revus</label><textarea id="c-res" rows="2" class="input" [(ngModel)]="form.resultatsRevus" name="resultats" placeholder="Résultats reçus et revus lors de cette visite"></textarea></div>
         </section>
 
@@ -192,11 +285,53 @@
           <div class="grid gap-4 sm:grid-cols-2">
             <div class="sm:col-span-2"><label class="label" for="c-cons">Conseils donnés</label><textarea id="c-cons" rows="2" class="input" [(ngModel)]="form.conseils" name="conseils" placeholder="Supplémentation, prévention du paludisme, signes de danger expliqués…"></textarea></div>
             <div class="sm:col-span-2"><label class="label" for="c-ori">Orientation</label><input id="c-ori" class="input" [(ngModel)]="form.orientation" name="orientation"></div>
-            <div><label class="label" for="c-rdv">Prochain rendez-vous recommandé</label><input id="c-rdv" type="datetime-local" class="input" [(ngModel)]="form.prochainRdv.date" name="rdvDate"></div>
+            <div>
+              <label class="label" for="c-rdv">Prochain rendez-vous recommandé</label>
+              <input id="c-rdv" type="datetime-local" class="input" [(ngModel)]="form.prochainRdv.date" name="rdvDate">
+              @if (modifiable) {
+                <div class="mt-2 flex flex-wrap gap-1.5">
+                  @for (n of referentiels.cpn()?.INTERVALLES_RDV_SEMAINES ?? []; track n) {
+                    <button type="button" class="rounded-full border border-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800" (click)="rdvDans(n)">+ {{ n }} sem.</button>
+                  }
+                </div>
+              }
+            </div>
             <div><label class="label" for="c-rdvm">Motif</label><input id="c-rdvm" class="input" [(ngModel)]="form.prochainRdv.motif" name="rdvMotif"></div>
             <div class="sm:col-span-2"><label class="label" for="c-rdvc">Consignes publiables à la patiente</label><input id="c-rdvc" class="input" [(ngModel)]="form.prochainRdv.consignes" name="rdvConsignes" placeholder="Pas de détail médical sensible"></div>
           </div>
           <p class="hint">Le rendez-vous est ajouté à l’agenda à la finalisation.</p>
+        </section>
+
+        <!-- Fiche CPN : éléments de référence de la femme -->
+        <section class="card p-5 sm:p-6" [class.ring-2]="form.reference.motifs.length" [class.ring-rose-300]="form.reference.motifs.length">
+          <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <h2 class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-truck-medical"></i> Éléments de référence de la femme</h2>
+            @if (c?.reference?.le) {
+              <span class="badge bg-rose-50 text-rose-700 ring-1 ring-rose-200 dark:bg-rose-500/10 dark:text-rose-300"><i class="fa-solid fa-clock"></i> Référée le {{ dateHeure(c!.reference.le) }}</span>
+            } @else if (form.reference.motifs.length) {
+              <span class="badge bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"><i class="fa-solid fa-clock"></i> Horodatée à l’enregistrement</span>
+            }
+          </div>
+          @if (modifiable && suggestionsReference.length) {
+            <ul class="mb-4 space-y-1.5 rounded-xl bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
+              @for (s of suggestionsReference; track s) {
+                <li class="flex flex-wrap items-center gap-2"><i class="fa-solid fa-lightbulb text-amber-500"></i> {{ s }} <button type="button" class="text-xs font-semibold underline" (click)="basculerMotif(s)">Cocher</button></li>
+              }
+              <li class="text-xs text-amber-700 dark:text-amber-300">Suggestions d’après les données saisies : la décision de référer reste celle du médecin.</li>
+            </ul>
+          }
+          <div class="flex flex-wrap gap-2">
+            @for (m of referentiels.cpn()?.MOTIFS_REFERENCE ?? []; track m) {
+              <button type="button" class="rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-default"
+                      [class]="form.reference.motifs.includes(m) ? 'border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-300' : 'border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300'"
+                      [attr.aria-pressed]="form.reference.motifs.includes(m)" (click)="basculerMotif(m)">
+                @if (form.reference.motifs.includes(m)) { <i class="fa-solid fa-check mr-1"></i> } {{ m }}
+              </button>
+            }
+          </div>
+          @if (form.reference.motifs.length) {
+            <div class="mt-4"><label class="label" for="c-refp">Précisions (structure de référence, autres raisons…)</label><textarea id="c-refp" rows="2" class="input" [(ngModel)]="form.reference.precision" name="refPrecision"></textarea></div>
+          }
         </section>
       </fieldset>
 

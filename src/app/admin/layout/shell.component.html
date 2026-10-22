@@ -161,6 +161,9 @@
     <!-- Popups de nouveaux messages (discussions entre soignants), sur toutes les pages -->
     @if (session.connecte()) { <app-notifications-messages /> }
 
+    <!-- Bouton flottant des conversations (collègues et patientes), sur toutes les pages -->
+    <app-conversations-flottantes />
+
     <footer class="border-t border-white/60 bg-white/30 backdrop-blur-md dark:border-white/10 dark:bg-slate-900/30 px-4 py-4 text-xs text-slate-500 dark:text-slate-400 sm:px-6 lg:px-8">
       <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <span><i class="fa-solid fa-lock mr-1"></i> Données confidentielles — accès journalisé. Les calculs sont des estimations à confirmer cliniquement.</span>

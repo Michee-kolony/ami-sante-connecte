@@ -8,6 +8,7 @@ import { PresenceService } from '../data/presence.service';
 import { DiscussionsService } from '../data/discussions.service';
 import { NotificationsMessagesComponent } from '../components/notifications-messages.component';
 import { AvatarComponent } from '../components/avatar.component';
+import { ConversationsFlottantesComponent } from '../components/conversations-flottantes.component';
 import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
 
 interface NavItem {
@@ -22,7 +23,7 @@ interface NavItem {
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ThemeToggleComponent, NotificationsMessagesComponent, AvatarComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ThemeToggleComponent, NotificationsMessagesComponent, AvatarComponent, ConversationsFlottantesComponent],
   templateUrl: './shell.component.html',
 })
 export class ShellComponent {
@@ -95,6 +96,7 @@ export class ShellComponent {
     { label: 'Nouvel enregistrement', icon: 'fa-file-circle-plus', path: '/admin/patientes/nouvelle', clinique: true },
     { label: 'Rendez-vous', icon: 'fa-calendar-check', path: '/admin/rendez-vous' },
     { label: 'Discussions', icon: 'fa-comment-medical', path: '/admin/discussions' },
+    { label: 'Conseils aux mamans', icon: 'fa-newspaper', path: '/admin/conseils', clinique: true },
     { label: 'Messages', icon: 'fa-comments', path: '/admin/messages' },
     { label: 'Doublons', icon: 'fa-clone', path: '/admin/doublons', badge: 2 },
     { label: 'Enfants vaccinés', icon: 'fa-baby', path: '/admin/enfants' },

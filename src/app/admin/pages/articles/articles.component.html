@@ -1,0 +1,198 @@
+<div class="mx-auto max-w-3xl space-y-6">
+  <!-- En-tête -->
+  <div>
+    <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Conseils aux mamans</h1>
+    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Articles publiés par les médecins pour les femmes suivies en CPN ou ayant accouché.</p>
+  </div>
+
+  @if (notification) {
+    <div class="flex items-start gap-3 rounded-xl border border-accent-200 bg-accent-50 px-4 py-3 text-sm text-accent-900 dark:border-accent-500/30 dark:bg-accent-500/10 dark:text-accent-200" role="status">
+      <i class="fa-solid fa-circle-info mt-0.5"></i><span class="flex-1">{{ notification }}</span>
+      <button type="button" (click)="notification = ''" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+  }
+
+  <!-- Nouvelle publication -->
+  <section class="card p-5 sm:p-6">
+    <h2 class="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white"><i class="fa-solid fa-pen-to-square text-brand-600 dark:text-brand-400"></i> Nouvel article</h2>
+    <div class="space-y-4">
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div class="sm:col-span-2"><label class="label" for="a-titre">Titre <span class="req">*</span></label><input id="a-titre" class="input" [(ngModel)]="form.titre" name="titre" maxlength="200" placeholder="ex. Les signes de danger pendant la grossesse"></div>
+        <div>
+          <label class="label" for="a-cible">Pour</label>
+          <select id="a-cible" class="input" [(ngModel)]="form.cible" name="cible">
+            @for (c of cibles; track c) { <option [value]="c">{{ c }}</option> }
+          </select>
+        </div>
+      </div>
+      <div><label class="label" for="a-contenu">Conseil <span class="req">*</span></label><textarea id="a-contenu" rows="5" class="input" [(ngModel)]="form.contenu" name="contenu" placeholder="Rédigez votre conseil en termes simples…"></textarea></div>
+
+      @if (apercus.length) {
+        <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          @for (m of apercus; track m.url) {
+            <div class="group relative aspect-square overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800" [class.col-span-2]="m.video" [class.sm:col-span-4]="m.video" [class.aspect-video]="m.video">
+              @if (m.video) { <video [src]="m.url" class="h-full w-full object-contain" controls></video> } @else { <img [src]="m.url" alt="Aperçu" class="h-full w-full object-cover"> }
+              <button type="button" class="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-slate-900/70 text-xs text-white hover:bg-rose-600" (click)="retirerMedia(m)" aria-label="Retirer"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+          }
+        </div>
+      }
+      @if (erreurMedia) { <p class="text-xs text-rose-600 dark:text-rose-400"><i class="fa-solid fa-circle-exclamation mr-1"></i>{{ erreurMedia }}</p> }
+      @if (erreurEnvoi) { <p class="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:bg-rose-500/10 dark:text-rose-200" role="alert">{{ erreurEnvoi }}</p> }
+
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <label class="btn-secondary cursor-pointer py-2 text-xs" [class.opacity-50]="aVideo || apercus.length >= photosMax" [class.pointer-events-none]="aVideo || apercus.length >= photosMax">
+          <i class="fa-solid fa-photo-film"></i> Photos ou vidéo
+          <input type="file" class="sr-only" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime" multiple (change)="choisirMedias($event)">
+        </label>
+        <span class="text-[11px] text-slate-400">{{ photosMax }} photos max (5 Mo) ou 1 vidéo (50 Mo)</span>
+        <button type="button" class="btn-primary ml-auto" (click)="publier()" [disabled]="!peutPublier">
+          <i class="fa-solid" [class]="envoi ? 'fa-spinner fa-spin' : 'fa-paper-plane'"></i> Publier
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Filtres -->
+  <div class="flex flex-wrap gap-2">
+    @for (c of filtres; track c) {
+      <button type="button" class="rounded-full border px-3 py-1.5 text-xs font-semibold transition"
+              [class]="filtre === c ? 'border-brand-600 bg-brand-50 text-brand-800 dark:bg-brand-500/10 dark:text-brand-300' : 'border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800'"
+              (click)="filtrer(c)">{{ c || 'Tous les articles' }}</button>
+    }
+  </div>
+
+  <!-- Fil -->
+  @if (chargement) {
+    @for (i of [1, 2]; track i) {
+      <div class="card space-y-3 p-6" aria-hidden="true"><div class="skeleton h-4 w-48"></div><div class="skeleton h-6 w-80 max-w-full"></div><div class="skeleton h-24 w-full"></div></div>
+    }
+  } @else if (erreur) {
+    <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200" role="alert"><i class="fa-solid fa-circle-exclamation mr-1"></i>{{ erreur }}</div>
+  } @else {
+    @for (a of articles; track a.id) {
+      <article class="card overflow-hidden">
+        <header class="flex items-start gap-3 p-5 pb-3">
+          <span class="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-gradient-to-br from-brand-100 to-accent-50 text-sm font-semibold text-brand-700 dark:from-brand-500/20 dark:to-accent-500/10 dark:text-brand-300">{{ initiales(a.auteur.nom) }}</span>
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-semibold text-slate-900 dark:text-white">{{ dr(a.auteur.nom, a.auteur.role) }} @if (!estAutre(a.auteur.id)) { <span class="badge ml-1 bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">vous</span> }</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">{{ a.auteur.role }} · {{ dateHeure(a.createdAt) }}</p>
+          </div>
+          <span class="badge flex-none bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300">{{ a.cible }}</span>
+          @if (a.peutSupprimer) {
+            <button type="button" class="btn-ghost px-2 py-1 text-xs text-rose-600" (click)="confirmation = { type: 'article', article: a }" [attr.aria-label]="'Supprimer l’article ' + a.titre"><i class="fa-solid fa-trash"></i></button>
+          }
+        </header>
+        <div class="px-5 pb-4">
+          <h2 class="text-lg font-bold tracking-tight text-slate-900 dark:text-white">{{ a.titre }}</h2>
+          <p class="mt-2 whitespace-pre-line text-sm leading-relaxed text-slate-700 dark:text-slate-200">{{ a.contenu }}</p>
+        </div>
+
+        @if (a.medias.length) {
+          @if (a.medias[0].type === 'video') {
+            <video [src]="a.medias[0].url" class="max-h-[480px] w-full bg-black" controls preload="metadata"></video>
+          } @else {
+            <div class="grid gap-0.5" [class.grid-cols-2]="a.medias.length > 1">
+              @for (m of a.medias; track m.url; let i = $index) {
+                <button type="button" class="block overflow-hidden bg-slate-100 dark:bg-slate-800" [class.aspect-square]="a.medias.length > 1" [class.col-span-2]="a.medias.length === 3 && i === 0" [class.aspect-video]="a.medias.length === 3 && i === 0" (click)="photoAgrandie = m.url">
+                  <img [src]="m.url" [alt]="'Photo ' + (i + 1) + ' de l’article ' + a.titre" loading="lazy" class="h-full max-h-[480px] w-full object-cover">
+                </button>
+              }
+            </div>
+          }
+        }
+
+        <!-- J'aime et commentaires -->
+        <div class="flex items-center gap-1 border-t border-slate-100 px-3 py-2 dark:border-slate-800">
+          <button type="button" class="btn-ghost px-3 py-1.5 text-sm" [class.text-rose-600]="a.jAime" (click)="aimer(a)" [attr.aria-pressed]="a.jAime">
+            <i [class]="a.jAime ? 'fa-solid fa-heart' : 'fa-regular fa-heart'"></i> {{ a.nbJaimes }} <span class="sr-only">j’aime</span>
+          </button>
+          <button type="button" class="btn-ghost px-3 py-1.5 text-sm" (click)="basculerCommentaires(a)" [attr.aria-expanded]="commentairesOuverts.has(a.id)">
+            <i class="fa-regular fa-comment"></i> {{ nbCommentaires(a) }} commentaire{{ nbCommentaires(a) > 1 ? 's' : '' }}
+          </button>
+        </div>
+
+        @if (commentairesOuverts.has(a.id)) {
+          <div class="space-y-4 border-t border-slate-100 bg-slate-50/60 p-5 dark:border-slate-800 dark:bg-slate-800/30">
+            @for (c of a.commentaires; track c.id) {
+              <div>
+                <div class="rounded-xl bg-white px-3 py-2 dark:bg-slate-900">
+                  <div class="flex items-start justify-between gap-2">
+                    <p class="text-xs font-semibold text-slate-900 dark:text-white">{{ dr(c.auteur.nom, c.auteur.role) }} <span class="font-normal text-slate-400">· {{ dateHeure(c.le) }}</span></p>
+                    @if (c.peutSupprimer) { <button type="button" class="text-xs text-slate-400 hover:text-rose-600" (click)="confirmation = { type: 'commentaire', article: a, cid: c.id }" aria-label="Supprimer le commentaire"><i class="fa-solid fa-trash"></i></button> }
+                  </div>
+                  <p class="mt-1 whitespace-pre-line text-sm text-slate-700 dark:text-slate-200">{{ c.texte }}</p>
+                </div>
+                <div class="ml-6 mt-2 space-y-2 border-l-2 border-brand-100 pl-3 dark:border-brand-500/20">
+                  @for (r of c.reponses; track r.id) {
+                    <div class="rounded-xl bg-brand-50/70 px-3 py-2 dark:bg-brand-500/10">
+                      <div class="flex items-start justify-between gap-2">
+                        <p class="text-xs font-semibold text-brand-800 dark:text-brand-300"><i class="fa-solid fa-reply mr-1"></i>{{ dr(r.auteur.nom, r.auteur.role) }} <span class="font-normal text-slate-400">· auteur · {{ dateHeure(r.le) }}</span></p>
+                        @if (r.peutSupprimer) { <button type="button" class="text-xs text-slate-400 hover:text-rose-600" (click)="confirmation = { type: 'reponse', article: a, cid: c.id, rid: r.id }" aria-label="Supprimer la réponse"><i class="fa-solid fa-trash"></i></button> }
+                      </div>
+                      <p class="mt-1 whitespace-pre-line text-sm text-slate-700 dark:text-slate-200">{{ r.texte }}</p>
+                    </div>
+                  }
+                  @if (a.peutRepondre) {
+                    @if (reponseOuverte === c.id) {
+                      <div class="flex gap-2">
+                        <input class="input py-1.5 text-sm" [(ngModel)]="reponses[c.id]" [name]="'rep-' + c.id" placeholder="Votre réponse…" (keydown.enter)="repondre(a, c.id)">
+                        <button type="button" class="btn-primary px-3 py-1.5 text-xs" (click)="repondre(a, c.id)" [disabled]="!(reponses[c.id] || '').trim()" aria-label="Envoyer la réponse"><i class="fa-solid fa-paper-plane"></i></button>
+                      </div>
+                    } @else {
+                      <button type="button" class="text-xs font-semibold text-brand-700 hover:underline dark:text-brand-300" (click)="reponseOuverte = c.id"><i class="fa-solid fa-reply mr-1"></i>Répondre</button>
+                    }
+                  }
+                </div>
+              </div>
+            } @empty {
+              <p class="text-sm text-slate-500 dark:text-slate-400">Aucun commentaire pour l’instant.</p>
+            }
+            <div class="flex gap-2">
+              <input class="input text-sm" [(ngModel)]="commentaires[a.id]" [name]="'com-' + a.id" placeholder="Écrire un commentaire…" (keydown.enter)="commenter(a)">
+              <button type="button" class="btn-primary px-3" (click)="commenter(a)" [disabled]="!(commentaires[a.id] || '').trim()" aria-label="Publier le commentaire"><i class="fa-solid fa-paper-plane"></i></button>
+            </div>
+          </div>
+        }
+      </article>
+    } @empty {
+      <div class="card flex flex-col items-center gap-2 p-10 text-center">
+        <i class="fa-solid fa-newspaper text-3xl text-slate-300 dark:text-slate-600"></i>
+        <p class="font-semibold text-slate-900 dark:text-white">Aucun article {{ filtre ? 'dans cette catégorie' : 'publié' }}</p>
+        <p class="text-sm text-slate-500 dark:text-slate-400">Publiez le premier conseil pour les mamans.</p>
+      </div>
+    }
+    @if (articles.length < total) {
+      <button type="button" class="btn-secondary w-full" (click)="chargerSuite()" [disabled]="chargementSuite">
+        <i class="fa-solid" [class]="chargementSuite ? 'fa-spinner fa-spin' : 'fa-angles-down'"></i> Voir plus d’articles
+      </button>
+    }
+  }
+</div>
+
+<!-- Confirmation de suppression -->
+@if (confirmation; as c) {
+  <div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4" role="dialog" aria-modal="true">
+    <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" (click)="confirmation = null"></div>
+    <div class="relative w-full max-w-md rounded-t-2xl bg-white p-5 shadow-2xl dark:bg-slate-900 sm:rounded-2xl">
+      <p class="font-semibold text-slate-900 dark:text-white">Supprimer {{ c.type === 'article' ? 'cet article' : c.type === 'commentaire' ? 'ce commentaire' : 'cette réponse' }} ?</p>
+      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        Cette action est définitive.
+        @if (c.type === 'article') { Les photos et la vidéo seront aussi supprimées. }
+        @if (c.type === 'article' && estAutre(c.article.auteur.id)) { <span class="font-semibold text-rose-600">Vous supprimez en tant que médecin chef la publication d’un autre médecin (action journalisée).</span> }
+      </p>
+      <div class="mt-4 flex justify-end gap-2">
+        <button type="button" class="btn-ghost" (click)="confirmation = null">Annuler</button>
+        <button type="button" class="btn bg-rose-600 text-white hover:bg-rose-700" (click)="confirmerSuppression()"><i class="fa-solid fa-trash"></i> Supprimer</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Photo agrandie -->
+@if (photoAgrandie) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 p-4" role="dialog" aria-modal="true" (click)="photoAgrandie = null">
+    <img [src]="photoAgrandie" alt="Photo agrandie" class="max-h-full max-w-full rounded-xl object-contain">
+    <button type="button" class="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+}

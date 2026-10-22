@@ -23,6 +23,7 @@ import { ProfilComponent } from './pages/profil/profil.component';
 import { SoignantDetailComponent } from './pages/soignant-detail/soignant-detail.component';
 import { ConsultationComponent } from './pages/consultation/consultation.component';
 import { DiscussionsComponent } from './pages/discussions/discussions.component';
+import { ArticlesComponent } from './pages/articles/articles.component';
 
 /** Pages réservées au superadmin. ⚠️ Côté client seulement : le serveur doit refuser aussi. */
 const superAdminGuard = () => UTILISATEUR.superAdmin || inject(Router).parseUrl('/admin/tableau-de-bord');
@@ -54,6 +55,8 @@ export const ADMIN_ROUTES: Routes = [
       { path: 'ambulances', component: AmbulancesComponent, title: 'Ambulances · AMI Santé Connect' },
       { path: 'chauffeurs', component: ChauffeursComponent, title: 'Chauffeurs · AMI Santé Connect' },
       { path: 'discussions', component: DiscussionsComponent, canActivate: [connecteGuard], title: 'Discussions · AMI Santé Connect' },
+      // Articles de conseils : médecins seulement (le serveur refuse aussi les infirmier·ères).
+      { path: 'conseils', component: ArticlesComponent, canActivate: [connecteGuard, medecinGuard], title: 'Conseils aux mamans · AMI Santé Connect' },
       { path: 'messages', component: MessagesComponent, title: 'Messages · AMI Santé Connect' },
       { path: 'enfants', component: EnfantsComponent, title: 'Enfants vaccinés · AMI Santé Connect' },
       { path: 'agents', component: AgentsComponent, title: 'Agents de vaccination · AMI Santé Connect' },

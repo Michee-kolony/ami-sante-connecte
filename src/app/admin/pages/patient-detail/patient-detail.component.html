@@ -90,6 +90,26 @@
           </div>
         </div>
       </div>
+      @if (dossier.grossesses.length > 1) {
+        <div class="border-t border-slate-100 px-5 py-3 dark:border-slate-800">
+          <p class="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-clock-rotate-left mr-1"></i> Historique des grossesses</p>
+          <div class="flex gap-2 overflow-x-auto pb-1">
+            @for (h of historique; track h.g.id) {
+              <button type="button" class="flex-none rounded-xl border px-3 py-2 text-left text-xs transition"
+                      [class]="g?.id === h.g.id ? 'border-brand-600 bg-brand-50 ring-2 ring-brand-500/20 dark:bg-brand-500/10' : 'border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/50'"
+                      [attr.aria-pressed]="g?.id === h.g.id" (click)="choisirGrossesse(h.g.id)">
+                <span class="block font-semibold text-slate-900 dark:text-white">Grossesse n° {{ h.g.numero }}
+                  <span class="badge ml-1" [class]="h.g.statut === 'En cours' ? 'bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'">{{ h.g.statut }}</span>
+                </span>
+                <span class="mt-0.5 block text-slate-500 dark:text-slate-400">
+                  @if (h.g.issue) { {{ h.g.issue.issue }} · {{ jour(h.g.issue.date) }} } @else if (h.g.datation) { DPA {{ jour(h.g.datation.dpa) }} } @else { Non datée }
+                  · {{ h.cpn }} CPN
+                </span>
+              </button>
+            }
+          </div>
+        </div>
+      }
       <div class="flex gap-1 overflow-x-auto border-t border-slate-100 dark:border-slate-800 px-3" role="tablist">
         @for (t of onglets; track t.k) {
           <button role="tab" class="flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition" [attr.aria-selected]="onglet === t.k"
@@ -115,11 +135,13 @@
                   @if (g) { Grossesse n° {{ g.numero }} · {{ g.statut }} } @else { Aucune grossesse }
                 </h2>
                 <div class="flex flex-wrap gap-2">
-                  @if (grossesse) {
+                  @if (grossesse && !vueActuelle) {
+                    <button class="btn-ghost px-2.5 py-1.5 text-xs" (click)="grossesseChoisie = null"><i class="fa-solid fa-arrow-rotate-left"></i> Grossesse en cours</button>
+                  } @else if (grossesse) {
                     <button class="btn-ghost px-2.5 py-1.5 text-xs" (click)="ouvrir('datation')"><i class="fa-solid fa-calendar-days"></i> {{ grossesse.datation ? 'Corriger la datation' : 'Dater la grossesse' }}</button>
                     <button class="btn-ghost px-2.5 py-1.5 text-xs" (click)="ouvrir('issue')"><i class="fa-solid fa-baby"></i> Issue de grossesse</button>
                   } @else {
-                    <button class="btn-secondary px-2.5 py-1.5 text-xs" (click)="nouvelleGrossesse()" [disabled]="envoi"><i class="fa-solid fa-plus"></i> Nouvelle grossesse</button>
+                    <button class="btn-secondary px-2.5 py-1.5 text-xs" (click)="ouvrir('grossesse')" [disabled]="envoi"><i class="fa-solid fa-plus"></i> Nouvelle grossesse</button>
                   }
                 </div>
               </div>
@@ -194,7 +216,7 @@
             <div class="card">
               <div class="card-header">
                 <h2 class="card-title"><i class="fa-solid fa-notes-medical text-rose-500"></i> Risques et antécédents</h2>
-                @if (grossesse) { <button class="btn-ghost px-2.5 py-1.5 text-xs" (click)="ouvrir('risques')"><i class="fa-solid fa-pen"></i> Facteurs de risque</button> }
+                @if (grossesse && vueActuelle) { <button class="btn-ghost px-2.5 py-1.5 text-xs" (click)="ouvrir('risques')"><i class="fa-solid fa-pen"></i> Facteurs de risque</button> }
               </div>
               <div class="space-y-5 p-5 sm:p-6">
                 <div>
@@ -221,6 +243,72 @@
                 </dl>
               </div>
             </div>
+
+            <!-- Fiche CPN -->
+            <div class="card">
+              <div class="card-header">
+                <h2 class="card-title"><i class="fa-solid fa-file-medical text-brand-600 dark:text-brand-400"></i> Fiche CPN</h2>
+                <button class="btn-ghost px-2.5 py-1.5 text-xs" (click)="ouvrir('fiche')"><i class="fa-solid fa-pen"></i> Compléter</button>
+              </div>
+              <div class="space-y-5 p-5 sm:p-6">
+                <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-4">
+                  <div><dt class="text-xs text-slate-500 dark:text-slate-400">État civil</dt><dd class="font-medium text-slate-900 dark:text-white">{{ p.etatCivil || '—' }}</dd></div>
+                  <div><dt class="text-xs text-slate-500 dark:text-slate-400">Occupation</dt><dd class="font-medium text-slate-900 dark:text-white">{{ p.occupation || '—' }}</dd></div>
+                  <div class="col-span-2"><dt class="text-xs text-slate-500 dark:text-slate-400">Partenaire</dt><dd class="font-medium text-slate-900 dark:text-white">{{ p.nomPartenaire || '—' }}</dd></div>
+                  <div><dt class="text-xs text-slate-500 dark:text-slate-400">Groupe / Rhésus</dt><dd class="font-semibold text-slate-900 dark:text-white">{{ p.groupeSanguin || '—' }} {{ p.rhesus === 'Positif' ? '+' : p.rhesus === 'Négatif' ? '−' : '' }}</dd></div>
+                  <div><dt class="text-xs text-slate-500 dark:text-slate-400">Taille</dt><dd class="font-semibold text-slate-900 dark:text-white">{{ p.tailleCm ? p.tailleCm + ' cm' : '—' }}</dd></div>
+                  <div><dt class="text-xs text-slate-500 dark:text-slate-400">Électrophorèse Hb</dt><dd class="font-semibold text-slate-900 dark:text-white">{{ p.electrophoreseHb || '—' }}</dd></div>
+                  <div><dt class="text-xs text-slate-500 dark:text-slate-400">Dernier accouchement</dt><dd class="font-medium text-slate-900 dark:text-white">{{ p.antecedents.dernierAccouchement ? jour(p.antecedents.dernierAccouchement) : '—' }}</dd></div>
+                </dl>
+                @for (b of [{ l: 'Antécédents médicaux', v: p.antecedents.atcdMedicaux }, { l: 'Gynéco-chirurgicaux', v: p.antecedents.atcdGynecoChirurgicaux }, { l: 'Obstétricaux', v: p.antecedents.atcdObstetricaux }]; track b.l) {
+                  <div>
+                    <p class="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{{ b.l }}</p>
+                    @if (b.v.length) {
+                      <div class="flex flex-wrap gap-2">@for (x of b.v; track x) { <span class="badge bg-rose-50 text-rose-700 ring-1 ring-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/30">{{ x }}</span> }</div>
+                    } @else {
+                      <p class="text-sm text-slate-500 dark:text-slate-400">Aucun coché.</p>
+                    }
+                  </div>
+                }
+                @if (p.antecedents.plusGrosPoidsNaissanceG) {
+                  <p class="text-sm text-slate-600 dark:text-slate-300">Plus gros poids de naissance : <strong>{{ p.antecedents.plusGrosPoidsNaissanceG }} g</strong></p>
+                }
+              </div>
+            </div>
+
+            <!-- Mesures préventives -->
+            @if (g && mesures.length) {
+              <div class="card">
+                <div class="card-header">
+                  <h2 class="card-title"><i class="fa-solid fa-shield-heart text-accent-600 dark:text-accent-400"></i> Mesures préventives · grossesse n° {{ g.numero }}</h2>
+                  <span class="badge bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300">{{ mesuresFaites }} réalisée(s)</span>
+                </div>
+                <div class="grid gap-5 p-5 sm:grid-cols-2 sm:p-6">
+                  @for (bloc of mesures; track bloc.groupe) {
+                    <div>
+                      <p class="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{{ bloc.groupe }}</p>
+                      <ul class="space-y-1.5 text-sm">
+                        @for (m of bloc.elements; track m.code) {
+                          <li class="flex items-start gap-2">
+                            @if (m.faite) {
+                              <i class="fa-solid fa-circle-check mt-0.5 text-accent-600 dark:text-accent-400"></i>
+                              <span class="text-slate-900 dark:text-white">{{ m.libelle }}<span class="text-xs text-slate-500 dark:text-slate-400"> · {{ dateHeure(m.faite.date) }}{{ m.faite.valeur ? ' · ' + m.faite.valeur : '' }}</span></span>
+                            } @else if (m.attendue) {
+                              <i class="fa-solid fa-triangle-exclamation mt-0.5 text-amber-500"></i>
+                              <span class="text-amber-800 dark:text-amber-300">{{ m.libelle }} <span class="text-xs">· attendue {{ m.repere?.toLowerCase() }}</span></span>
+                            } @else {
+                              <i class="fa-regular fa-circle mt-0.5 text-slate-300 dark:text-slate-600"></i>
+                              <span class="text-slate-500 dark:text-slate-400">{{ m.libelle }}@if (m.repere) { <span class="text-xs"> · {{ m.repere }}</span> }</span>
+                            }
+                          </li>
+                        }
+                      </ul>
+                    </div>
+                  }
+                </div>
+                <p class="border-t border-slate-100 px-5 py-3 text-[11px] text-slate-400 dark:border-slate-800">Renseignées lors des consultations finalisées. Les repères sont indicatifs : la décision reste celle du médecin.</p>
+              </div>
+            }
           </div>
 
           <div class="space-y-6">
@@ -296,7 +384,7 @@
         <div class="card overflow-hidden">
           <div class="card-header">
             <h2 class="card-title"><i class="fa-solid fa-stethoscope text-brand-600 dark:text-brand-400"></i> Consultations @if (g) { · grossesse n° {{ g.numero }} }</h2>
-            @if (grossesse) {
+            @if (grossesse && vueActuelle) {
               <a [routerLink]="['/admin/patientes', p.numero, 'consultation']" [queryParams]="{ type: premiereFaite ? 'Suivi prénatal' : 'Première consultation prénatale' }" class="btn-primary py-2 text-xs"><i class="fa-solid fa-plus"></i> Nouvelle consultation</a>
             }
           </div>
@@ -310,6 +398,7 @@
                     <div class="flex flex-wrap items-center justify-between gap-2">
                       <p class="font-semibold text-slate-900 dark:text-white">{{ c.type }} · {{ dateHeure(c.date) }}</p>
                       <div class="flex items-center gap-2">
+                        @if (c.reference) { <span class="badge bg-rose-50 text-rose-700 ring-1 ring-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/30"><i class="fa-solid fa-truck-medical"></i> Référée</span> }
                         @if (c.addenda) { <span class="badge bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300"><i class="fa-solid fa-paperclip"></i> {{ c.addenda }} addendum</span> }
                         <span class="badge {{ statutConsultationClass(c.statut) }}">{{ c.statut }}</span>
                       </div>
@@ -333,7 +422,7 @@
             <div class="flex flex-col items-center gap-3 p-10 text-center">
               <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800"><i class="fa-solid fa-stethoscope text-xl"></i></div>
               <p class="font-semibold text-slate-900 dark:text-white">Aucune consultation pour cette grossesse</p>
-              @if (grossesse) {
+              @if (grossesse && vueActuelle) {
                 <a [routerLink]="['/admin/patientes', p.numero, 'consultation']" [queryParams]="{ type: 'Première consultation prénatale' }" class="btn-primary"><i class="fa-solid fa-stethoscope"></i> Réaliser la première consultation</a>
               }
             </div>
@@ -535,7 +624,7 @@
 @if (fenetre && dossier) {
   <div class="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true">
     <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" (click)="fermer()"></div>
-    <div class="relative max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white shadow-2xl dark:bg-slate-900 sm:rounded-2xl">
+    <div class="relative max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-white shadow-2xl dark:bg-slate-900 sm:rounded-2xl" [class.max-w-lg]="fenetre !== 'fiche' && fenetre !== 'grossesse'" [class.max-w-2xl]="fenetre === 'grossesse'" [class.max-w-3xl]="fenetre === 'fiche'">
       <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
         <h2 class="text-base font-semibold text-slate-900 dark:text-white">
           @switch (fenetre) {
@@ -544,6 +633,8 @@
             @case ('rdv') { Planifier un rendez-vous }
             @case ('risques') { Facteurs de risque }
             @case ('infos') { Contact et informations }
+            @case ('fiche') { Fiche CPN de la patiente }
+            @case ('grossesse') { Nouvelle grossesse · même dossier }
             @case ('action-rdv') { {{ rdvAction?.action === 'reporter' ? 'Reporter le rendez-vous' : rdvAction?.action === 'annuler' ? 'Annuler le rendez-vous' : 'Patiente absente' }} }
           }
         </h2>
@@ -641,6 +732,48 @@
             <p class="text-xs text-slate-500 dark:text-slate-400"><i class="fa-solid fa-clock-rotate-left mr-1"></i>L’ancien créneau, votre nom et le motif sont conservés dans l’historique du rendez-vous.</p>
           }
 
+          @case ('grossesse') {
+            <p class="rounded-xl bg-brand-50 px-3 py-2 text-sm text-brand-900 dark:bg-brand-500/10 dark:text-brand-200">
+              <i class="fa-solid fa-circle-info mr-1"></i>La patiente garde son dossier {{ dossier.patiente.numero }} et son compte. La grossesse n° {{ dossier.grossesses.length + 1 }} s’ajoute à son historique.
+            </p>
+            @if (grossessePrecedente?.issue; as is) {
+              <p class="text-xs text-slate-500 dark:text-slate-400">Grossesse précédente (n° {{ grossessePrecedente!.numero }}) : {{ is.issue }} le {{ jour(is.date) }}{{ is.mode !== 'Non applicable' ? ' · ' + is.mode : '' }}.</p>
+            }
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div><label class="label" for="ng-ddr">DDR <span class="text-xs font-normal text-slate-400">(si connue)</span></label><input id="ng-ddr" type="date" class="input" [(ngModel)]="formGrossesse.ddr" name="ngddr"></div>
+              <div>
+                <label class="label" for="ng-fiab">Fiabilité de la DDR</label>
+                <select id="ng-fiab" class="input" [(ngModel)]="formGrossesse.ddrFiabilite" name="ngfiab" [disabled]="!formGrossesse.ddr">
+                  @for (x of ['Fiable', 'Incertaine', 'Inconnue']; track x) { <option [value]="x">{{ x }}</option> }
+                </select>
+              </div>
+            </div>
+            <p class="hint -mt-2">Sans DDR, la grossesse sera datée lors de la consultation (échographie ou examen clinique).</p>
+            <div>
+              <span class="label">Antécédents mis à jour <span class="text-xs font-normal text-slate-400">(valeurs proposées : à vérifier)</span></span>
+              <div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                @for (c of [{ k: 'gestite', l: 'Gestité' }, { k: 'parite', l: 'Parité' }, { k: 'enfantsVivants', l: 'Enfants vivants' }, { k: 'avortements', l: 'Avortements' }]; track c.k) {
+                  <div><label class="label text-xs" [for]="'ng-' + c.k">{{ c.l }}</label><input [id]="'ng-' + c.k" type="number" min="0" max="30" class="input" [(ngModel)]="$any(formGrossesse)[c.k]" [name]="'ng' + c.k"></div>
+                }
+                <div class="col-span-2 sm:col-span-1"><label class="label text-xs" for="ng-dernier">Dernier accouch.</label><input id="ng-dernier" type="date" class="input px-2" [(ngModel)]="formGrossesse.dernierAccouchement" name="ngdernier"></div>
+              </div>
+            </div>
+            <div>
+              <span class="label">Facteurs de risque relevés</span>
+              <div class="flex flex-wrap gap-2">
+                @for (f of facteursProposes; track f) {
+                  <button type="button" class="rounded-full border px-3 py-1.5 text-xs font-semibold transition"
+                          [class]="formGrossesse.facteurs.includes(f) ? 'border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-300' : 'border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300'"
+                          (click)="basculerFacteurNouvelle(f)">{{ f }}</button>
+                }
+              </div>
+            </div>
+          }
+
+          @case ('fiche') {
+            <app-fiche-cpn-patiente [fiche]="formFiche" prefixe="fiche-" [age]="dossier.patiente.age" [parite]="dossier.patiente.antecedents.parite" />
+          }
+
           @case ('infos') {
             <div class="grid gap-4 sm:grid-cols-2">
               <div><label class="label" for="f-tel">Téléphone</label><input id="f-tel" class="input" [(ngModel)]="formInfos.telephone" name="ftel"></div>
@@ -673,6 +806,8 @@
           @case ('issue') { <button class="btn-primary" (click)="enregistrerIssue()" [disabled]="envoi || !confirmationIssue"><i class="fa-solid fa-baby"></i> Enregistrer l’issue</button> }
           @case ('rdv') { <button class="btn-primary" (click)="creerRdv()" [disabled]="envoi || !formRdv.date"><i class="fa-solid fa-calendar-plus"></i> Planifier</button> }
           @case ('infos') { <button class="btn-primary" (click)="enregistrerInfos()" [disabled]="envoi"><i class="fa-solid fa-check"></i> Enregistrer</button> }
+          @case ('fiche') { <button class="btn-primary" (click)="enregistrerFiche()" [disabled]="envoi"><i class="fa-solid fa-check"></i> Enregistrer</button> }
+          @case ('grossesse') { <button class="btn-primary" (click)="nouvelleGrossesse()" [disabled]="envoi"><i class="fa-solid" [class]="envoi ? 'fa-spinner fa-spin' : 'fa-person-pregnant'"></i> Ouvrir la grossesse n° {{ dossier.grossesses.length + 1 }}</button> }
           @case ('action-rdv') {
             <button class="btn-primary" (click)="confirmerActionRdv()"
                     [disabled]="envoi || (rdvAction?.action === 'reporter' && !formActionRdv.date) || (rdvAction?.action !== 'absent' && !formActionRdv.motif.trim())">

@@ -91,6 +91,59 @@ export interface Antecedents {
   chirurgicaux: string;
   allergies: string;
   medicaments: string;
+  atcdMedicaux: string[];
+  atcdGynecoChirurgicaux: string[];
+  atcdObstetricaux: string[];
+  plusGrosPoidsNaissanceG: number | null;
+  dernierAccouchement: string | null;
+}
+
+/** Champs de la fiche CPN propres à la patiente (identité complémentaire, biologie, antécédents cochés). */
+export interface ProfilCpn {
+  etatCivil: string;
+  occupation: string;
+  nomPartenaire: string;
+  groupeSanguin: string;
+  rhesus: string;
+  tailleCm: number | null;
+  electrophoreseHb: string;
+  atcdMedicaux: string[];
+  atcdGynecoChirurgicaux: string[];
+  atcdObstetricaux: string[];
+  plusGrosPoidsNaissanceG: number | null;
+  dernierAccouchement: string;
+}
+
+export function profilCpnVide(): ProfilCpn {
+  return {
+    etatCivil: '', occupation: '', nomPartenaire: '', groupeSanguin: '', rhesus: '', tailleCm: null, electrophoreseHb: '',
+    atcdMedicaux: [], atcdGynecoChirurgicaux: [], atcdObstetricaux: [], plusGrosPoidsNaissanceG: null, dernierAccouchement: '',
+  };
+}
+
+export function profilCpnDe(p: Patiente): ProfilCpn {
+  const a = p.antecedents;
+  return {
+    etatCivil: p.etatCivil ?? '', occupation: p.occupation ?? '', nomPartenaire: p.nomPartenaire ?? '',
+    groupeSanguin: p.groupeSanguin ?? '', rhesus: p.rhesus ?? '', tailleCm: p.tailleCm ?? null, electrophoreseHb: p.electrophoreseHb ?? '',
+    atcdMedicaux: [...(a?.atcdMedicaux ?? [])], atcdGynecoChirurgicaux: [...(a?.atcdGynecoChirurgicaux ?? [])],
+    atcdObstetricaux: [...(a?.atcdObstetricaux ?? [])], plusGrosPoidsNaissanceG: a?.plusGrosPoidsNaissanceG ?? null,
+    dernierAccouchement: a?.dernierAccouchement ?? '',
+  };
+}
+
+/** Répartit la fiche entre les champs de la patiente et ceux de ses antécédents (format de l'API). */
+export function profilCpnVersApi(f: ProfilCpn): { patiente: Partial<Patiente>; antecedents: Partial<Antecedents> } {
+  return {
+    patiente: {
+      etatCivil: f.etatCivil, occupation: f.occupation, nomPartenaire: f.nomPartenaire, groupeSanguin: f.groupeSanguin,
+      rhesus: f.rhesus, tailleCm: f.tailleCm, electrophoreseHb: f.electrophoreseHb,
+    },
+    antecedents: {
+      atcdMedicaux: f.atcdMedicaux, atcdGynecoChirurgicaux: f.atcdGynecoChirurgicaux, atcdObstetricaux: f.atcdObstetricaux,
+      plusGrosPoidsNaissanceG: f.plusGrosPoidsNaissanceG, dernierAccouchement: f.dernierAccouchement || null,
+    },
+  };
 }
 
 export interface Adresse {
@@ -114,6 +167,13 @@ export interface Patiente {
   ageDeclare: number | null;
   age: number | null;
   pieceIdentite: string;
+  etatCivil: string;
+  occupation: string;
+  nomPartenaire: string;
+  groupeSanguin: string;
+  rhesus: string;
+  tailleCm: number | null;
+  electrophoreseHb: string;
   telephone: string;
   telephonePartage: boolean;
   telephone2: string;
@@ -168,6 +228,8 @@ export interface Grossesse {
   creePar: Auteur;
   createdAt: string;
   agJours: number | null;
+  /** Mesures préventives réalisées (consultations finalisées) : dernière réponse « oui » par code. */
+  mesuresPreventives: Record<string, { date: string; valeur: string; consultationId: string }>;
 }
 
 export interface Constantes {
@@ -178,6 +240,29 @@ export interface Constantes {
   pouls: number | null;
   hauteurUterineCm: number | null;
   bcf: number | null;
+  saO2: number | null;
+  frequenceRespiratoire: number | null;
+}
+
+/** Signes oui/non (null = non évalué) et éléments du fœtus relevés à la visite CPN. */
+export interface ExamenCpn {
+  signes: Record<string, boolean | null>;
+  etatGeneral: string;
+  perimetreBrachialCm: number | null;
+  mouvementsFoetaux: string;
+  presentation: string;
+}
+
+export interface ReponseMesure {
+  reponse: boolean | null;
+  valeur: string;
+}
+
+export interface ReferenceFemme {
+  motifs: string[];
+  precision: string;
+  /** Horodatage serveur de la référence (null sans motif). */
+  le: string | null;
 }
 
 export interface Traitement {
@@ -210,9 +295,15 @@ export interface ConsultationResume {
   addenda: number;
   constantes: Constantes;
   createdAt: string;
+  reference: { le: string; motifs: string[] } | null;
 }
 
-export interface Consultation extends Omit<ConsultationResume, 'addenda'> {
+export interface Consultation extends Omit<ConsultationResume, 'addenda' | 'reference'> {
+  examenCpn: ExamenCpn;
+  mesuresPreventives: Record<string, ReponseMesure>;
+  laboratoire: Record<string, string>;
+  echographie: string;
+  reference: ReferenceFemme;
   patienteId: string;
   etablissementId: string | null;
   symptomes: string;
@@ -313,8 +404,9 @@ export interface SaisieDatation {
   justification?: string;
 }
 
-export type SaisieConsultation = Partial<Omit<Consultation, 'id' | 'auteur' | 'statut' | 'addenda' | 'prochainRdv'>> & {
+export type SaisieConsultation = Partial<Omit<Consultation, 'id' | 'auteur' | 'statut' | 'addenda' | 'prochainRdv' | 'reference'>> & {
   prochainRdv?: { date: string | null; motif: string; consignes: string };
+  reference?: { motifs: string[]; precision: string };
   finaliser?: boolean;
 };
 

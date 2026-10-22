@@ -2,7 +2,8 @@ import { Component, OnDestroy, computed, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { aujourdhui, jourFr } from '../../data/format';
-import { Doublon, FACTEURS_RISQUE, PatientesService, SaisieDatation, doublonsDe } from '../../data/patientes.service';
+import { Doublon, FACTEURS_RISQUE, PatientesService, SaisieDatation, doublonsDe, profilCpnVersApi, profilCpnVide } from '../../data/patientes.service';
+import { FicheCpnPatienteComponent } from '../../components/fiche-cpn-patiente.component';
 import { EtablissementsService } from '../../data/etablissements.service';
 import { ReferentielsService } from '../../data/referentiels.service';
 import { SessionService, messageErreur } from '../../data/session.service';
@@ -50,7 +51,7 @@ async function enJpeg(fichier: File, cote = 1000): Promise<File> {
 @Component({
   selector: 'app-patient-new',
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, FicheCpnPatienteComponent],
   templateUrl: './patient-new.component.html',
 })
 export class PatientNewComponent implements OnDestroy {
@@ -77,6 +78,8 @@ export class PatientNewComponent implements OnDestroy {
   ];
 
   readonly facteursProposes = FACTEURS_RISQUE;
+  /** Fiche CPN : identité complémentaire (étape 1), biologie et antécédents cochés (étape 4). */
+  fiche = profilCpnVide();
 
   form = {
     nom: '', postnom: '', prenom: '',
@@ -121,6 +124,8 @@ export class PatientNewComponent implements OnDestroy {
   /** Le serveur a signalé des doublons à l'envoi : confirmation explicite requise. */
   doublonsBloquants = false;
   confirmationDoublons = false;
+  /** Même e-mail qu'un dossier existant : c'est la même patiente, la création est impossible. */
+  emailExistant = false;
   private minuteurDoublons?: ReturnType<typeof setTimeout>;
 
   constructor() {
@@ -360,9 +365,11 @@ export class PatientNewComponent implements OnDestroy {
     this.envoi = true;
     this.erreur = '';
     const f = this.form;
+    const fiche = profilCpnVersApi(this.fiche);
     try {
       const { numero } = await this.service.creer({
         patiente: {
+          ...fiche.patiente,
           nom: f.nom, postnom: f.postnom, prenom: f.prenom,
           dateNaissance: f.ageMode === 'date' ? f.dateNaissance || null : null,
           ageDeclare: f.ageMode === 'age' ? f.ageDeclare : null,
@@ -373,6 +380,7 @@ export class PatientNewComponent implements OnDestroy {
             gestite: f.gestite, parite: f.parite, enfantsVivants: f.enfantsVivants, avortements: f.avortements, cesariennes: f.cesariennes,
             complicationsObstetricales: f.complications, medicaux: f.antecedentsMedicaux, chirurgicaux: f.antecedentsChirurgicaux,
             allergies: f.allergies, medicaments: f.medicaments,
+            ...fiche.antecedents,
           },
         },
         etablissementId: f.etablissementId,
@@ -388,6 +396,7 @@ export class PatientNewComponent implements OnDestroy {
         this.doublons = doublons;
         this.doublonsBloquants = true;
         this.confirmationDoublons = false;
+        this.emailExistant = !!(err as { error?: { emailExistant?: boolean } }).error?.emailExistant;
       } else {
         this.erreur = messageErreur(err);
       }
