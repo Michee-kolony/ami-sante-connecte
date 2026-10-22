@@ -23,6 +23,8 @@ const TEINTES = [
   'fill-brand-800 dark:fill-brand-200',
 ];
 const TEINTE_VIDE = 'fill-slate-100 dark:fill-slate-800';
+/** Province qui compte le plus de patientes : en vert sur la carte. */
+const TEINTE_TETE = 'fill-accent-500 dark:fill-accent-500';
 
 /**
  * Carte choroplèthe des provinces de la RDC : plus la province est foncée, plus elle compte
@@ -95,6 +97,9 @@ const TEINTE_VIDE = 'fill-slate-100 dark:fill-slate-800';
             <span class="flex items-center gap-1.5"><svg class="h-3 w-3"><rect width="12" height="12" rx="3" class="{{ teinteVide }}" /></svg>0</span>
             @for (c of classes; track $index) {
               <span class="flex items-center gap-1.5"><svg class="h-3 w-3"><rect width="12" height="12" rx="3" class="{{ c.teinte }}" /></svg>{{ c.libelle }}</span>
+            }
+            @if (total) {
+              <span class="flex items-center gap-1.5 font-medium text-accent-700 dark:text-accent-400"><svg class="h-3 w-3"><rect width="12" height="12" rx="3" class="{{ teinteTete }}" /></svg>En tête ({{ max }})</span>
             }
           </div>
         </div>
@@ -171,6 +176,7 @@ export class CarteRdcComponent implements OnChanges {
 
   viewBox = CARTE_RDC_VIEWBOX;
   teinteVide = TEINTE_VIDE;
+  teinteTete = TEINTE_TETE;
   options: { id: Indicateur; label: string; icon: string }[] = [
     { id: 'patientes', label: 'Patientes', icon: 'fa-person-pregnant' },
     { id: 'enCours', label: 'Grossesses en cours', icon: 'fa-baby-carriage' },
@@ -247,6 +253,7 @@ export class CarteRdcComponent implements OnChanges {
   teinte(p: ProvinceCarte): string {
     const v = this.valeur(p);
     if (v === 0) return TEINTE_VIDE;
+    if (v === this.max) return TEINTE_TETE;
     return (this.classes.find(c => v <= c.max) ?? this.classes[this.classes.length - 1]).teinte;
   }
 
