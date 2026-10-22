@@ -148,16 +148,21 @@
               @if (g) {
                 <div class="p-5 sm:p-6">
                   @if (g.statut === 'En cours') {
-                    <div class="grid gap-6 sm:grid-cols-3">
+                    <!-- DPA mise en avant ; AG et DDR en dessous -->
+                    <div class="rounded-2xl bg-brand-50 p-5 dark:bg-brand-500/10">
+                      <p class="text-sm font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-300"><i class="fa-solid fa-calendar-check mr-1"></i> DPA calculée estimée</p>
+                      <p class="mt-2 text-4xl font-extrabold tracking-tight text-brand-900 dark:text-white">{{ g.datation ? jour(g.datation.dpaCalculee) : 'À confirmer' }}</p>
+                      @if (g.datation) {
+                        <p class="mt-1 text-xs text-brand-700 dark:text-brand-300">{{ g.datation.methode === 'DDR' ? 'DDR + 7 j + 9 mois' : g.datation.methode + ' + 280 j − AG' }}</p>
+                        @if (g.datation.dpa !== g.datation.dpaCalculee) { <p class="mt-1 text-xs text-amber-600 dark:text-amber-400">DPA corrigée par le médecin : {{ jour(g.datation.dpa) }}</p> }
+                      }
+                    </div>
+
+                    <div class="mt-6 grid gap-6 sm:grid-cols-2">
                       <div>
                         <p class="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">Âge gestationnel</p>
                         <p class="mt-1 text-2xl font-bold text-slate-900 dark:text-white">{{ ag(g.agJours) }}</p>
                         <p class="text-xs text-slate-500 dark:text-slate-400">aujourd’hui</p>
-                      </div>
-                      <div>
-                        <p class="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">DPA estimée</p>
-                        <p class="mt-1 text-2xl font-bold text-slate-900 dark:text-white">{{ g.datation ? jour(g.datation.dpa) : 'À confirmer' }}</p>
-                        @if (g.datation && g.datation.dpa !== g.datation.dpaCalculee) { <p class="text-xs text-amber-600 dark:text-amber-400">corrigée (calculée : {{ jour(g.datation.dpaCalculee) }})</p> }
                       </div>
                       <div>
                         <p class="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">DDR</p>
