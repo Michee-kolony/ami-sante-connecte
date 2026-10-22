@@ -33,7 +33,7 @@ export class LoginComponent {
         this.choix = choix;
         this.etablissementId = choix[0]?.id ?? '';
       } else {
-        this.router.navigateByUrl('/admin/tableau-de-bord');
+        this.router.navigateByUrl('/admin/acces-rapide');
       }
     } catch (err) {
       this.erreur = messageErreur(err);

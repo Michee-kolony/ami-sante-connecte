@@ -91,6 +91,7 @@ export class ShellComponent {
   }
 
   private navTous: NavItem[] = [
+    { label: 'Accès rapide', icon: 'fa-bolt', path: '/admin/acces-rapide' },
     { label: 'Tableau de bord', icon: 'fa-gauge-high', path: '/admin/tableau-de-bord' },
     { label: 'Patientes', icon: 'fa-person-pregnant', path: '/admin/patientes' },
     { label: 'Enregistrement CPN', icon: 'fa-file-circle-plus', path: '/admin/patientes/nouvelle', clinique: true },

@@ -1,4 +1,4 @@
-import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
+import { Component, Input, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AvatarComponent } from '../../components/avatar.component';
@@ -52,6 +52,11 @@ export class SoignantsComponent implements OnDestroy {
   /** Squelette seulement au premier chargement : une liste déjà reçue reste affichée pendant l'actualisation. */
   enChargement = computed(() => this.service.chargement() && !this.soignants().length);
   readonly lignesSquelette = [1, 2, 3, 4, 5, 6];
+
+  /** ?ajout=1 (raccourci « Ajout soignant » de l'accès rapide) : ouvre directement le formulaire. */
+  @Input() set ajout(v: string | undefined) {
+    if (v === '1' && this.peutGerer()) setTimeout(() => this.ouvrir());
+  }
 
   constructor() {
     this.service.charger().catch(err => (this.erreurChargement = messageErreur(err)));

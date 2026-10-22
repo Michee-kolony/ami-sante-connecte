@@ -4,6 +4,7 @@ import { UTILISATEUR } from './data/mock-data';
 import { ShellComponent } from './layout/shell.component';
 import { LoginComponent } from './pages/login/login.component';
 import { DashboardComponent } from './pages/dashboard/dashboard.component';
+import { AccesRapideComponent } from './pages/acces-rapide/acces-rapide.component';
 import { PatientsComponent } from './pages/patients/patients.component';
 import { PatientNewComponent } from './pages/patient-new/patient-new.component';
 import { PatientDetailComponent } from './pages/patient-detail/patient-detail.component';
@@ -41,7 +42,8 @@ export const ADMIN_ROUTES: Routes = [
     path: '',
     component: ShellComponent,
     children: [
-      { path: '', pathMatch: 'full', redirectTo: 'tableau-de-bord' },
+      { path: '', pathMatch: 'full', redirectTo: 'acces-rapide' },
+      { path: 'acces-rapide', component: AccesRapideComponent, title: 'Accès rapide · AMI Santé Connect' },
       { path: 'tableau-de-bord', component: DashboardComponent, title: 'Tableau de bord · AMI Santé Connect' },
       // Suivi prénatal (serveur) : dossier complet pour les médecins, vue de suivi en lecture seule pour les infirmier·ères.
       { path: 'patientes', component: PatientsComponent, canActivate: [connecteGuard], title: 'Patientes · AMI Santé Connect' },
