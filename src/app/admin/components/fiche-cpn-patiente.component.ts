@@ -8,7 +8,8 @@ type ListeAtcd = 'atcdMedicaux' | 'atcdGynecoChirurgicaux' | 'atcdObstetricaux';
 /**
  * Saisie de la fiche CPN propre à la patiente : identité complémentaire, profil biologique et
  * antécédents à cocher (référentiel servi par le backend). Modifie l'objet `fiche` reçu.
- * `partie` permet de répartir la fiche entre les étapes d'un formulaire.
+ * `partie` permet de répartir la fiche entre les étapes d'un formulaire : 'identite', 'clinique'
+ * (biologie + tous les antécédents), 'biologie', ou une seule liste d'antécédents à cocher.
  */
 @Component({
   selector: 'app-fiche-cpn-patiente',
@@ -18,7 +19,7 @@ type ListeAtcd = 'atcdMedicaux' | 'atcdGynecoChirurgicaux' | 'atcdObstetricaux';
   template: `
 @if (referentiels.cpn(); as r) {
   <div class="space-y-5">
-    @if (partie !== 'clinique') {
+    @if (voir('identite')) {
       <div class="grid gap-4 sm:grid-cols-3">
         <div>
           <label class="label" [for]="prefixe + 'ec'">État civil</label>
@@ -32,7 +33,7 @@ type ListeAtcd = 'atcdMedicaux' | 'atcdGynecoChirurgicaux' | 'atcdObstetricaux';
       </div>
     }
 
-    @if (partie !== 'identite') {
+    @if (voir('biologie')) {
       <div class="rounded-2xl border border-slate-200 p-4 dark:border-slate-800 sm:p-5">
         <p class="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white"><i class="fa-solid fa-droplet text-rose-500"></i> Profil biologique</p>
         <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -63,8 +64,10 @@ type ListeAtcd = 'atcdMedicaux' | 'atcdGynecoChirurgicaux' | 'atcdObstetricaux';
           <p class="mt-3 text-xs text-amber-700 dark:text-amber-300"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Taille inférieure à 150 cm : penser à évaluer le bassin.</p>
         }
       </div>
+    }
 
       @for (bloc of blocs; track bloc.k) {
+        @if (voir(bloc.k)) {
         <div>
           <p class="label flex items-center gap-2"><i class="fa-solid {{ bloc.i }} text-slate-400"></i> {{ bloc.l }}</p>
           <div class="flex flex-wrap gap-2">
@@ -77,8 +80,10 @@ type ListeAtcd = 'atcdMedicaux' | 'atcdGynecoChirurgicaux' | 'atcdObstetricaux';
             }
           </div>
         </div>
+        }
       }
 
+    @if (voir('atcdObstetricaux')) {
       <div class="grid gap-4 sm:grid-cols-2">
         <div>
           <label class="label" [for]="prefixe + 'poids'">Plus gros poids de naissance (g)</label>
@@ -109,7 +114,7 @@ type ListeAtcd = 'atcdMedicaux' | 'atcdGynecoChirurgicaux' | 'atcdObstetricaux';
 })
 export class FicheCpnPatienteComponent {
   @Input({ required: true }) fiche!: ProfilCpn;
-  @Input() partie: 'identite' | 'clinique' | 'tout' = 'tout';
+  @Input() partie: 'identite' | 'clinique' | 'tout' | 'biologie' | ListeAtcd = 'tout';
   /** Âge et parité de la patiente, pour suggérer les cases « primipare ». */
   @Input() age: number | null = null;
   @Input() parite: number | null = null;
@@ -126,6 +131,12 @@ export class FicheCpnPatienteComponent {
 
   constructor() {
     this.referentiels.chargerCpn().catch(() => {});
+  }
+
+  /** Section affichée pour la `partie` demandée. */
+  voir(section: 'identite' | 'biologie' | ListeAtcd): boolean {
+    if (this.partie === 'tout' || this.partie === section) return true;
+    return this.partie === 'clinique' && section !== 'identite';
   }
 
   basculer(liste: ListeAtcd, v: string): void {

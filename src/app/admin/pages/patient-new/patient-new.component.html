@@ -58,26 +58,27 @@
   </div>
 
   <div class="grid gap-6 lg:grid-cols-3">
-    <!-- Formulaire : une étape = un bandeau de couleur ; l'étape en cours s'ouvre dessous (accordéon) -->
+    <!-- Formulaire : une étape = une carte blanche (titre et icône bleus) ; elle s'ouvre dessous (accordéon) -->
     <form class="space-y-3 lg:col-span-2" (ngSubmit)="next()">
       @for (s of steps; track s.title; let i = $index) {
-        <button type="button" [id]="'etape-' + i" (click)="goTo(i)" [attr.aria-expanded]="i === step"
-                class="flex w-full scroll-mt-24 items-center gap-4 rounded-2xl bg-gradient-to-r px-4 py-3.5 text-left text-white shadow-md transition hover:shadow-lg sm:px-5 {{ s.couleur }}"
-                [class.opacity-80]="i !== step">
-          <span class="flex h-12 w-12 flex-none items-center justify-center rounded-xl bg-white/20 text-xl">
+        <button type="button" [id]="'etape-' + i" (click)="goTo(i)" [attr.aria-expanded]="i === ouverte"
+                class="flex w-full scroll-mt-24 items-center gap-4 rounded-2xl border bg-white px-4 py-3.5 text-left shadow-card transition hover:border-brand-300 hover:shadow-md dark:bg-slate-900 dark:shadow-none dark:hover:border-brand-500/50 sm:px-5"
+                [class]="i === ouverte ? 'border-brand-500 ring-2 ring-brand-500/15 dark:border-brand-400 dark:ring-brand-400/20' : 'border-slate-200/80 dark:border-slate-800'">
+          <span class="flex h-12 w-12 flex-none items-center justify-center rounded-xl text-xl"
+                [class]="i < step ? 'bg-emerald-500 text-white dark:bg-emerald-600' : 'bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300'">
             @if (i < step) { <i class="fa-solid fa-check"></i> } @else { <i class="fa-solid {{ s.icon }}"></i> }
           </span>
           <span class="min-w-0 flex-1">
-            <span class="flex items-center gap-2 text-base font-bold sm:text-lg">
+            <span class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-base font-bold text-brand-800 dark:text-brand-300 sm:text-lg">
               {{ i + 1 }}. {{ s.title }}
-              @if (s.clinical) { <span class="rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-semibold"><i class="fa-solid fa-user-doctor mr-1"></i>Médecin</span> }
+              @if (s.clinical) { <span class="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-700 dark:bg-brand-500/15 dark:text-brand-300"><i class="fa-solid fa-user-doctor mr-1"></i>Médecin</span> }
             </span>
-            <span class="block truncate text-xs text-white/85 sm:text-sm">{{ s.subtitle }}</span>
+            <span class="block truncate text-xs text-slate-500 dark:text-slate-400 sm:text-sm">{{ s.subtitle }}</span>
           </span>
-          <i class="fa-solid fa-chevron-right transition" [class.rotate-90]="i === step"></i>
+          <i class="fa-solid fa-chevron-right text-brand-600 transition dark:text-brand-400" [class.rotate-90]="i === ouverte"></i>
         </button>
 
-        @if (i === step) {
+        @if (i === ouverte) {
         <div class="card">
         <div class="space-y-6 p-4 sm:p-6">
         @switch (step) {
@@ -167,6 +168,91 @@
               </div>
             </div>
             <app-fiche-cpn-patiente [fiche]="fiche" partie="identite" prefixe="new-cpn-" />
+
+            <!-- Grossesse : DDR et DPA (c'est ici qu'on établit que la femme est enceinte) -->
+            <div>
+              <div class="section-titre flex-wrap justify-between">
+                <span class="flex items-center gap-2"><i class="fa-regular fa-calendar"></i> Date des dernières règles (DDR)</span>
+                <div class="inline-flex rounded-xl bg-slate-100 dark:bg-slate-800 p-1 text-xs font-semibold">
+                  <button type="button" class="rounded-lg px-3 py-1.5 transition" [class]="form.ddrConnue ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'" (click)="majDatation({ ddrConnue: true })">Connue</button>
+                  <button type="button" class="rounded-lg px-3 py-1.5 transition" [class]="!form.ddrConnue ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'" (click)="majDatation({ ddrConnue: false })">Inconnue</button>
+                </div>
+              </div>
+
+              @if (form.ddrConnue) {
+                <div class="mt-4 grid gap-5 sm:grid-cols-2">
+                  <div>
+                    <label class="label" for="ddr">DDR</label>
+                    <input id="ddr" type="date" name="ddr" class="input" [class.border-rose-400]="ddrApresReference" [ngModel]="form.ddr" (ngModelChange)="majDatation({ ddr: $event })" [max]="today">
+                    @if (ddrApresReference) {
+                      <p class="mt-1.5 text-xs text-rose-700 dark:text-rose-300"><i class="fa-solid fa-circle-exclamation mr-1"></i>La DDR ne peut pas être dans le futur.</p>
+                    }
+                  </div>
+                  <div>
+                    <span class="label">Fiabilité de la DDR</span>
+                    <div class="grid grid-cols-3 gap-2">
+                      @for (f of ['Fiable', 'Incertaine', 'Inconnue']; track f) {
+                        <button type="button" class="rounded-xl border px-2 py-2.5 text-xs font-semibold transition"
+                                [class]="form.ddrFiabilite === f ? 'border-brand-600 bg-brand-50 dark:bg-brand-500/10 text-brand-800 dark:text-brand-300 ring-2 ring-brand-500/20' : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50'"
+                                (click)="form.ddrFiabilite = $any(f)">{{ f }}</button>
+                      }
+                    </div>
+                  </div>
+                </div>
+              } @else {
+                <div class="mt-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 p-4">
+                  <p class="text-sm text-slate-600 dark:text-slate-300"><i class="fa-solid fa-circle-info mr-1 text-brand-600 dark:text-brand-400"></i>
+                    Aucune date ne sera inventée. Saisissez l’âge gestationnel estimé, la méthode et la date de l’examen — ou laissez vide pour dater lors de la consultation.</p>
+                  <div class="mt-4 grid gap-4 sm:grid-cols-4">
+                    <div>
+                      <label class="label" for="agm">Méthode</label>
+                      <select id="agm" name="agm" class="input" [(ngModel)]="form.agMethode">
+                        <option>Échographie</option>
+                        <option>Examen clinique</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="label" for="dref">Date de l’examen</label>
+                      <input id="dref" type="date" name="dref" class="input" [class.border-amber-400]="referenceFuture" [ngModel]="form.dateReference" (ngModelChange)="majDatation({ dateReference: $event })" [max]="today">
+                    </div>
+                    <div>
+                      <label class="label" for="ags">Semaines (SA)</label>
+                      <input id="ags" type="number" name="ags" class="input" [ngModel]="form.agSemaines" (ngModelChange)="majDatation({ agSemaines: $event })" min="0" max="44" placeholder="16">
+                    </div>
+                    <div>
+                      <label class="label" for="agj">Jours</label>
+                      <input id="agj" type="number" name="agj" class="input" [ngModel]="form.agJours" (ngModelChange)="majDatation({ agJours: $event })" min="0" max="6" placeholder="0">
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+
+            @if (agCalcule || dpaCalculee) {
+              <div class="grid grid-cols-2 gap-3 rounded-2xl bg-brand-50 p-4 text-brand-900 dark:bg-brand-500/10 dark:text-brand-100" aria-live="polite">
+                <div><p class="text-xs">Âge gestationnel aujourd’hui</p><p class="text-xl font-bold">{{ agCalcule ? agCalcule.sa + ' SA + ' + agCalcule.j + ' j' : '—' }}</p></div>
+                <div><p class="text-xs">DPA calculée</p><p class="text-xl font-bold">{{ dpaCalculee ? fmt(dpaCalculee) : '—' }}</p></div>
+              </div>
+            }
+
+            <div class="grid gap-5 sm:grid-cols-2">
+              <div>
+                <label class="label" for="dpa">DPA validée cliniquement <span class="text-xs font-normal text-slate-400">(si différente)</span></label>
+                <input id="dpa" type="date" name="dpa" class="input" [class.border-amber-400]="ecartSensible" [(ngModel)]="form.dpaSaisie">
+                @if (ecartSensible) {
+                  <p class="mt-1.5 text-xs text-amber-700 dark:text-amber-300"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Écart de {{ ecartDpa }} jours avec la DPA calculée.</p>
+                }
+              </div>
+            </div>
+
+            @if (ecartSensible) {
+              <div>
+                <label class="label" for="just">Justification clinique de la correction <span class="req">*</span></label>
+                <textarea id="just" name="just" rows="2" class="input" [(ngModel)]="form.dpaJustification" placeholder="ex. Échographie du premier trimestre réalisée le…"></textarea>
+                <p class="hint">La valeur calculée, la valeur retenue, votre nom, la date et le motif seront conservés.</p>
+              </div>
+            }
+
           }
 
           <!-- ÉTAPE 2 : Contact -->
@@ -302,93 +388,65 @@
             </div>
           }
 
-          <!-- ÉTAPE 4 : Grossesse -->
+          <!-- ÉTAPE 4 : Antécédents obstétricaux -->
           @case (3) {
-            <div>
-              <div class="section-titre flex-wrap justify-between">
-                <span class="flex items-center gap-2"><i class="fa-regular fa-calendar"></i> Date des dernières règles (DDR)</span>
-                <div class="inline-flex rounded-xl bg-slate-100 dark:bg-slate-800 p-1 text-xs font-semibold">
-                  <button type="button" class="rounded-lg px-3 py-1.5 transition" [class]="form.ddrConnue ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'" (click)="majDatation({ ddrConnue: true })">Connue</button>
-                  <button type="button" class="rounded-lg px-3 py-1.5 transition" [class]="!form.ddrConnue ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'" (click)="majDatation({ ddrConnue: false })">Inconnue</button>
-                </div>
-              </div>
-
-              @if (form.ddrConnue) {
-                <div class="mt-4 grid gap-5 sm:grid-cols-2">
-                  <div>
-                    <label class="label" for="ddr">DDR</label>
-                    <input id="ddr" type="date" name="ddr" class="input" [class.border-rose-400]="ddrApresReference" [ngModel]="form.ddr" (ngModelChange)="majDatation({ ddr: $event })" [max]="today">
-                    @if (ddrApresReference) {
-                      <p class="mt-1.5 text-xs text-rose-700 dark:text-rose-300"><i class="fa-solid fa-circle-exclamation mr-1"></i>La DDR ne peut pas être dans le futur.</p>
-                    }
-                  </div>
-                  <div>
-                    <span class="label">Fiabilité de la DDR</span>
-                    <div class="grid grid-cols-3 gap-2">
-                      @for (f of ['Fiable', 'Incertaine', 'Inconnue']; track f) {
-                        <button type="button" class="rounded-xl border px-2 py-2.5 text-xs font-semibold transition"
-                                [class]="form.ddrFiabilite === f ? 'border-brand-600 bg-brand-50 dark:bg-brand-500/10 text-brand-800 dark:text-brand-300 ring-2 ring-brand-500/20' : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50'"
-                                (click)="form.ddrFiabilite = $any(f)">{{ f }}</button>
-                      }
-                    </div>
-                  </div>
-                </div>
-              } @else {
-                <div class="mt-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 p-4">
-                  <p class="text-sm text-slate-600 dark:text-slate-300"><i class="fa-solid fa-circle-info mr-1 text-brand-600 dark:text-brand-400"></i>
-                    Aucune date ne sera inventée. Saisissez l’âge gestationnel estimé, la méthode et la date de l’examen — ou laissez vide pour dater lors de la consultation.</p>
-                  <div class="mt-4 grid gap-4 sm:grid-cols-4">
-                    <div>
-                      <label class="label" for="agm">Méthode</label>
-                      <select id="agm" name="agm" class="input" [(ngModel)]="form.agMethode">
-                        <option>Échographie</option>
-                        <option>Examen clinique</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label class="label" for="dref">Date de l’examen</label>
-                      <input id="dref" type="date" name="dref" class="input" [class.border-amber-400]="referenceFuture" [ngModel]="form.dateReference" (ngModelChange)="majDatation({ dateReference: $event })" [max]="today">
-                    </div>
-                    <div>
-                      <label class="label" for="ags">Semaines (SA)</label>
-                      <input id="ags" type="number" name="ags" class="input" [ngModel]="form.agSemaines" (ngModelChange)="majDatation({ agSemaines: $event })" min="0" max="44" placeholder="16">
-                    </div>
-                    <div>
-                      <label class="label" for="agj">Jours</label>
-                      <input id="agj" type="number" name="agj" class="input" [ngModel]="form.agJours" (ngModelChange)="majDatation({ agJours: $event })" min="0" max="6" placeholder="0">
-                    </div>
-                  </div>
+            <p class="section-titre !mb-0"><i class="fa-solid fa-baby"></i> Antécédents obstétricaux</p>
+            <app-fiche-cpn-patiente [fiche]="fiche" partie="atcdObstetricaux" prefixe="new-cpn-" [age]="ageCalcule" [parite]="form.parite" />
+            <div class="grid grid-cols-2 gap-4 sm:grid-cols-5">
+              @for (c of [{ k: 'gestite', l: 'Gestité' }, { k: 'parite', l: 'Parité' }, { k: 'enfantsVivants', l: 'Enfants vivants' }, { k: 'avortements', l: 'Avortements' }, { k: 'cesariennes', l: 'Césariennes' }]; track c.k) {
+                <div>
+                  <label class="label text-xs" [for]="'ant-' + c.k">{{ c.l }}</label>
+                  <input [id]="'ant-' + c.k" type="number" min="0" max="30" class="input" [name]="c.k" [(ngModel)]="$any(form)[c.k]">
                 </div>
               }
             </div>
+            <div>
+              <label class="label" for="compl">Complications obstétricales antérieures</label>
+              <textarea id="compl" name="compl" rows="3" class="input" [(ngModel)]="form.complications" placeholder="ex. Hémorragie, prééclampsie, accouchement prématuré…"></textarea>
+            </div>
+          }
 
-            <div class="grid gap-5 sm:grid-cols-2">
-              <div>
-                <label class="label" for="dpa">DPA validée cliniquement <span class="text-xs font-normal text-slate-400">(si différente)</span></label>
-                <input id="dpa" type="date" name="dpa" class="input" [class.border-amber-400]="ecartSensible" [(ngModel)]="form.dpaSaisie">
-                @if (ecartSensible) {
-                  <p class="mt-1.5 text-xs text-amber-700 dark:text-amber-300"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Écart de {{ ecartDpa }} jours avec la DPA calculée.</p>
+          <!-- ÉTAPE 5 : Antécédents médicaux -->
+          @case (4) {
+            <p class="section-titre !mb-0"><i class="fa-solid fa-stethoscope"></i> Antécédents médicaux</p>
+            <app-fiche-cpn-patiente [fiche]="fiche" partie="atcdMedicaux" prefixe="new-cpn-" />
+            <div>
+              <label class="label" for="atcdmed">Antécédents médicaux</label>
+              <textarea id="atcdmed" name="atcdmed" rows="3" class="input" [(ngModel)]="form.antecedentsMedicaux" placeholder="ex. Drépanocytose, HTA, diabète, VIH…"></textarea>
+            </div>
+            <div>
+              <label class="label" for="allerg">Allergies</label>
+              <textarea id="allerg" name="allerg" rows="2" class="input" [(ngModel)]="form.allergies" placeholder="Aucune connue / préciser"></textarea>
+            </div>
+            <div>
+              <label class="label" for="medic">Médicaments en cours</label>
+              <input id="medic" name="medic" class="input" [(ngModel)]="form.medicaments">
+            </div>
+          }
+
+          <!-- ÉTAPE 6 : Antécédents gynéco-chirurgicaux -->
+          @case (5) {
+            <p class="section-titre !mb-0"><i class="fa-solid fa-user-doctor"></i> Antécédents gynéco-chirurgicaux</p>
+            <app-fiche-cpn-patiente [fiche]="fiche" partie="atcdGynecoChirurgicaux" prefixe="new-cpn-" />
+            <div>
+              <label class="label" for="atcdchir">Antécédents chirurgicaux</label>
+              <textarea id="atcdchir" name="atcdchir" rows="3" class="input" [(ngModel)]="form.antecedentsChirurgicaux" placeholder="ex. Césarienne, myomectomie, GEU opérée…"></textarea>
+            </div>
+          }
+
+          <!-- ÉTAPE 7 : Grossesse -->
+          @case (6) {
+            <p class="section-titre !mb-0"><i class="fa-solid fa-person-pregnant"></i> Grossesse en cours</p>
+            <div>
+              <span class="label">Grossesse multiple</span>
+              <div class="grid grid-cols-3 gap-2 sm:max-w-md">
+                @for (o of [{ v: null, l: 'Non confirmé' }, { v: false, l: 'Unique' }, { v: true, l: 'Multiple' }]; track o.l) {
+                  <button type="button" class="rounded-xl border px-2 py-2.5 text-xs font-semibold transition"
+                          [class]="form.grossesseMultiple === o.v ? 'border-brand-600 bg-brand-50 dark:bg-brand-500/10 text-brand-800 dark:text-brand-300 ring-2 ring-brand-500/20' : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50'"
+                          (click)="form.grossesseMultiple = o.v">{{ o.l }}</button>
                 }
               </div>
-              <div>
-                <span class="label">Grossesse multiple</span>
-                <div class="grid grid-cols-3 gap-2">
-                  @for (o of [{ v: null, l: 'Non confirmé' }, { v: false, l: 'Unique' }, { v: true, l: 'Multiple' }]; track o.l) {
-                    <button type="button" class="rounded-xl border px-2 py-2.5 text-xs font-semibold transition"
-                            [class]="form.grossesseMultiple === o.v ? 'border-brand-600 bg-brand-50 dark:bg-brand-500/10 text-brand-800 dark:text-brand-300 ring-2 ring-brand-500/20' : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50'"
-                            (click)="form.grossesseMultiple = o.v">{{ o.l }}</button>
-                  }
-                </div>
-              </div>
             </div>
-
-            @if (ecartSensible) {
-              <div>
-                <label class="label" for="just">Justification clinique de la correction <span class="req">*</span></label>
-                <textarea id="just" name="just" rows="2" class="input" [(ngModel)]="form.dpaJustification" placeholder="ex. Échographie du premier trimestre réalisée le…"></textarea>
-                <p class="hint">La valeur calculée, la valeur retenue, votre nom, la date et le motif seront conservés.</p>
-              </div>
-            }
 
             <div>
               <span class="label">Facteurs de risque relevés</span>
@@ -404,75 +462,14 @@
               <p class="hint"><i class="fa-solid fa-lock mr-1"></i>Relevés par le médecin — aucun risque n’est déduit automatiquement.</p>
             </div>
 
-            <!-- ATCD : trois tuiles de couleur (obstétricaux, médicaux, gynéco-chirurgicaux) -->
             <div>
-              <p class="section-titre"><i class="fa-solid fa-notes-medical"></i> ATCD — Antécédents médicaux et obstétricaux</p>
-              <div class="space-y-4">
-                <div class="overflow-hidden rounded-2xl ring-1 ring-pink-200 dark:ring-pink-500/30">
-                  <p class="flex items-center gap-3 bg-gradient-to-r from-pink-500 to-rose-600 px-4 py-2.5 text-white">
-                    <span class="flex h-9 w-9 items-center justify-center rounded-full bg-white/20"><i class="fa-solid fa-person-pregnant"></i></span>
-                    <span><span class="block text-sm font-bold">ATCD OBST</span><span class="block text-[11px] text-white/85">Antécédents obstétricaux</span></span>
-                  </p>
-                  <div class="space-y-4 p-4">
-                    <div class="grid grid-cols-2 gap-4 sm:grid-cols-5">
-                      @for (c of [{ k: 'gestite', l: 'Gestité' }, { k: 'parite', l: 'Parité' }, { k: 'enfantsVivants', l: 'Enfants vivants' }, { k: 'avortements', l: 'Avortements' }, { k: 'cesariennes', l: 'Césariennes' }]; track c.k) {
-                        <div>
-                          <label class="label text-xs" [for]="'ant-' + c.k">{{ c.l }}</label>
-                          <input [id]="'ant-' + c.k" type="number" min="0" max="30" class="input" [name]="c.k" [(ngModel)]="$any(form)[c.k]">
-                        </div>
-                      }
-                    </div>
-                    <div>
-                      <label class="label" for="compl">Complications obstétricales antérieures</label>
-                      <textarea id="compl" name="compl" rows="2" class="input" [(ngModel)]="form.complications"></textarea>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="grid gap-4 sm:grid-cols-2">
-                  <div class="overflow-hidden rounded-2xl ring-1 ring-emerald-200 dark:ring-emerald-500/30">
-                    <p class="flex items-center gap-3 bg-gradient-to-r from-emerald-500 to-green-700 px-4 py-2.5 text-white">
-                      <span class="flex h-9 w-9 items-center justify-center rounded-full bg-white/20"><i class="fa-solid fa-stethoscope"></i></span>
-                      <span><span class="block text-sm font-bold">ATCD MED</span><span class="block text-[11px] text-white/85">Antécédents médicaux</span></span>
-                    </p>
-                    <div class="space-y-4 p-4">
-                      <div>
-                        <label class="label" for="atcdmed">Antécédents médicaux</label>
-                        <textarea id="atcdmed" name="atcdmed" rows="2" class="input" [(ngModel)]="form.antecedentsMedicaux"></textarea>
-                      </div>
-                      <div>
-                        <label class="label" for="allerg">Allergies</label>
-                        <textarea id="allerg" name="allerg" rows="2" class="input" [(ngModel)]="form.allergies" placeholder="Aucune connue / préciser"></textarea>
-                      </div>
-                      <div>
-                        <label class="label" for="medic">Médicaments en cours</label>
-                        <input id="medic" name="medic" class="input" [(ngModel)]="form.medicaments">
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="overflow-hidden rounded-2xl ring-1 ring-amber-200 dark:ring-amber-500/30">
-                    <p class="flex items-center gap-3 bg-gradient-to-r from-amber-500 to-orange-600 px-4 py-2.5 text-white">
-                      <span class="flex h-9 w-9 items-center justify-center rounded-full bg-white/20"><i class="fa-solid fa-user-doctor"></i></span>
-                      <span><span class="block text-sm font-bold">ATCD GYN-CHIR</span><span class="block text-[11px] text-white/85">Antécédents gynéco-chirurgicaux</span></span>
-                    </p>
-                    <div class="p-4">
-                      <label class="label" for="atcdchir">Antécédents chirurgicaux</label>
-                      <textarea id="atcdchir" name="atcdchir" rows="2" class="input" [(ngModel)]="form.antecedentsChirurgicaux"></textarea>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <p class="section-titre"><i class="fa-solid fa-file-medical"></i> Fiche CPN</p>
-              <app-fiche-cpn-patiente [fiche]="fiche" partie="clinique" prefixe="new-cpn-" [age]="ageCalcule" [parite]="form.parite" />
+              <p class="section-titre"><i class="fa-solid fa-droplet"></i> Profil biologique</p>
+              <app-fiche-cpn-patiente [fiche]="fiche" partie="biologie" prefixe="new-cpn-" />
             </div>
           }
 
-          <!-- ÉTAPE 5 : Suivi -->
-          @case (4) {
+          <!-- ÉTAPE 8 : Suivi -->
+          @case (7) {
             <p class="section-titre !mb-0"><i class="fa-solid fa-calendar-check"></i> Premier rendez-vous</p>
             <div class="grid gap-5 sm:grid-cols-2">
               <div>
@@ -496,7 +493,7 @@
                   @for (m of manquants; track m) { <li class="badge bg-white dark:bg-slate-900 text-amber-800 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-500/30">{{ m }}</li> }
                 </ul>
               } @else {
-                <p class="mt-1 text-xs text-accent-800 dark:text-accent-300">Après l’enregistrement, le dossier s’ouvre pour réaliser la première consultation prénatale.</p>
+                <p class="mt-1 text-xs text-accent-800 dark:text-accent-300">Prévisualisez la fiche pour vérifier qu’elle est bien remplie, puis enregistrez le dossier. Il s’ouvre ensuite pour la première consultation prénatale.</p>
               }
             </div>
           }
@@ -511,8 +508,8 @@
         @if (step < steps.length - 1) {
           <button type="submit" class="btn-primary">Continuer <i class="fa-solid fa-arrow-right"></i></button>
         } @else {
-          <button type="button" class="btn bg-accent-600 text-white hover:bg-accent-700" [disabled]="manquants.length > 0 || envoi" (click)="enregistrer()">
-            <i class="fa-solid" [class]="envoi ? 'fa-spinner fa-spin' : 'fa-circle-check'"></i> Enregistrer le dossier
+          <button type="button" class="btn-primary" [disabled]="manquants.length > 0 || envoi" (click)="ouvrirApercu()">
+            <i class="fa-solid fa-eye"></i> Prévisualiser la fiche
           </button>
         }
       </div>
@@ -598,3 +595,55 @@
     </aside>
   </div>
 </div>
+
+<!-- Prévisualisation de la fiche : vérification avant l'enregistrement du dossier -->
+@if (apercuOuvert) {
+  <div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="apercu-titre">
+    <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" (click)="fermerApercu()"></div>
+    <div class="relative flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl dark:bg-slate-900 sm:rounded-2xl">
+      <!-- En-tête : photo et identité -->
+      <div class="flex items-center gap-4 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+        @if (photoApercu) {
+          <img [src]="photoApercu" alt="Photo de la patiente" class="h-16 w-16 flex-none rounded-full object-cover ring-2 ring-brand-100 dark:ring-brand-500/30">
+        }
+        <div class="min-w-0 flex-1">
+          <p class="text-xs font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">Prévisualisation de la fiche</p>
+          <h2 id="apercu-titre" class="truncate text-lg font-bold text-slate-900 dark:text-white">{{ form.prenom }} {{ form.nom.toUpperCase() }} {{ form.postnom.toUpperCase() }}</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Vérifiez chaque section avant d’enregistrer le dossier.</p>
+        </div>
+        <button type="button" class="btn-ghost flex-none px-2.5" (click)="fermerApercu()" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+        @if (alertes.length) {
+          <ul class="space-y-1 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
+            @for (a of alertes; track a) { <li><i class="fa-solid fa-triangle-exclamation mr-1 text-amber-500"></i>{{ a }}</li> }
+          </ul>
+        }
+        @for (sec of sectionsApercu; track sec.titre) {
+          <section class="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
+            <div class="flex items-center justify-between gap-2 bg-brand-50 px-4 py-2 dark:bg-brand-500/10">
+              <h3 class="flex items-center gap-2 text-sm font-semibold text-brand-800 dark:text-brand-200"><i class="fa-solid {{ sec.icone }}"></i> {{ sec.titre }}</h3>
+              <button type="button" class="text-xs font-semibold text-brand-700 hover:underline dark:text-brand-300" (click)="modifierEtape(sec.etape)"><i class="fa-solid fa-pen mr-1"></i>Modifier</button>
+            </div>
+            <dl class="grid gap-x-6 sm:grid-cols-2">
+              @for (l of sec.lignes; track l.l) {
+                <div class="flex justify-between gap-3 border-t border-slate-100 px-4 py-2 text-sm first:border-t-0 dark:border-slate-800 sm:[&:nth-child(2)]:border-t-0">
+                  <dt class="flex-none text-slate-500 dark:text-slate-400">{{ l.l }}</dt>
+                  <dd class="min-w-0 break-words text-right font-medium" [class]="l.v === '—' ? 'text-slate-300 dark:text-slate-600' : 'text-slate-900 dark:text-white'">{{ l.v }}</dd>
+                </div>
+              }
+            </dl>
+          </section>
+        }
+      </div>
+
+      <div class="flex flex-col-reverse gap-2 border-t border-slate-100 px-5 py-4 dark:border-slate-800 sm:flex-row sm:justify-end">
+        <button type="button" class="btn-secondary" (click)="fermerApercu()"><i class="fa-solid fa-arrow-left"></i> Revenir au formulaire</button>
+        <button type="button" class="btn bg-accent-600 text-white hover:bg-accent-700" [disabled]="envoi" (click)="confirmerEnregistrement()">
+          <i class="fa-solid" [class]="envoi ? 'fa-spinner fa-spin' : 'fa-circle-check'"></i> Enregistrer le dossier
+        </button>
+      </div>
+    </div>
+  </div>
+}

@@ -44,18 +44,22 @@ const ACTIFS: StatutRdv[] = ['Planifié', 'Confirmé', 'Reporté'];
     <!-- Identité -->
     <div class="card overflow-hidden">
       <div class="h-16 bg-gradient-to-r from-brand-900 via-brand-700 to-accent-600"></div>
-      <div class="-mt-9 flex flex-col gap-4 px-5 pb-5 sm:flex-row sm:items-end sm:px-6">
-        <app-avatar [photo]="p.photoUrl ?? undefined" [prenom]="p.prenom || p.nom" [nomFamille]="p.nom" class="h-20 w-20 rounded-full text-2xl shadow-lg ring-4 ring-white dark:ring-slate-900" />
-        <div class="flex-1">
-          <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ p.prenom }} {{ p.nom }} <span class="font-semibold text-slate-500 dark:text-slate-400">{{ p.postnom }}</span></h1>
-          <div class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
+      <!-- Seule la photo chevauche le bandeau : le nom reste sur le fond de la carte. -->
+      <div class="flex flex-col gap-3 px-5 pb-5 sm:flex-row sm:items-start sm:gap-5 sm:px-6">
+        <app-avatar [photo]="p.photoUrl ?? undefined" [prenom]="p.prenom || p.nom" [nomFamille]="p.nom" class="-mt-10 h-20 w-20 self-start rounded-full text-2xl shadow-lg ring-4 ring-white dark:ring-slate-900" />
+        <div class="min-w-0 flex-1 sm:pt-3">
+          <h1 class="break-words text-xl font-bold leading-tight tracking-tight text-slate-900 dark:text-white sm:text-2xl">
+            {{ p.prenom }} <span class="uppercase">{{ p.nom }}</span>
+            @if (p.postnom) { <span class="font-semibold uppercase text-brand-700 dark:text-brand-300">{{ p.postnom }}</span> }
+          </h1>
+          <div class="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
             <span class="font-mono font-semibold text-slate-700 dark:text-slate-200">{{ p.numero }}</span>
             @if (p.age != null) { <span><i class="fa-solid fa-cake-candles mr-1"></i>{{ p.age }} ans</span> }
             @if (p.telephone) { <a [href]="'tel:' + p.telephone.split(' ').join('')" class="hover:text-brand-700"><i class="fa-solid fa-phone mr-1"></i>{{ p.telephone }}</a> }
             @if (p.province) { <span><i class="fa-solid fa-location-dot mr-1"></i>{{ p.commune ? p.commune + ', ' : '' }}{{ p.province }}</span> }
           </div>
         </div>
-        <span class="badge self-start bg-slate-100 py-1 text-slate-600 dark:bg-slate-800 dark:text-slate-300 sm:self-end"><i class="fa-solid fa-eye"></i> Lecture seule</span>
+        <span class="badge self-start bg-slate-100 py-1 text-slate-600 dark:bg-slate-800 dark:text-slate-300 sm:mt-3"><i class="fa-solid fa-eye"></i> Lecture seule</span>
       </div>
     </div>
 

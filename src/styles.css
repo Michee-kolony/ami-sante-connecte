@@ -9,6 +9,13 @@
   html.dark {
     color-scheme: dark;
   }
+  /*
+   * Responsive : un élément de grille peut rétrécir sous la largeur de son contenu. Sans cela,
+   * un texte sans retour à la ligne (truncate, nowrap) ou un tableau élargit toute la page sur mobile.
+   */
+  .grid > * {
+    min-width: 0;
+  }
 }
 
 @layer components {
