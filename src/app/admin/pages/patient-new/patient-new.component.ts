@@ -165,7 +165,7 @@ export class PatientNewComponent implements OnDestroy {
   readonly presentationsFoetus = PRESENTATIONS_FOETUS;
   readonly quantitesLiquide = QUANTITES_LIQUIDE;
   readonly maturitesPlacenta = MATURITES_PLACENTA;
-  readonly nombresFoetus = Array.from({ length: FOETUS_MAX }, (_, i) => i + 1);
+  readonly foetusMax = FOETUS_MAX;
   /** Biométrie de chaque fœtus (mm ; poids estimé en g). */
   readonly biometrie: { k: keyof FoetusEcho; l: string }[] = [
     { k: 'bipMm', l: 'BIP (mm)' }, { k: 'perimetreCranienMm', l: 'PC (mm)' }, { k: 'perimetreAbdominalMm', l: 'PA (mm)' },
@@ -181,7 +181,10 @@ export class PatientNewComponent implements OnDestroy {
   erreurFichierEcho = '';
 
   /** Nombre de fœtus : une fiche par fœtus (F1, F2…), les saisies existantes sont gardées. */
-  changerNombreFoetus(n: number): void {
+  changerNombreFoetus(v: number | null): void {
+    // Champ vide ou invalide pendant la saisie : on garde la valeur courante (rétablie au blur).
+    if (v === null || !Number.isFinite(v)) return;
+    const n = Math.min(FOETUS_MAX, Math.max(1, Math.round(v)));
     this.echo.nombreFoetus = n;
     this.echo.foetus = Array.from({ length: n }, (_, i) => this.echo.foetus[i] ?? foetusVide());
   }

@@ -488,9 +488,7 @@
                 </div>
                 <div>
                   <label class="label" for="echo-nb">Nombre de fœtus</label>
-                  <select id="echo-nb" name="echoNb" class="input" [ngModel]="echo.nombreFoetus" (ngModelChange)="changerNombreFoetus(+$event)">
-                    @for (n of nombresFoetus; track n) { <option [value]="n">{{ n }}</option> }
-                  </select>
+                  <input #echoNb id="echo-nb" type="number" name="echoNb" class="input" min="1" [max]="foetusMax" step="1" [ngModel]="echo.nombreFoetus" (ngModelChange)="changerNombreFoetus($event)" (blur)="echoNb.value = '' + echo.nombreFoetus">
                 </div>
               </div>
             </div>
