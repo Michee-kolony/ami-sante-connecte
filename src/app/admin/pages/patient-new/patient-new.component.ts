@@ -296,6 +296,16 @@ export class PatientNewComponent implements OnDestroy {
     return toIso(parse(this.form.dateReference) + (280 - jours) * DAY);
   }
 
+  /**
+   * Change un champ de datation et préremplit la DPA validée avec la DPA calculée, tant que le
+   * médecin ne l'a pas modifiée lui-même (champ vide ou encore égal à l'ancienne DPA calculée).
+   */
+  majDatation(maj: Partial<typeof this.form>): void {
+    const avant = this.dpaCalculee;
+    Object.assign(this.form, maj);
+    if (!this.form.dpaSaisie || this.form.dpaSaisie === avant) this.form.dpaSaisie = this.dpaCalculee ?? '';
+  }
+
   get ecartDpa(): number | null {
     const ref = this.dpaCalculee;
     if (!ref || !this.form.dpaSaisie) return null;

@@ -318,8 +318,8 @@
               <div class="flex flex-wrap items-center justify-between gap-3">
                 <p class="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white"><i class="fa-regular fa-calendar text-accent-600 dark:text-accent-400"></i> Date des dernières règles (DDR)</p>
                 <div class="inline-flex rounded-xl bg-slate-100 dark:bg-slate-800 p-1 text-xs font-semibold">
-                  <button type="button" class="rounded-lg px-3 py-1.5 transition" [class]="form.ddrConnue ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'" (click)="form.ddrConnue = true">Connue</button>
-                  <button type="button" class="rounded-lg px-3 py-1.5 transition" [class]="!form.ddrConnue ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'" (click)="form.ddrConnue = false">Inconnue</button>
+                  <button type="button" class="rounded-lg px-3 py-1.5 transition" [class]="form.ddrConnue ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'" (click)="majDatation({ ddrConnue: true })">Connue</button>
+                  <button type="button" class="rounded-lg px-3 py-1.5 transition" [class]="!form.ddrConnue ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'" (click)="majDatation({ ddrConnue: false })">Inconnue</button>
                 </div>
               </div>
 
@@ -327,7 +327,7 @@
                 <div class="mt-4 grid gap-5 sm:grid-cols-2">
                   <div>
                     <label class="label" for="ddr">DDR</label>
-                    <input id="ddr" type="date" name="ddr" class="input" [class.border-rose-400]="ddrApresReference" [(ngModel)]="form.ddr" [max]="today">
+                    <input id="ddr" type="date" name="ddr" class="input" [class.border-rose-400]="ddrApresReference" [ngModel]="form.ddr" (ngModelChange)="majDatation({ ddr: $event })" [max]="today">
                     @if (ddrApresReference) {
                       <p class="mt-1.5 text-xs text-rose-700 dark:text-rose-300"><i class="fa-solid fa-circle-exclamation mr-1"></i>La DDR ne peut pas être dans le futur.</p>
                     }
@@ -357,15 +357,15 @@
                     </div>
                     <div>
                       <label class="label" for="dref">Date de l’examen</label>
-                      <input id="dref" type="date" name="dref" class="input" [class.border-amber-400]="referenceFuture" [(ngModel)]="form.dateReference" [max]="today">
+                      <input id="dref" type="date" name="dref" class="input" [class.border-amber-400]="referenceFuture" [ngModel]="form.dateReference" (ngModelChange)="majDatation({ dateReference: $event })" [max]="today">
                     </div>
                     <div>
                       <label class="label" for="ags">Semaines (SA)</label>
-                      <input id="ags" type="number" name="ags" class="input" [(ngModel)]="form.agSemaines" min="0" max="44" placeholder="16">
+                      <input id="ags" type="number" name="ags" class="input" [ngModel]="form.agSemaines" (ngModelChange)="majDatation({ agSemaines: $event })" min="0" max="44" placeholder="16">
                     </div>
                     <div>
                       <label class="label" for="agj">Jours</label>
-                      <input id="agj" type="number" name="agj" class="input" [(ngModel)]="form.agJours" min="0" max="6" placeholder="0">
+                      <input id="agj" type="number" name="agj" class="input" [ngModel]="form.agJours" (ngModelChange)="majDatation({ agJours: $event })" min="0" max="6" placeholder="0">
                     </div>
                   </div>
                 </div>
@@ -521,7 +521,7 @@
         </div>
         <div class="space-y-2 p-4 text-xs text-slate-600 dark:text-slate-300">
           <p class="flex justify-between"><span class="text-slate-500 dark:text-slate-400">Méthode</span>
-            <span class="font-medium text-slate-800 dark:text-slate-100">{{ form.dpaSaisie ? 'Validée cliniquement' : form.ddrConnue ? 'DDR + 7 j + 9 mois' : form.agMethode }}</span></p>
+            <span class="font-medium text-slate-800 dark:text-slate-100">{{ form.dpaSaisie && form.dpaSaisie !== dpaCalculee ? 'Validée cliniquement' : form.ddrConnue ? 'DDR + 7 j + 9 mois' : form.agMethode }}</span></p>
           <p class="flex justify-between"><span class="text-slate-500 dark:text-slate-400">DDR</span><span class="font-medium text-slate-800 dark:text-slate-100">{{ form.ddrConnue ? (form.ddr ? fmt(form.ddr) : 'Non renseignée') : 'Inconnue' }}</span></p>
           @if (ddrIncertaine) {
             <p class="mt-2 rounded-lg bg-amber-50 dark:bg-amber-500/10 p-2 text-amber-800 dark:text-amber-300"><i class="fa-solid fa-triangle-exclamation mr-1"></i>DDR {{ form.ddrFiabilite.toLowerCase() }} : estimation à confirmer.</p>
