@@ -313,6 +313,12 @@ export class PatientDetailComponent implements OnChanges, OnDestroy {
     return { i: 'fa-pen-to-square', c: 'bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300' };
   }
 
+  /** Échographies de la grossesse affichée, de la plus récente à la plus ancienne. */
+  get echographies() {
+    const g = this.grossesseAffichee;
+    return g ? (this.dossier?.echographies ?? []).filter(e => e.grossesseId === g.id) : [];
+  }
+
   // --- Fenêtres d'action ---------------------------------------------------------
   fenetre: Fenetre = null;
   envoi = false;

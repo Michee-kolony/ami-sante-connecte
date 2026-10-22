@@ -472,8 +472,146 @@
             </div>
           }
 
-          <!-- ÉTAPE 5 : Rendez-vous et validation -->
+          <!-- ÉTAPE 5 : Échographie obstétricale -->
           @case (4) {
+            <div>
+              <p class="section-titre"><i class="fa-solid fa-calendar-day"></i> Examen</p>
+              <div class="grid gap-4 sm:grid-cols-3">
+                <div><label class="label" for="echo-date">Date de l’examen</label><input id="echo-date" type="date" name="echoDate" class="input" [class.border-rose-400]="echoDateFuture || (echoCommencee && !echo.date)" [(ngModel)]="echo.date" [max]="today"></div>
+                <div class="sm:col-span-2"><label class="label" for="echo-motif">Motif</label><input id="echo-motif" name="echoMotif" class="input" [(ngModel)]="echo.motif" placeholder="ex. Échographie de datation, morphologique…"></div>
+                <div>
+                  <span class="label">Âge gestationnel estimé</span>
+                  <div class="flex items-center gap-2">
+                    <input type="number" name="echoSa" class="input" min="0" max="44" [(ngModel)]="echo.agSemaines" aria-label="Semaines"><span class="text-sm text-slate-500">SA</span>
+                    <input type="number" name="echoJ" class="input" min="0" max="6" [(ngModel)]="echo.agJours" aria-label="Jours"><span class="text-sm text-slate-500">j</span>
+                  </div>
+                </div>
+                <div>
+                  <label class="label" for="echo-nb">Nombre de fœtus</label>
+                  <select id="echo-nb" name="echoNb" class="input" [ngModel]="echo.nombreFoetus" (ngModelChange)="changerNombreFoetus(+$event)">
+                    @for (n of nombresFoetus; track n) { <option [value]="n">{{ n }}</option> }
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            @for (fo of echo.foetus; track $index; let n = $index) {
+              <div class="rounded-2xl border border-sky-200 p-4 dark:border-sky-500/30">
+                <p class="mb-3 flex items-center gap-2 text-sm font-bold text-sky-800 dark:text-sky-300"><i class="fa-solid fa-baby"></i> Fœtus F{{ n + 1 }}</p>
+                <div class="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <span class="label">Activité cardiaque</span>
+                    <div class="grid max-w-xs grid-cols-2 gap-2">
+                      @for (o of [{ v: true, l: 'Présente' }, { v: false, l: 'Absente' }]; track o.l) {
+                        <button type="button" class="rounded-xl border px-2 py-2 text-xs font-semibold transition"
+                                [class]="fo.activiteCardiaque === o.v ? (o.v ? 'border-emerald-500 bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-300' : 'border-rose-500 bg-rose-50 text-rose-800 dark:bg-rose-500/10 dark:text-rose-300') : 'border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800/50'"
+                                (click)="fo.activiteCardiaque = fo.activiteCardiaque === o.v ? null : o.v">{{ o.l }}</button>
+                      }
+                    </div>
+                  </div>
+                  <div>
+                    <label class="label" [for]="'echo-sexe-' + n">Sexe du fœtus</label>
+                    <select [id]="'echo-sexe-' + n" [name]="'echoSexe' + n" class="input" [(ngModel)]="fo.sexe"><option value="">Non précisé</option>@for (x of sexesFoetus; track x) { <option [value]="x">{{ x }}</option> }</select>
+                  </div>
+                  <div>
+                    <label class="label" [for]="'echo-pres-' + n">Présentation</label>
+                    <select [id]="'echo-pres-' + n" [name]="'echoPres' + n" class="input" [(ngModel)]="fo.presentation"><option value="">Non précisée</option>@for (x of presentationsFoetus; track x) { <option [value]="x">{{ x }}</option> }</select>
+                  </div>
+                  <div><label class="label" [for]="'echo-pos-' + n">Position</label><input [id]="'echo-pos-' + n" [name]="'echoPos' + n" class="input" [(ngModel)]="fo.position" placeholder="ex. Dos à gauche"></div>
+                </div>
+                <p class="mb-2 mt-4 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Biométrie</p>
+                <div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                  @for (b of biometrie; track b.k) {
+                    <div><label class="label text-xs" [for]="'echo-' + b.k + n">{{ b.l }}</label><input [id]="'echo-' + b.k + n" type="number" min="0" class="input" [name]="'echo' + b.k + n" [(ngModel)]="$any(fo)[b.k]"></div>
+                  }
+                </div>
+              </div>
+            }
+
+            <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+              <div>
+                <p class="section-titre"><i class="fa-solid fa-circle-nodes"></i> Placenta</p>
+                <div class="space-y-3">
+                  <input name="placentaLoc" class="input" [(ngModel)]="echo.placenta.localisation" placeholder="Localisation" aria-label="Localisation du placenta">
+                  <input name="placentaAspect" class="input" [(ngModel)]="echo.placenta.aspect" placeholder="Aspect" aria-label="Aspect du placenta">
+                  <select name="placentaMat" class="input" [(ngModel)]="echo.placenta.maturite" aria-label="Degré de maturité"><option value="">Maturité : non précisée</option>@for (x of maturitesPlacenta; track x) { <option [value]="x">{{ x }}</option> }</select>
+                </div>
+              </div>
+              <div>
+                <p class="section-titre"><i class="fa-solid fa-droplet"></i> Liquide amniotique</p>
+                <div class="space-y-3">
+                  <select name="liquideQte" class="input" [(ngModel)]="echo.liquideAmniotique.quantite" aria-label="Quantité de liquide"><option value="">Quantité : non précisée</option>@for (x of quantitesLiquide; track x) { <option [value]="x">{{ x }}</option> }</select>
+                  <input type="number" min="0" step="0.1" name="liquideIndice" class="input" [(ngModel)]="echo.liquideAmniotique.indiceCm" placeholder="Index amniotique (cm), si mesuré" aria-label="Index amniotique en centimètres">
+                </div>
+              </div>
+              <div>
+                <p class="section-titre"><i class="fa-solid fa-ruler-vertical"></i> Col utérin</p>
+                <div class="space-y-3">
+                  <input type="number" min="0" name="colLongueur" class="input" [(ngModel)]="echo.col.longueurMm" placeholder="Longueur (mm), si évaluée" aria-label="Longueur du col en millimètres">
+                  <input name="colAspect" class="input" [(ngModel)]="echo.col.aspect" placeholder="Aspect" aria-label="Aspect du col">
+                </div>
+              </div>
+            </div>
+
+            <div class="grid gap-5 sm:grid-cols-2">
+              <div><label class="label" for="echo-anom">Anomalies ou observations</label><textarea id="echo-anom" name="echoAnom" rows="2" class="input" [(ngModel)]="echo.anomalies"></textarea></div>
+              <div><label class="label" for="echo-concl">Conclusion / impression diagnostique</label><textarea id="echo-concl" name="echoConcl" rows="2" class="input" [(ngModel)]="echo.conclusion"></textarea></div>
+              <div><label class="label" for="echo-prat">Nom du praticien</label><input id="echo-prat" name="echoPrat" class="input" [(ngModel)]="echo.praticien" placeholder="ex. Dr Mbuyi (radiologue)"></div>
+              <div>
+                <span class="label">Compte rendu ou images <span class="text-xs font-normal text-slate-400">(PDF, JPG, PNG · 10 Mo · 6 max)</span></span>
+                <label class="btn-secondary cursor-pointer py-2 text-xs"><i class="fa-solid fa-paperclip"></i> Joindre des fichiers
+                  <input type="file" multiple accept="application/pdf,image/jpeg,image/png,image/webp" class="sr-only" (change)="ajouterFichiersEcho($event)"></label>
+                @if (erreurFichierEcho) { <p class="mt-1.5 text-xs text-rose-600 dark:text-rose-400">{{ erreurFichierEcho }}</p> }
+                @if (fichiersEcho.length) {
+                  <ul class="mt-2 space-y-1 text-sm">
+                    @for (f of fichiersEcho; track f) {
+                      <li class="flex items-center gap-2 rounded-lg bg-slate-50 px-2 py-1 dark:bg-slate-800/60"><i class="fa-solid text-slate-400" [class]="f.type === 'application/pdf' ? 'fa-file-pdf' : 'fa-file-image'"></i><span class="min-w-0 flex-1 truncate">{{ f.name }}</span><button type="button" class="text-xs text-rose-600" (click)="retirerFichierEcho(f)" [attr.aria-label]="'Retirer ' + f.name"><i class="fa-solid fa-xmark"></i></button></li>
+                    }
+                  </ul>
+                }
+              </div>
+            </div>
+            <p class="hint"><i class="fa-solid fa-lock mr-1"></i>Facultatif. Le compte rendu et les images sont privés : seuls les médecins les ouvrent, par lien temporaire.</p>
+          }
+
+          <!-- ÉTAPE 6 : Éléments de référence de la femme (brouillon de la 1re CPN) -->
+          @case (5) {
+            <p class="rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-900 dark:bg-rose-500/10 dark:text-rose-200"><i class="fa-solid fa-circle-info mr-1"></i>Cochez oui ou non pour chaque élément. Dès qu’un élément est « oui », la référence est horodatée par le serveur dans la première consultation prénatale.</p>
+            <div class="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
+              <table class="w-full text-sm">
+                <thead class="bg-rose-50/70 dark:bg-rose-500/10">
+                  <tr>
+                    <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-rose-900 dark:text-rose-200">Éléments de référence de la femme</th>
+                    <th class="w-20 px-2 py-2 text-center text-xs font-semibold uppercase text-rose-900 dark:text-rose-200">Oui</th>
+                    <th class="w-20 px-2 py-2 text-center text-xs font-semibold uppercase text-rose-900 dark:text-rose-200">Non</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                  @for (m of motifsReference; track m; let premier = $first) {
+                    <tr [class]="reference[m] === true ? 'bg-rose-50 dark:bg-rose-500/10' : ''">
+                      <td class="px-3 py-2 text-slate-800 dark:text-slate-100" [class.font-semibold]="premier">{{ m }}</td>
+                      @for (o of [true, false]; track o) {
+                        <td class="px-2 py-1.5 text-center">
+                          <button type="button" class="inline-flex h-8 w-8 items-center justify-center rounded-lg border transition"
+                                  [class]="reference[m] === o ? (o ? 'border-rose-500 bg-rose-500 text-white' : 'border-slate-500 bg-slate-600 text-white') : 'border-slate-300 text-transparent hover:border-slate-400 dark:border-slate-600'"
+                                  [attr.aria-pressed]="reference[m] === o" [attr.aria-label]="(o ? 'Oui : ' : 'Non : ') + m" (click)="repondreReference(m, o)">
+                            <i class="fa-solid fa-check text-xs"></i>
+                          </button>
+                        </td>
+                      }
+                    </tr>
+                  } @empty { <tr><td colspan="3" class="px-3 py-3 text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Chargement des éléments de référence…</td></tr> }
+                </tbody>
+              </table>
+            </div>
+            <div><label class="label" for="ref-precision">Précision (autres raisons, maladie chronique…)</label><textarea id="ref-precision" name="refPrecision" rows="2" class="input" [(ngModel)]="precisionReference"></textarea></div>
+            @if (motifsRetenus.length) {
+              <p class="text-sm font-semibold text-rose-700 dark:text-rose-300"><i class="fa-solid fa-triangle-exclamation mr-1"></i>{{ motifsRetenus.length }} élément(s) de référence : orienter la femme selon le protocole.</p>
+            }
+          }
+
+          <!-- ÉTAPE 7 : Rendez-vous et validation -->
+          @case (6) {
             <p class="section-titre !mb-0"><i class="fa-solid fa-calendar-check"></i> Premier rendez-vous</p>
             <div class="grid gap-5 sm:grid-cols-2">
               <div>
@@ -753,9 +891,56 @@
             </div>
           </section>
 
+          <!-- ÉCHOGRAPHIE -->
+          <section class="mt-6 space-y-2">
+            <p class="flex items-center justify-between gap-2"><span class="titre-section">Échographie</span> <button type="button" class="petit underline" (click)="modifierEtape(4)">Modifier</button></p>
+            @if (echo.date) {
+              <p class="flex flex-wrap items-baseline gap-x-2"><span>Date de l’examen :</span> <span class="valeur court">{{ jc(echo.date) }}</span> <span>Motif :</span> <span class="valeur">{{ echo.motif }}</span></p>
+              <p class="flex flex-wrap items-baseline gap-x-2"><span>Âge gestationnel :</span> <span class="valeur court">{{ echo.agSemaines !== null ? echo.agSemaines + ' SA + ' + (echo.agJours ?? 0) + ' j' : '' }}</span> <span>Nombre de fœtus :</span> <span class="valeur court">{{ echo.nombreFoetus }}</span></p>
+              @for (fo of echo.foetus; track $index; let n = $index) {
+                <p class="flex flex-wrap items-baseline gap-x-2">
+                  <span class="font-semibold">F{{ n + 1 }}</span>
+                  <span>Activité cardiaque :</span> <span class="valeur court">{{ fo.activiteCardiaque === null ? '' : fo.activiteCardiaque ? 'présente' : 'absente' }}</span>
+                  <span>Sexe :</span> <span class="valeur court">{{ fo.sexe }}</span>
+                  <span>Présentation :</span> <span class="valeur court">{{ fo.presentation }}{{ fo.position ? ', ' + fo.position : '' }}</span>
+                </p>
+                <p class="flex flex-wrap items-baseline gap-x-2 pl-6">
+                  <span>BIP</span> <span class="valeur court">{{ fo.bipMm ?? '' }}</span> <span>PC</span> <span class="valeur court">{{ fo.perimetreCranienMm ?? '' }}</span>
+                  <span>PA</span> <span class="valeur court">{{ fo.perimetreAbdominalMm ?? '' }}</span> <span>LF</span> <span class="valeur court">{{ fo.longueurFemoraleMm ?? '' }}</span>
+                  <span>EPF</span> <span class="valeur court">{{ fo.poidsEstimeG != null ? fo.poidsEstimeG + ' g' : '' }}</span>
+                </p>
+              }
+              <p class="flex flex-wrap items-baseline gap-x-2"><span>Placenta :</span> <span class="valeur">{{ echo.placenta.localisation }}{{ echo.placenta.aspect ? ', ' + echo.placenta.aspect : '' }}{{ echo.placenta.maturite ? ', ' + echo.placenta.maturite : '' }}</span></p>
+              <p class="flex flex-wrap items-baseline gap-x-2"><span>Liquide amniotique :</span> <span class="valeur">{{ echo.liquideAmniotique.quantite }}{{ echo.liquideAmniotique.indiceCm != null ? ' · index ' + echo.liquideAmniotique.indiceCm + ' cm' : '' }}</span></p>
+              <p class="flex flex-wrap items-baseline gap-x-2"><span>Col utérin :</span> <span class="valeur">{{ echo.col.longueurMm != null ? echo.col.longueurMm + ' mm' : '' }}{{ echo.col.aspect ? ', ' + echo.col.aspect : '' }}</span></p>
+              <p class="flex flex-wrap items-baseline gap-x-2"><span>Anomalies ou observations :</span> <span class="valeur">{{ echo.anomalies }}</span></p>
+              <p class="flex flex-wrap items-baseline gap-x-2"><span class="font-semibold">Conclusion :</span> <span class="valeur">{{ echo.conclusion }}</span></p>
+              <p class="flex flex-wrap items-baseline gap-x-2"><span>Praticien :</span> <span class="valeur">{{ echo.praticien }}</span> <span>Pièces jointes :</span> <span class="valeur court">{{ fichiersEcho.length }}</span></p>
+            } @else { <p class="petit">Aucune échographie notée à l’enregistrement.</p> }
+          </section>
+
+          <!-- ÉLÉMENTS DE RÉFÉRENCE DE LA FEMME -->
+          <section class="mt-6 space-y-2">
+            <p class="flex items-center justify-between gap-2"><span class="titre-section">Éléments de référence de la femme</span> <button type="button" class="petit underline" (click)="modifierEtape(5)">Modifier</button></p>
+            <table class="tableau">
+              <thead><tr><th class="!text-left">Élément</th><th class="w-14">Oui</th><th class="w-14">Non</th></tr></thead>
+              <tbody>
+                @for (m of motifsReference; track m; let premier = $first) {
+                  <tr>
+                    <td class="!text-left" [class.font-bold]="premier">{{ m }}</td>
+                    <td><input type="checkbox" class="case" disabled [checked]="reference[m] === true"></td>
+                    <td><input type="checkbox" class="case" disabled [checked]="reference[m] === false"></td>
+                  </tr>
+                }
+                <tr><td class="!text-left font-semibold">Date</td><td colspan="2" class="petit">{{ motifsRetenus.length ? 'horodatée à l’enregistrement' : '' }}</td></tr>
+              </tbody>
+            </table>
+            @if (precisionReference) { <p class="flex flex-wrap items-baseline gap-x-2"><span>Précision :</span> <span class="valeur">{{ precisionReference }}</span></p> }
+          </section>
+
           <!-- RENDEZ-VOUS -->
           <section class="mt-6 max-w-xl">
-            <p class="mb-1 flex justify-end"><button type="button" class="petit underline" (click)="modifierEtape(4)">Modifier</button></p>
+            <p class="mb-1 flex justify-end"><button type="button" class="petit underline" (click)="modifierEtape(6)">Modifier</button></p>
             <table class="tableau">
               <thead>
                 <tr><th colspan="3">Rendez-vous (date)</th></tr>

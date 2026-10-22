@@ -2,7 +2,10 @@ import { Component, OnDestroy, computed, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { aujourdhui, dateHeureChiffres, dpaNaegele, jourChiffres, jourFr } from '../../data/format';
-import { Doublon, PatientesService, SaisieDatation, doublonsDe, profilCpnVersApi, profilCpnVide } from '../../data/patientes.service';
+import {
+  Doublon, FOETUS_MAX, FoetusEcho, MATURITES_PLACENTA, PRESENTATIONS_FOETUS, PatientesService, QUANTITES_LIQUIDE, SEXES_FOETUS,
+  SaisieDatation, SaisieEchographie, doublonsDe, foetusVide, profilCpnVersApi, profilCpnVide,
+} from '../../data/patientes.service';
 import { EtablissementsService } from '../../data/etablissements.service';
 import { MesurePreventive, ReferentielsService, parGroupe } from '../../data/referentiels.service';
 import { SessionService, messageErreur } from '../../data/session.service';
@@ -41,6 +44,14 @@ const TEINTES: Record<string, Teinte> = {
   ambre: {
     carte: 'border-l-amber-500 bg-amber-50/60 dark:border-l-amber-400 dark:bg-amber-500/5',
     icone: 'bg-gradient-to-br from-amber-400 to-orange-600 text-white', titre: 'text-amber-800 dark:text-amber-300',
+  },
+  rose: {
+    carte: 'border-l-rose-500 bg-rose-50/60 dark:border-l-rose-400 dark:bg-rose-500/5',
+    icone: 'bg-gradient-to-br from-rose-400 to-red-600 text-white', titre: 'text-rose-800 dark:text-rose-300',
+  },
+  ciel: {
+    carte: 'border-l-sky-500 bg-sky-50/60 dark:border-l-sky-400 dark:bg-sky-500/5',
+    icone: 'bg-gradient-to-br from-sky-400 to-cyan-600 text-white', titre: 'text-sky-800 dark:text-sky-300',
   },
   indigo: {
     carte: 'border-l-indigo-500 bg-indigo-50/60 dark:border-l-indigo-400 dark:bg-indigo-500/5',
@@ -124,6 +135,8 @@ export class PatientNewComponent implements OnDestroy {
     { title: 'Antécédents', subtitle: 'Médicaux, gynéco-chirurgicaux et obstétricaux', icon: 'fa-notes-medical', teinte: TEINTES['violet'], clinical: true },
     { title: 'Mesures préventives', subtitle: 'VAT, SP, MILD, vermifuge, dépistages, PF, PTME', icon: 'fa-shield-heart', teinte: TEINTES['vert'], clinical: true },
     { title: 'Laboratoire', subtitle: 'Hb, GE, TDR palu, GS, urines, selles…', icon: 'fa-flask', teinte: TEINTES['ambre'], clinical: true },
+    { title: 'Échographie', subtitle: 'Fœtus, biométrie, placenta, liquide, col, conclusion', icon: 'fa-wave-square', teinte: TEINTES['ciel'], clinical: true },
+    { title: 'Éléments de référence', subtitle: 'Signes justifiant d’orienter la femme : oui / non', icon: 'fa-hospital-user', teinte: TEINTES['rose'], clinical: true },
     { title: 'Rendez-vous', subtitle: 'Premier rendez-vous et prévisualisation de la fiche', icon: 'fa-calendar-check', teinte: TEINTES['indigo'] },
   ];
 
@@ -147,10 +160,87 @@ export class PatientNewComponent implements OnDestroy {
     m.reponse = m.reponse === reponse ? null : reponse;
   }
 
-  /** Mesures ou examens saisis : ils partent dans le brouillon de la première consultation prénatale. */
+  // --- Échographie obstétricale (enregistrée avec ses fichiers après la création du dossier) ----
+  readonly sexesFoetus = SEXES_FOETUS;
+  readonly presentationsFoetus = PRESENTATIONS_FOETUS;
+  readonly quantitesLiquide = QUANTITES_LIQUIDE;
+  readonly maturitesPlacenta = MATURITES_PLACENTA;
+  readonly nombresFoetus = Array.from({ length: FOETUS_MAX }, (_, i) => i + 1);
+  /** Biométrie de chaque fœtus (mm ; poids estimé en g). */
+  readonly biometrie: { k: keyof FoetusEcho; l: string }[] = [
+    { k: 'bipMm', l: 'BIP (mm)' }, { k: 'perimetreCranienMm', l: 'PC (mm)' }, { k: 'perimetreAbdominalMm', l: 'PA (mm)' },
+    { k: 'longueurFemoraleMm', l: 'LF (mm)' }, { k: 'poidsEstimeG', l: 'Poids estimé (g)' },
+  ];
+  echo: SaisieEchographie = {
+    date: '', motif: '', agSemaines: null, agJours: null, nombreFoetus: 1, foetus: [foetusVide()],
+    placenta: { localisation: '', aspect: '', maturite: '' }, liquideAmniotique: { quantite: '', indiceCm: null },
+    col: { longueurMm: null, aspect: '' }, anomalies: '', conclusion: '', praticien: '',
+  };
+  /** Compte rendu (PDF) ou images joints. */
+  fichiersEcho: File[] = [];
+  erreurFichierEcho = '';
+
+  /** Nombre de fœtus : une fiche par fœtus (F1, F2…), les saisies existantes sont gardées. */
+  changerNombreFoetus(n: number): void {
+    this.echo.nombreFoetus = n;
+    this.echo.foetus = Array.from({ length: n }, (_, i) => this.echo.foetus[i] ?? foetusVide());
+  }
+
+  ajouterFichiersEcho(evt: Event): void {
+    const input = evt.target as HTMLInputElement;
+    const choisis = Array.from(input.files ?? []);
+    input.value = '';
+    this.erreurFichierEcho = '';
+    for (const f of choisis) {
+      if (!/^(image\/(jpeg|png|webp)|application\/pdf)$/.test(f.type)) { this.erreurFichierEcho = 'Formats acceptés : PDF, JPG, PNG ou WebP.'; continue; }
+      if (f.size > 10 * 1024 * 1024) { this.erreurFichierEcho = 'Chaque fichier doit faire 10 Mo au maximum.'; continue; }
+      if (this.fichiersEcho.length >= 6) { this.erreurFichierEcho = '6 fichiers au maximum.'; break; }
+      this.fichiersEcho = [...this.fichiersEcho, f];
+    }
+  }
+
+  retirerFichierEcho(f: File): void {
+    this.fichiersEcho = this.fichiersEcho.filter(x => x !== f);
+  }
+
+  /** Une rubrique de l'échographie est remplie (la date devient alors obligatoire). */
+  get echoCommencee(): boolean {
+    const e = this.echo;
+    return !!(e.date || e.motif.trim() || e.agSemaines !== null || e.conclusion.trim() || e.praticien.trim() || e.anomalies.trim()
+      || e.placenta.localisation.trim() || e.liquideAmniotique.quantite || e.col.longueurMm !== null || this.fichiersEcho.length
+      || e.foetus.some(f => f.activiteCardiaque !== null || !!f.sexe || !!f.presentation || f.poidsEstimeG !== null || f.bipMm !== null));
+  }
+
+  get echoDateFuture(): boolean {
+    return !!this.echo.date && this.echo.date > this.today;
+  }
+
+  // --- Éléments de référence de la femme (brouillon de la 1re CPN ; horodatés par le serveur) ----
+  /** Réponse par motif du référentiel : true (oui), false (non), absent (non renseigné). */
+  reference: Record<string, boolean> = {};
+  /** Précision libre (« Autres raisons », maladie chronique…). */
+  precisionReference = '';
+
+  get motifsReference(): string[] {
+    return this.referentiels.cpn()?.MOTIFS_REFERENCE ?? [];
+  }
+
+  /** Un second clic sur la réponse choisie la retire (non renseigné). */
+  repondreReference(motif: string, oui: boolean): void {
+    if (this.reference[motif] === oui) delete this.reference[motif];
+    else this.reference[motif] = oui;
+  }
+
+  /** Motifs cochés « oui » : seuls ceux-là sont enregistrés (la référence est alors horodatée). */
+  get motifsRetenus(): string[] {
+    return this.motifsReference.filter(m => this.reference[m] === true);
+  }
+
+  /** Mesures, examens ou référence saisis : ils partent dans le brouillon de la première consultation prénatale. */
   get mesuresOuLaboSaisis(): boolean {
     return Object.values(this.mesures).some(m => m.reponse !== null || !!m.valeur.trim())
-      || Object.values(this.labo).some(v => !!v.trim());
+      || Object.values(this.labo).some(v => !!v.trim())
+      || this.motifsRetenus.length > 0 || !!this.precisionReference.trim();
   }
 
   get mesuresApercu(): { libelle: string; reponse: boolean | null; valeur: string }[] {
@@ -491,6 +581,8 @@ export class PatientNewComponent implements OnDestroy {
     if (this.ecartSensible && !this.form.dpaJustification.trim()) m.push('Justification de la DPA');
     if (this.ddrApresReference || this.referenceFuture) m.push('Datation à corriger');
     if (this.doublonsBloquants && !this.confirmationDoublons) m.push('Confirmation des doublons');
+    if (this.echoCommencee && !this.echo.date) m.push('Date de l’échographie');
+    if (this.echoDateFuture) m.push('Date de l’échographie à corriger');
     return m;
   }
 
@@ -554,6 +646,10 @@ export class PatientNewComponent implements OnDestroy {
       if (!this.referentiels.provinces().includes(f.province)) m.push('province');
       if (!this.etablissementsActifs().some(e => e.id === f.etablissementId)) m.push('formation sanitaire');
     }
+    if (i === 4) {
+      if (this.echoCommencee && !this.echo.date) m.push('date de l’examen');
+      if (this.echoDateFuture) m.push('date dans le futur');
+    }
     if (i === 1) {
       if (f.gestite === null) m.push('gestité');
       if (f.parite === null) m.push('parité');
@@ -611,18 +707,21 @@ export class PatientNewComponent implements OnDestroy {
         compte: { motDePasse: f.motDePasse },
         confirmerMalgreDoublons: this.doublonsBloquants && this.confirmationDoublons,
       }, this.photoFichier);
-      if (this.mesuresOuLaboSaisis) {
-        // Le serveur range mesures préventives et laboratoire dans une consultation : brouillon de la 1re CPN, à compléter.
+      if (this.mesuresOuLaboSaisis || this.echo.date) {
+        // Échographie : enregistrée avec ses fichiers. Mesures, laboratoire et référence : brouillon de la 1re CPN.
         try {
           const dossier = await this.service.dossier(numero);
           const grossesse = dossier.grossesses.find(g => g.statut === 'En cours') ?? dossier.grossesses[0];
+          if (this.echo.date) await this.service.creerEchographie(grossesse.id, this.echo, this.fichiersEcho);
+          if (!this.mesuresOuLaboSaisis) throw new Error('aucune consultation à créer');
           const c = await this.service.creerConsultation(grossesse.id, {
             type: 'Première consultation prénatale', mesuresPreventives: this.mesures, laboratoire: this.labo,
+            reference: { motifs: this.motifsRetenus, precision: this.precisionReference.trim() },
           });
           this.router.navigate(['/admin/consultations', c.id]);
           return;
         } catch {
-          // Dossier créé : les mesures et examens se saisiront dans la consultation.
+          // Dossier créé : ce qui manque (échographie, mesures, examens) se complète depuis le dossier ou la consultation.
         }
       }
       this.router.navigate(['/admin/patientes', numero], { queryParams: { nouveau: 1 } });

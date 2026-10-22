@@ -318,6 +318,40 @@
                 <p class="border-t border-slate-100 px-5 py-3 text-[11px] text-slate-400 dark:border-slate-800">Renseignées lors des consultations finalisées. Les repères sont indicatifs : la décision reste celle du médecin.</p>
               </div>
             }
+
+            <!-- Échographies de la grossesse affichée -->
+            @if (g && echographies.length) {
+              <div class="card">
+                <div class="card-header">
+                  <h2 class="card-title"><i class="fa-solid fa-wave-square text-sky-600 dark:text-sky-400"></i> Échographies · grossesse n° {{ g.numero }}</h2>
+                  <span class="badge bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300">{{ echographies.length }}</span>
+                </div>
+                <ul class="divide-y divide-slate-100 dark:divide-slate-800">
+                  @for (e of echographies; track e.id) {
+                    <li class="space-y-1.5 p-5 text-sm">
+                      <p class="flex flex-wrap items-baseline justify-between gap-2">
+                        <span class="font-semibold text-slate-900 dark:text-white">{{ jour(e.date) }}{{ e.motif ? ' · ' + e.motif : '' }}</span>
+                        <span class="text-xs text-slate-500 dark:text-slate-400">{{ e.agSemaines !== null ? e.agSemaines + ' SA + ' + (e.agJours ?? 0) + ' j' : '' }} · {{ e.nombreFoetus }} fœtus</span>
+                      </p>
+                      @for (fo of e.foetus; track $index; let n = $index) {
+                        <p class="text-slate-600 dark:text-slate-300">
+                          <span class="font-semibold">F{{ n + 1 }}</span> ·
+                          activité cardiaque {{ fo.activiteCardiaque === null ? 'non précisée' : fo.activiteCardiaque ? 'présente' : 'absente' }}{{ fo.sexe ? ' · ' + fo.sexe : '' }}{{ fo.presentation ? ' · ' + fo.presentation : '' }}{{ fo.poidsEstimeG != null ? ' · EPF ' + fo.poidsEstimeG + ' g' : '' }}
+                        </p>
+                      }
+                      @if (e.conclusion) { <p class="text-slate-900 dark:text-white"><span class="font-semibold">Conclusion :</span> {{ e.conclusion }}</p> }
+                      <p class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                        @if (e.praticien) { <span><i class="fa-solid fa-user-doctor mr-1"></i>{{ e.praticien }}</span> }
+                        @for (f of e.fichiers; track $index) {
+                          @if (f.url) { <a [href]="f.url" target="_blank" rel="noopener" class="font-semibold text-sky-700 hover:underline dark:text-sky-300"><i class="fa-solid mr-1" [class]="f.type === 'application/pdf' ? 'fa-file-pdf' : 'fa-file-image'"></i>{{ f.nom || 'Fichier' }}</a> }
+                        }
+                      </p>
+                    </li>
+                  }
+                </ul>
+                <p class="border-t border-slate-100 px-5 py-3 text-[11px] text-slate-400 dark:border-slate-800">Comptes rendus et images ouverts par lien temporaire (15 min) : rouvrez le dossier pour un nouveau lien.</p>
+              </div>
+            }
           </div>
 
           <div class="space-y-6">

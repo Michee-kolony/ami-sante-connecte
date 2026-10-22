@@ -361,11 +361,64 @@ export interface RendezVousAgenda extends RendezVous {
   patiente: { id: string; numero: string; nom: string; postnom: string; prenom: string } | null;
 }
 
+// --- Échographie obstétricale ------------------------------------------------------------
+export const SEXES_FOETUS = ['Féminin', 'Masculin', 'Indéterminé'] as const;
+export const PRESENTATIONS_FOETUS = ['Céphalique', 'Siège', 'Transverse', 'Oblique'] as const;
+export const QUANTITES_LIQUIDE = ['Normale', 'Oligoamnios', 'Hydramnios'] as const;
+export const MATURITES_PLACENTA = ['Grade 0', 'Grade I', 'Grade II', 'Grade III'] as const;
+export const FOETUS_MAX = 4;
+
+/** Un fœtus : activité cardiaque, sexe, présentation, position et biométrie (mm, poids en g). */
+export interface FoetusEcho {
+  activiteCardiaque: boolean | null;
+  sexe: string;
+  presentation: string;
+  position: string;
+  bipMm: number | null;
+  perimetreCranienMm: number | null;
+  perimetreAbdominalMm: number | null;
+  longueurFemoraleMm: number | null;
+  poidsEstimeG: number | null;
+}
+
+export function foetusVide(): FoetusEcho {
+  return {
+    activiteCardiaque: null, sexe: '', presentation: '', position: '',
+    bipMm: null, perimetreCranienMm: null, perimetreAbdominalMm: null, longueurFemoraleMm: null, poidsEstimeG: null,
+  };
+}
+
+/** Saisie d'une échographie (rubriques de la fiche du médecin). */
+export interface SaisieEchographie {
+  date: string;
+  motif: string;
+  agSemaines: number | null;
+  agJours: number | null;
+  nombreFoetus: number;
+  foetus: FoetusEcho[];
+  placenta: { localisation: string; aspect: string; maturite: string };
+  liquideAmniotique: { quantite: string; indiceCm: number | null };
+  col: { longueurMm: number | null; aspect: string };
+  anomalies: string;
+  conclusion: string;
+  praticien: string;
+}
+
+/** Échographie enregistrée : compte rendu et images servis par liens signés (15 min). */
+export interface Echographie extends SaisieEchographie {
+  id: string;
+  grossesseId: string;
+  auteur: Auteur;
+  fichiers: { type: string; nom: string; url: string | null }[];
+  createdAt: string;
+}
+
 export interface Dossier {
   patiente: Patiente;
   grossesses: Grossesse[];
   consultations: ConsultationResume[];
   rendezVous: RendezVous[];
+  echographies: Echographie[];
   premiereConsultation: { consultationId: string; medecin: Auteur; date: string; etablissementId: string | null } | null;
   /** Établissement de prise en charge (null s'il a été suspendu ou supprimé). */
   etablissement: { id: string; code: string; nom: string; province: string } | null;
@@ -499,6 +552,14 @@ export class PatientesService {
   // --- Consultations -------------------------------------------------------------------
   consultation(id: string): Promise<Consultation> {
     return firstValueFrom(this.http.get<Consultation>(`${API_URL}/consultations/${id}`));
+  }
+
+  /** Multipart : « donnees » (JSON) et « fichiers » (compte rendu PDF ou images, 6 au plus). */
+  creerEchographie(grossesseId: string, saisie: SaisieEchographie, fichiers: File[]): Promise<Echographie> {
+    const f = new FormData();
+    f.append('donnees', JSON.stringify(saisie));
+    for (const x of fichiers) f.append('fichiers', x);
+    return firstValueFrom(this.http.post<Echographie>(`${API_URL}/grossesses/${grossesseId}/echographies`, f));
   }
 
   creerConsultation(grossesseId: string, saisie: SaisieConsultation): Promise<Consultation> {
