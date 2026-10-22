@@ -27,7 +27,7 @@ const ACTIFS: StatutRdv[] = ['Planifié', 'Confirmé', 'Reporté'];
 
   @if (chargement) {
     <div class="space-y-6" aria-hidden="true">
-      <div class="card flex items-center gap-4 p-6"><div class="skeleton h-20 w-20 rounded-2xl"></div><div class="flex-1 space-y-2"><div class="skeleton h-6 w-56"></div><div class="skeleton h-4 w-72 max-w-full"></div></div></div>
+      <div class="card flex items-center gap-4 p-6"><div class="skeleton h-20 w-20 flex-none rounded-full"></div><div class="flex-1 space-y-2"><div class="skeleton h-6 w-56"></div><div class="skeleton h-4 w-72 max-w-full"></div></div></div>
       <div class="grid gap-6 md:grid-cols-2"><div class="card space-y-3 p-6"><div class="skeleton h-4 w-40"></div><div class="skeleton h-8 w-32"></div><div class="skeleton h-3 w-full rounded-full"></div></div><div class="card space-y-3 p-6"><div class="skeleton h-4 w-40"></div><div class="skeleton h-8 w-48"></div></div></div>
     </div>
     <p class="sr-only" role="status">Chargement du suivi…</p>
