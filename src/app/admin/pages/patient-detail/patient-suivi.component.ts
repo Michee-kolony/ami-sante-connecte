@@ -45,7 +45,7 @@ const ACTIFS: StatutRdv[] = ['Planifié', 'Confirmé', 'Reporté'];
     <div class="card overflow-hidden">
       <div class="h-16 bg-gradient-to-r from-brand-900 via-brand-700 to-accent-600"></div>
       <div class="-mt-9 flex flex-col gap-4 px-5 pb-5 sm:flex-row sm:items-end sm:px-6">
-        <app-avatar [photo]="p.photoUrl ?? undefined" [prenom]="p.prenom || p.nom" [nomFamille]="p.nom" class="h-20 w-20 rounded-2xl text-2xl shadow-lg ring-4 ring-white dark:ring-slate-900" />
+        <app-avatar [photo]="p.photoUrl ?? undefined" [prenom]="p.prenom || p.nom" [nomFamille]="p.nom" class="h-20 w-20 rounded-full text-2xl shadow-lg ring-4 ring-white dark:ring-slate-900" />
         <div class="flex-1">
           <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ p.prenom }} {{ p.nom }} <span class="font-semibold text-slate-500 dark:text-slate-400">{{ p.postnom }}</span></h1>
           <div class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500 dark:text-slate-400">

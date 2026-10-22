@@ -445,9 +445,11 @@ export class PatientesService {
     return firstValueFrom(this.http.post<{ id: string; numero: string }>(this.url, f));
   }
 
-  /** Carte patiente (PDF recto-verso, format carte bancaire) générée par le serveur. */
+  /** Carte patiente (PDF recto-verso, format carte bancaire) générée par le serveur ; le QR suit le domaine du site. */
   carte(id: string): Promise<Blob> {
-    return firstValueFrom(this.http.get(`${this.url}/${encodeURIComponent(id)}/carte`, { responseType: 'blob' }));
+    return firstValueFrom(this.http.get(`${this.url}/${encodeURIComponent(id)}/carte`, {
+      responseType: 'blob', params: { site: window.location.origin },
+    }));
   }
 
   /** Médecin chef : suppression définitive, le numéro du dossier doit être retapé. */

@@ -12,6 +12,8 @@ interface Step {
   title: string;
   subtitle: string;
   icon: string;
+  /** Dégradé du bandeau de l'étape. */
+  couleur: string;
   clinical?: boolean;
 }
 
@@ -70,11 +72,11 @@ export class PatientNewComponent implements OnDestroy {
   erreur = '';
 
   steps: Step[] = [
-    { title: 'Identité', subtitle: 'Nom, âge, photo', icon: 'fa-id-card' },
-    { title: 'Contact', subtitle: 'Téléphone & compte', icon: 'fa-phone' },
-    { title: 'Résidence', subtitle: 'Adresse & structure', icon: 'fa-location-dot' },
-    { title: 'Grossesse', subtitle: 'Datation & antécédents', icon: 'fa-person-pregnant', clinical: true },
-    { title: 'Suivi', subtitle: 'RDV & validation', icon: 'fa-calendar-check' },
+    { title: 'Identité', subtitle: 'Informations sur la femme enceinte', icon: 'fa-id-card', couleur: 'from-brand-600 to-brand-800' },
+    { title: 'Contact', subtitle: 'Téléphone, compte et personne à contacter', icon: 'fa-phone', couleur: 'from-sky-500 to-cyan-700' },
+    { title: 'Résidence', subtitle: 'Adresse et structure de prise en charge', icon: 'fa-location-dot', couleur: 'from-emerald-500 to-teal-700' },
+    { title: 'Grossesse & ATCD', subtitle: 'Datation, antécédents médicaux et obstétricaux', icon: 'fa-person-pregnant', couleur: 'from-violet-500 to-purple-700', clinical: true },
+    { title: 'Suivi', subtitle: 'Premier rendez-vous et validation', icon: 'fa-calendar-check', couleur: 'from-orange-500 to-rose-600' },
   ];
 
   readonly facteursProposes = FACTEURS_RISQUE;
@@ -366,9 +368,13 @@ export class PatientNewComponent implements OnDestroy {
     return a;
   }
 
-  next(): void { if (this.step < this.steps.length - 1) { this.step++; window.scrollTo({ top: 0, behavior: 'smooth' }); } }
-  prev(): void { if (this.step > 0) { this.step--; window.scrollTo({ top: 0, behavior: 'smooth' }); } }
-  goTo(i: number): void { this.step = i; }
+  next(): void { if (this.step < this.steps.length - 1) this.goTo(this.step + 1); }
+  prev(): void { if (this.step > 0) this.goTo(this.step - 1); }
+  /** Ouvre l'étape (bandeaux en accordéon) et fait défiler jusqu'à son bandeau. */
+  goTo(i: number): void {
+    this.step = i;
+    setTimeout(() => document.getElementById(`etape-${i}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }
 
   async enregistrer(): Promise<void> {
     if (this.manquants.length || this.envoi || !this.photoFichier) return;

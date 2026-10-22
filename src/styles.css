@@ -42,6 +42,10 @@
   .hint {
     @apply mt-1.5 text-xs text-slate-500 dark:text-slate-400;
   }
+  /** Titre d'un groupe de champs (fond bleu clair, comme la maquette mobile CPN). */
+  .section-titre {
+    @apply mb-3 flex items-center gap-2 rounded-lg bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-800 dark:bg-brand-500/10 dark:text-brand-200;
+  }
   .req {
     @apply text-rose-500;
   }

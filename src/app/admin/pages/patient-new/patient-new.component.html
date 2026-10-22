@@ -53,49 +53,37 @@
     </div>
   }
 
-  <!-- Stepper -->
-  <div class="card p-4 sm:p-5">
-    <ol class="grid grid-cols-5 gap-2">
-      @for (s of steps; track s.title; let i = $index) {
-        <li>
-          <button type="button" (click)="goTo(i)" class="group flex w-full flex-col items-center gap-2 text-center sm:flex-row sm:text-left">
-            <span class="flex h-10 w-10 flex-none items-center justify-center rounded-full text-sm font-semibold transition"
-                  [class]="i < step ? 'bg-accent-500 text-white' : i === step ? 'bg-brand-700 text-white ring-4 ring-brand-100 dark:ring-brand-500/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:bg-slate-200 dark:group-hover:bg-slate-700'">
-              @if (i < step) { <i class="fa-solid fa-check"></i> } @else { <i class="fa-solid {{ s.icon }}"></i> }
-            </span>
-            <span class="hidden min-w-0 md:block">
-              <span class="flex items-center gap-1.5 text-sm font-semibold" [class]="i === step ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'">
-                {{ s.title }}
-                @if (s.clinical) { <i class="fa-solid fa-user-doctor text-[11px] text-rose-500" title="Données cliniques : médecins uniquement"></i> }
-              </span>
-              <span class="block truncate text-xs text-slate-400">{{ s.subtitle }}</span>
-            </span>
-          </button>
-        </li>
-      }
-    </ol>
-    <div class="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-      <div class="h-full rounded-full bg-gradient-to-r from-brand-700 to-accent-500 transition-all duration-300" [style.width.%]="progress"></div>
-    </div>
+  <div class="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800" role="progressbar" [attr.aria-valuenow]="step + 1" aria-valuemin="1" [attr.aria-valuemax]="steps.length">
+    <div class="h-full rounded-full bg-gradient-to-r from-brand-700 to-accent-500 transition-all duration-300" [style.width.%]="progress"></div>
   </div>
 
   <div class="grid gap-6 lg:grid-cols-3">
-    <!-- Formulaire -->
-    <form class="card lg:col-span-2" (ngSubmit)="next()">
-      <div class="card-header">
-        <div>
-          <p class="text-xs font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">Étape {{ step + 1 }} sur {{ steps.length }}</p>
-          <h2 class="mt-0.5 text-lg font-semibold text-slate-900 dark:text-white">{{ steps[step].title }}</h2>
-        </div>
-        @if (steps[step].clinical) {
-          <span class="badge bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300 ring-1 ring-rose-200 dark:ring-rose-500/30"><i class="fa-solid fa-user-doctor"></i> Données cliniques</span>
-        }
-      </div>
+    <!-- Formulaire : une étape = un bandeau de couleur ; l'étape en cours s'ouvre dessous (accordéon) -->
+    <form class="space-y-3 lg:col-span-2" (ngSubmit)="next()">
+      @for (s of steps; track s.title; let i = $index) {
+        <button type="button" [id]="'etape-' + i" (click)="goTo(i)" [attr.aria-expanded]="i === step"
+                class="flex w-full scroll-mt-24 items-center gap-4 rounded-2xl bg-gradient-to-r px-4 py-3.5 text-left text-white shadow-md transition hover:shadow-lg sm:px-5 {{ s.couleur }}"
+                [class.opacity-80]="i !== step">
+          <span class="flex h-12 w-12 flex-none items-center justify-center rounded-xl bg-white/20 text-xl">
+            @if (i < step) { <i class="fa-solid fa-check"></i> } @else { <i class="fa-solid {{ s.icon }}"></i> }
+          </span>
+          <span class="min-w-0 flex-1">
+            <span class="flex items-center gap-2 text-base font-bold sm:text-lg">
+              {{ i + 1 }}. {{ s.title }}
+              @if (s.clinical) { <span class="rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-semibold"><i class="fa-solid fa-user-doctor mr-1"></i>Médecin</span> }
+            </span>
+            <span class="block truncate text-xs text-white/85 sm:text-sm">{{ s.subtitle }}</span>
+          </span>
+          <i class="fa-solid fa-chevron-right transition" [class.rotate-90]="i === step"></i>
+        </button>
 
-      <div class="space-y-6 p-5 sm:p-6">
+        @if (i === step) {
+        <div class="card">
+        <div class="space-y-6 p-4 sm:p-6">
         @switch (step) {
           <!-- ÉTAPE 1 : Identité -->
           @case (0) {
+            <p class="section-titre !mb-0"><i class="fa-solid fa-person-pregnant"></i> Informations sur la femme enceinte</p>
             <div class="grid gap-5 sm:grid-cols-3">
               <div>
                 <label class="label" for="nom">Nom <span class="req">*</span></label>
@@ -151,7 +139,7 @@
 
             <!-- Photo d'identification (obligatoire) -->
             <div class="rounded-2xl border border-slate-200 p-4 dark:border-slate-800 sm:p-5">
-              <p class="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white"><i class="fa-solid fa-camera text-brand-600 dark:text-brand-400"></i> Photo de la patiente <span class="req">*</span></p>
+              <p class="section-titre"><i class="fa-solid fa-camera"></i> Photo de la patiente <span class="req">*</span></p>
               <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
                 @if (photoApercu) {
                   <img [src]="photoApercu" alt="Photo de la patiente" class="h-28 w-28 flex-none rounded-2xl object-cover shadow ring-1 ring-slate-200 dark:ring-slate-700">
@@ -183,6 +171,7 @@
 
           <!-- ÉTAPE 2 : Contact -->
           @case (1) {
+            <p class="section-titre !mb-0"><i class="fa-solid fa-phone"></i> Téléphone</p>
             <div class="grid gap-5 sm:grid-cols-2">
               <div>
                 <label class="label" for="tel1">Téléphone principal</label>
@@ -239,7 +228,7 @@
             </div>
 
             <div class="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
-              <p class="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white"><i class="fa-solid fa-user-shield text-rose-500"></i> Personne à contacter en urgence <span class="text-xs font-normal text-slate-400">(facultatif)</span></p>
+              <p class="section-titre"><i class="fa-solid fa-user-shield"></i> Personne à contacter en cas d’urgence <span class="text-xs font-normal opacity-70">(facultatif)</span></p>
               <div class="grid gap-4 sm:grid-cols-3">
                 <input name="urgenceNom" class="input" [(ngModel)]="form.urgenceNom" placeholder="Nom" aria-label="Nom de la personne à contacter">
                 <input name="urgenceLien" class="input" [(ngModel)]="form.urgenceLien" placeholder="Lien (conjoint, mère…)" aria-label="Lien">
@@ -251,6 +240,7 @@
 
           <!-- ÉTAPE 3 : Résidence & structure -->
           @case (2) {
+            <p class="section-titre !mb-0"><i class="fa-solid fa-location-dot"></i> Adresse complète</p>
             <div class="grid gap-5 sm:grid-cols-2">
               <div>
                 <label class="label" for="province">Province de résidence <span class="req">*</span></label>
@@ -289,8 +279,8 @@
               </div>
             </div>
 
-            <div class="rounded-2xl bg-brand-50/60 dark:bg-brand-500/10 p-4 ring-1 ring-brand-100 dark:ring-brand-500/20">
-              <p class="mb-3 flex items-center gap-2 text-sm font-semibold text-brand-900 dark:text-white"><i class="fa-solid fa-hospital"></i> Structure de prise en charge</p>
+            <div>
+              <p class="section-titre"><i class="fa-solid fa-hospital"></i> Structure de prise en charge</p>
               <div class="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label class="label" for="structure">Établissement sanitaire <span class="req">*</span></label>
@@ -314,9 +304,9 @@
 
           <!-- ÉTAPE 4 : Grossesse -->
           @case (3) {
-            <div class="rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5">
-              <div class="flex flex-wrap items-center justify-between gap-3">
-                <p class="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white"><i class="fa-regular fa-calendar text-accent-600 dark:text-accent-400"></i> Date des dernières règles (DDR)</p>
+            <div>
+              <div class="section-titre flex-wrap justify-between">
+                <span class="flex items-center gap-2"><i class="fa-regular fa-calendar"></i> Date des dernières règles (DDR)</span>
                 <div class="inline-flex rounded-xl bg-slate-100 dark:bg-slate-800 p-1 text-xs font-semibold">
                   <button type="button" class="rounded-lg px-3 py-1.5 transition" [class]="form.ddrConnue ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'" (click)="majDatation({ ddrConnue: true })">Connue</button>
                   <button type="button" class="rounded-lg px-3 py-1.5 transition" [class]="!form.ddrConnue ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'" (click)="majDatation({ ddrConnue: false })">Inconnue</button>
@@ -414,48 +404,76 @@
               <p class="hint"><i class="fa-solid fa-lock mr-1"></i>Relevés par le médecin — aucun risque n’est déduit automatiquement.</p>
             </div>
 
-            <div class="rounded-2xl border border-slate-200 p-4 dark:border-slate-800 sm:p-5">
-              <p class="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white"><i class="fa-solid fa-notes-medical text-brand-600 dark:text-brand-400"></i> Antécédents</p>
-              <div class="grid grid-cols-2 gap-4 sm:grid-cols-5">
-                @for (c of [{ k: 'gestite', l: 'Gestité' }, { k: 'parite', l: 'Parité' }, { k: 'enfantsVivants', l: 'Enfants vivants' }, { k: 'avortements', l: 'Avortements' }, { k: 'cesariennes', l: 'Césariennes' }]; track c.k) {
-                  <div>
-                    <label class="label text-xs" [for]="'ant-' + c.k">{{ c.l }}</label>
-                    <input [id]="'ant-' + c.k" type="number" min="0" max="30" class="input" [name]="c.k" [(ngModel)]="$any(form)[c.k]">
+            <!-- ATCD : trois tuiles de couleur (obstétricaux, médicaux, gynéco-chirurgicaux) -->
+            <div>
+              <p class="section-titre"><i class="fa-solid fa-notes-medical"></i> ATCD — Antécédents médicaux et obstétricaux</p>
+              <div class="space-y-4">
+                <div class="overflow-hidden rounded-2xl ring-1 ring-pink-200 dark:ring-pink-500/30">
+                  <p class="flex items-center gap-3 bg-gradient-to-r from-pink-500 to-rose-600 px-4 py-2.5 text-white">
+                    <span class="flex h-9 w-9 items-center justify-center rounded-full bg-white/20"><i class="fa-solid fa-person-pregnant"></i></span>
+                    <span><span class="block text-sm font-bold">ATCD OBST</span><span class="block text-[11px] text-white/85">Antécédents obstétricaux</span></span>
+                  </p>
+                  <div class="space-y-4 p-4">
+                    <div class="grid grid-cols-2 gap-4 sm:grid-cols-5">
+                      @for (c of [{ k: 'gestite', l: 'Gestité' }, { k: 'parite', l: 'Parité' }, { k: 'enfantsVivants', l: 'Enfants vivants' }, { k: 'avortements', l: 'Avortements' }, { k: 'cesariennes', l: 'Césariennes' }]; track c.k) {
+                        <div>
+                          <label class="label text-xs" [for]="'ant-' + c.k">{{ c.l }}</label>
+                          <input [id]="'ant-' + c.k" type="number" min="0" max="30" class="input" [name]="c.k" [(ngModel)]="$any(form)[c.k]">
+                        </div>
+                      }
+                    </div>
+                    <div>
+                      <label class="label" for="compl">Complications obstétricales antérieures</label>
+                      <textarea id="compl" name="compl" rows="2" class="input" [(ngModel)]="form.complications"></textarea>
+                    </div>
                   </div>
-                }
-              </div>
-              <div class="mt-4 grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label class="label" for="compl">Complications obstétricales antérieures</label>
-                  <textarea id="compl" name="compl" rows="2" class="input" [(ngModel)]="form.complications"></textarea>
                 </div>
-                <div>
-                  <label class="label" for="atcdmed">Antécédents médicaux</label>
-                  <textarea id="atcdmed" name="atcdmed" rows="2" class="input" [(ngModel)]="form.antecedentsMedicaux"></textarea>
-                </div>
-                <div>
-                  <label class="label" for="atcdchir">Antécédents chirurgicaux</label>
-                  <textarea id="atcdchir" name="atcdchir" rows="2" class="input" [(ngModel)]="form.antecedentsChirurgicaux"></textarea>
-                </div>
-                <div>
-                  <label class="label" for="allerg">Allergies</label>
-                  <textarea id="allerg" name="allerg" rows="2" class="input" [(ngModel)]="form.allergies" placeholder="Aucune connue / préciser"></textarea>
-                </div>
-                <div class="sm:col-span-2">
-                  <label class="label" for="medic">Médicaments en cours</label>
-                  <input id="medic" name="medic" class="input" [(ngModel)]="form.medicaments">
+
+                <div class="grid gap-4 sm:grid-cols-2">
+                  <div class="overflow-hidden rounded-2xl ring-1 ring-emerald-200 dark:ring-emerald-500/30">
+                    <p class="flex items-center gap-3 bg-gradient-to-r from-emerald-500 to-green-700 px-4 py-2.5 text-white">
+                      <span class="flex h-9 w-9 items-center justify-center rounded-full bg-white/20"><i class="fa-solid fa-stethoscope"></i></span>
+                      <span><span class="block text-sm font-bold">ATCD MED</span><span class="block text-[11px] text-white/85">Antécédents médicaux</span></span>
+                    </p>
+                    <div class="space-y-4 p-4">
+                      <div>
+                        <label class="label" for="atcdmed">Antécédents médicaux</label>
+                        <textarea id="atcdmed" name="atcdmed" rows="2" class="input" [(ngModel)]="form.antecedentsMedicaux"></textarea>
+                      </div>
+                      <div>
+                        <label class="label" for="allerg">Allergies</label>
+                        <textarea id="allerg" name="allerg" rows="2" class="input" [(ngModel)]="form.allergies" placeholder="Aucune connue / préciser"></textarea>
+                      </div>
+                      <div>
+                        <label class="label" for="medic">Médicaments en cours</label>
+                        <input id="medic" name="medic" class="input" [(ngModel)]="form.medicaments">
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="overflow-hidden rounded-2xl ring-1 ring-amber-200 dark:ring-amber-500/30">
+                    <p class="flex items-center gap-3 bg-gradient-to-r from-amber-500 to-orange-600 px-4 py-2.5 text-white">
+                      <span class="flex h-9 w-9 items-center justify-center rounded-full bg-white/20"><i class="fa-solid fa-user-doctor"></i></span>
+                      <span><span class="block text-sm font-bold">ATCD GYN-CHIR</span><span class="block text-[11px] text-white/85">Antécédents gynéco-chirurgicaux</span></span>
+                    </p>
+                    <div class="p-4">
+                      <label class="label" for="atcdchir">Antécédents chirurgicaux</label>
+                      <textarea id="atcdchir" name="atcdchir" rows="2" class="input" [(ngModel)]="form.antecedentsChirurgicaux"></textarea>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div class="rounded-2xl border border-slate-200 p-4 dark:border-slate-800 sm:p-5">
-              <p class="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white"><i class="fa-solid fa-file-medical text-brand-600 dark:text-brand-400"></i> Fiche CPN</p>
+            <div>
+              <p class="section-titre"><i class="fa-solid fa-file-medical"></i> Fiche CPN</p>
               <app-fiche-cpn-patiente [fiche]="fiche" partie="clinique" prefixe="new-cpn-" [age]="ageCalcule" [parite]="form.parite" />
             </div>
           }
 
           <!-- ÉTAPE 5 : Suivi -->
           @case (4) {
+            <p class="section-titre !mb-0"><i class="fa-solid fa-calendar-check"></i> Premier rendez-vous</p>
             <div class="grid gap-5 sm:grid-cols-2">
               <div>
                 <label class="label" for="rdv">Premier rendez-vous <span class="text-xs font-normal text-slate-400">(facultatif)</span></label>
@@ -498,6 +516,9 @@
           </button>
         }
       </div>
+        </div>
+        }
+      }
     </form>
 
     <!-- Panneau latéral -->
