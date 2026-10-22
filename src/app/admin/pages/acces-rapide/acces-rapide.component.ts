@@ -69,7 +69,7 @@ export class AccesRapideComponent {
         lien: '/admin/soignants', queryParams: { ajout: '1' }, couleur: 'from-emerald-500 to-teal-700',
       }] : []),
       ...(medecin ? [{
-        titre: 'Conseils', description: 'Publier un conseil pour les mamans', icone: 'fa-newspaper',
+        titre: 'Publier un article conseil', description: 'Conseils pour les mamans', icone: 'fa-newspaper',
         lien: '/admin/conseils', couleur: 'from-violet-500 to-fuchsia-700',
       }] : []),
       {
