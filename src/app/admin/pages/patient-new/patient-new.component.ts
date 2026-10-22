@@ -4,7 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import { aujourdhui, dateHeureChiffres, dpaNaegele, jourChiffres, jourFr } from '../../data/format';
 import { Doublon, PatientesService, SaisieDatation, doublonsDe, profilCpnVersApi, profilCpnVide } from '../../data/patientes.service';
 import { EtablissementsService } from '../../data/etablissements.service';
-import { ReferentielsService } from '../../data/referentiels.service';
+import { MesurePreventive, ReferentielsService, parGroupe } from '../../data/referentiels.service';
 import { SessionService, messageErreur } from '../../data/session.service';
 
 interface Step {
@@ -41,10 +41,6 @@ const TEINTES: Record<string, Teinte> = {
   ambre: {
     carte: 'border-l-amber-500 bg-amber-50/60 dark:border-l-amber-400 dark:bg-amber-500/5',
     icone: 'bg-gradient-to-br from-amber-400 to-orange-600 text-white', titre: 'text-amber-800 dark:text-amber-300',
-  },
-  rose: {
-    carte: 'border-l-pink-500 bg-pink-50/60 dark:border-l-pink-400 dark:bg-pink-500/5',
-    icone: 'bg-gradient-to-br from-pink-400 to-rose-600 text-white', titre: 'text-pink-800 dark:text-pink-300',
   },
   indigo: {
     carte: 'border-l-indigo-500 bg-indigo-50/60 dark:border-l-indigo-400 dark:bg-indigo-500/5',
@@ -124,13 +120,44 @@ export class PatientNewComponent implements OnDestroy {
   erreur = '';
 
   steps: Step[] = [
-    { title: 'Identité', subtitle: 'Femme enceinte, contact, biologie, DDR et DPA', icon: 'fa-id-card', teinte: TEINTES['bleu'], clinical: true },
-    { title: 'Résidence', subtitle: 'Adresse et formation sanitaire', icon: 'fa-location-dot', teinte: TEINTES['vert'] },
-    { title: 'Antécédents médicaux', subtitle: 'TBC, HTA, SCA/SS, VIH… et test connu', icon: 'fa-stethoscope', teinte: TEINTES['violet'], clinical: true },
-    { title: 'Antécédents gynéco-chirurgicaux', subtitle: 'Césarienne, cerclage, fibrome, GEU…', icon: 'fa-user-doctor', teinte: TEINTES['ambre'], clinical: true },
-    { title: 'Antécédents obstétricaux', subtitle: 'Parité, gestité, accouchements antérieurs', icon: 'fa-baby', teinte: TEINTES['rose'], clinical: true },
+    { title: 'Identité', subtitle: 'Femme enceinte, contact, résidence, DDR et DPA', icon: 'fa-id-card', teinte: TEINTES['bleu'], clinical: true },
+    { title: 'Antécédents', subtitle: 'Médicaux, gynéco-chirurgicaux et obstétricaux', icon: 'fa-notes-medical', teinte: TEINTES['violet'], clinical: true },
+    { title: 'Mesures préventives', subtitle: 'VAT, SP, MILD, vermifuge, dépistages, PF, PTME', icon: 'fa-shield-heart', teinte: TEINTES['vert'], clinical: true },
+    { title: 'Laboratoire', subtitle: 'Hb, GE, TDR palu, GS, urines, selles…', icon: 'fa-flask', teinte: TEINTES['ambre'], clinical: true },
     { title: 'Rendez-vous', subtitle: 'Premier rendez-vous et prévisualisation de la fiche', icon: 'fa-calendar-check', teinte: TEINTES['indigo'] },
   ];
+
+  // --- Mesures préventives et laboratoire (enregistrés dans le brouillon de la 1re CPN) ----
+  /** Réponse oui / non (null : non renseigné) et valeur notée, par code de mesure. */
+  mesures: Record<string, { reponse: boolean | null; valeur: string }> = {};
+  /** Résultats d'examens, par code. */
+  labo: Record<string, string> = {};
+
+  get groupesMesures(): { groupe: string; elements: MesurePreventive[] }[] {
+    return parGroupe(this.referentiels.cpn()?.MESURES_PREVENTIVES ?? []);
+  }
+
+  mesure(code: string): { reponse: boolean | null; valeur: string } {
+    return (this.mesures[code] ??= { reponse: null, valeur: '' });
+  }
+
+  /** Un second clic sur la réponse choisie la retire (non renseigné). */
+  repondreMesure(code: string, reponse: boolean): void {
+    const m = this.mesure(code);
+    m.reponse = m.reponse === reponse ? null : reponse;
+  }
+
+  /** Mesures ou examens saisis : ils partent dans le brouillon de la première consultation prénatale. */
+  get mesuresOuLaboSaisis(): boolean {
+    return Object.values(this.mesures).some(m => m.reponse !== null || !!m.valeur.trim())
+      || Object.values(this.labo).some(v => !!v.trim());
+  }
+
+  get mesuresApercu(): { libelle: string; reponse: boolean | null; valeur: string }[] {
+    return (this.referentiels.cpn()?.MESURES_PREVENTIVES ?? [])
+      .map(m => ({ libelle: m.libelle, ...this.mesure(m.code) }))
+      .filter(m => m.reponse !== null || !!m.valeur.trim());
+  }
 
   /** Fiche CPN : identité complémentaire, biologie et antécédents cochés (référentiel du serveur). */
   fiche = profilCpnVide();
@@ -524,12 +551,10 @@ export class PatientNewComponent implements OnDestroy {
       if (this.ecartSensible && !f.dpaJustification.trim()) m.push('justification de la DPA');
       if (!f.email.trim() || this.emailInvalide) m.push('e-mail');
       if (this.reglesMdp.some(r => !r.ok)) m.push('mot de passe');
-    }
-    if (i === 1) {
       if (!this.referentiels.provinces().includes(f.province)) m.push('province');
       if (!this.etablissementsActifs().some(e => e.id === f.etablissementId)) m.push('formation sanitaire');
     }
-    if (i === 4) {
+    if (i === 1) {
       if (f.gestite === null) m.push('gestité');
       if (f.parite === null) m.push('parité');
     }
@@ -586,6 +611,20 @@ export class PatientNewComponent implements OnDestroy {
         compte: { motDePasse: f.motDePasse },
         confirmerMalgreDoublons: this.doublonsBloquants && this.confirmationDoublons,
       }, this.photoFichier);
+      if (this.mesuresOuLaboSaisis) {
+        // Le serveur range mesures préventives et laboratoire dans une consultation : brouillon de la 1re CPN, à compléter.
+        try {
+          const dossier = await this.service.dossier(numero);
+          const grossesse = dossier.grossesses.find(g => g.statut === 'En cours') ?? dossier.grossesses[0];
+          const c = await this.service.creerConsultation(grossesse.id, {
+            type: 'Première consultation prénatale', mesuresPreventives: this.mesures, laboratoire: this.labo,
+          });
+          this.router.navigate(['/admin/consultations', c.id]);
+          return;
+        } catch {
+          // Dossier créé : les mesures et examens se saisiront dans la consultation.
+        }
+      }
       this.router.navigate(['/admin/patientes', numero], { queryParams: { nouveau: 1 } });
     } catch (err) {
       const doublons = doublonsDe(err);

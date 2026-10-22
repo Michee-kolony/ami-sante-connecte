@@ -307,11 +307,11 @@
               </div>
             </div>
           
-          }
+          
 
-          <!-- ÉTAPE 2 : Résidence et formation sanitaire -->
-          @case (1) {
-            <p class="section-titre !mb-0"><i class="fa-solid fa-location-dot"></i> Adresse complète</p>
+            <!-- Résidence et formation sanitaire (dans l’identité) -->
+            <div>
+            <p class="section-titre"><i class="fa-solid fa-location-dot"></i> Résidence</p>
             <div class="grid gap-5 sm:grid-cols-2">
               <div>
                 <label class="label" for="province">Province de résidence <span class="req">*</span></label>
@@ -330,6 +330,7 @@
               <div><label class="label" for="avenue">Avenue / n°</label><input id="avenue" name="avenue" class="input" [(ngModel)]="form.avenue" placeholder="ex. Av. de la Libération, 12"></div>
               <div class="sm:col-span-2"><label class="label" for="repere">Repère de localisation <span class="text-xs font-normal text-slate-400">(seulement si utile au suivi)</span></label><textarea id="repere" name="repere" rows="2" class="input" [(ngModel)]="form.repere" placeholder="ex. Derrière l’église, portail bleu"></textarea></div>
             </div>
+            </div>
 
             <div>
               <p class="section-titre"><i class="fa-solid fa-hospital"></i> Formation sanitaire</p>
@@ -347,11 +348,13 @@
                 <p class="hint">Province : {{ e.province }} · District sanitaire : {{ e.districtSanitaire || '—' }} · Zone de santé : {{ e.zoneSante }}</p>
               }
             </div>
+          
           }
 
-          <!-- ÉTAPE 3 : Antécédents médicaux -->
-          @case (2) {
-            <p class="section-titre !mb-0"><i class="fa-solid fa-stethoscope"></i> Antécédents médicaux <span class="text-xs font-normal opacity-70">(cocher)</span></p>
+          <!-- ÉTAPE 2 : Antécédents (médicaux, gynéco-chirurgicaux, obstétricaux) -->
+          @case (1) {
+            <div class="space-y-5">
+            <p class="section-titre"><i class="fa-solid fa-stethoscope"></i> Antécédents médicaux <span class="text-xs font-normal opacity-70">(cocher)</span></p>
             <div class="flex flex-wrap gap-2">
               @for (c of casesFiche('ATCD_MEDICAUX'); track c.v) {
                 <button type="button" class="rounded-full border px-3 py-1.5 text-xs font-semibold transition" [class]="pastille(coche('atcdMedicaux', c.v))" [attr.aria-pressed]="coche('atcdMedicaux', c.v)" (click)="basculer('atcdMedicaux', c.v)">
@@ -366,11 +369,11 @@
               </div>
             </div>
             <div><label class="label" for="atcdmed">Autres antécédents médicaux</label><textarea id="atcdmed" name="atcdmed" rows="2" class="input" [(ngModel)]="form.antecedentsMedicaux" placeholder="ex. Asthme, épilepsie…"></textarea></div>
-          }
+          
+            </div>
 
-          <!-- ÉTAPE 4 : Antécédents gynéco-chirurgicaux -->
-          @case (3) {
-            <p class="section-titre !mb-0"><i class="fa-solid fa-user-doctor"></i> Antécédents gynécologiques et chirurgicaux <span class="text-xs font-normal opacity-70">(cocher)</span></p>
+            <div class="space-y-5">
+            <p class="section-titre"><i class="fa-solid fa-user-doctor"></i> Antécédents gynécologiques et chirurgicaux <span class="text-xs font-normal opacity-70">(cocher)</span></p>
             <div class="flex flex-wrap gap-2">
               @for (c of casesFiche('ATCD_GYNECO_CHIRURGICAUX'); track c.v) {
                 <button type="button" class="rounded-full border px-3 py-1.5 text-xs font-semibold transition" [class]="pastille(coche('atcdGynecoChirurgicaux', c.v))" [attr.aria-pressed]="coche('atcdGynecoChirurgicaux', c.v)" (click)="basculer('atcdGynecoChirurgicaux', c.v)">
@@ -379,11 +382,11 @@
               }
             </div>
             <div><label class="label" for="atcdchir">Autres antécédents chirurgicaux</label><textarea id="atcdchir" name="atcdchir" rows="2" class="input" [(ngModel)]="form.antecedentsChirurgicaux" placeholder="ex. Appendicectomie…"></textarea></div>
-          }
+          
+            </div>
 
-          <!-- ÉTAPE 5 : Antécédents obstétricaux -->
-          @case (4) {
-            <p class="section-titre !mb-0"><i class="fa-solid fa-baby"></i> Antécédents obstétricaux</p>
+            <div class="space-y-5">
+            <p class="section-titre"><i class="fa-solid fa-baby"></i> Antécédents obstétricaux</p>
             <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
               @for (c of [{ k: 'parite', l: 'Parité' }, { k: 'gestite', l: 'Gestité' }, { k: 'enfantsVivants', l: 'Enfants en vie' }, { k: 'avortements', l: 'Avortements' }]; track c.k) {
                 <div><label class="label text-xs" [for]="'ant-' + c.k">{{ c.l }}</label><input [id]="'ant-' + c.k" type="number" min="0" max="30" class="input" [name]="c.k" [(ngModel)]="$any(form)[c.k]"></div>
@@ -421,10 +424,56 @@
                 <li class="text-xs text-amber-700 dark:text-amber-300">Suggestions d’après les données saisies : à confirmer par le médecin.</li>
               </ul>
             }
+          
+            </div>
           }
 
-          <!-- ÉTAPE 6 : Rendez-vous et validation -->
-          @case (5) {
+          <!-- ÉTAPE 3 : Mesures préventives (brouillon de la 1re CPN) -->
+          @case (2) {
+            <p class="rounded-xl bg-emerald-50 px-3 py-2 text-xs text-emerald-900 dark:bg-emerald-500/10 dark:text-emerald-200"><i class="fa-solid fa-circle-info mr-1"></i>Datées du jour de l’enregistrement. Elles sont rangées dans la première consultation prénatale, qui s’ouvre ensuite en brouillon pour être complétée.</p>
+            @for (g of groupesMesures; track g.groupe) {
+              <div>
+                <p class="section-titre"><i class="fa-solid fa-shield-heart"></i> {{ g.groupe }}</p>
+                <div class="divide-y divide-slate-100 dark:divide-slate-800">
+                  @for (m of g.elements; track m.code) {
+                    <div class="flex flex-wrap items-center gap-x-3 gap-y-2 py-2">
+                      <div class="min-w-0 flex-1">
+                        <p class="text-sm font-medium text-slate-800 dark:text-slate-100">{{ m.libelle }}</p>
+                        @if (m.repere) { <p class="text-xs text-slate-500 dark:text-slate-400">{{ m.repere }}</p> }
+                      </div>
+                      <div class="flex flex-none gap-1.5">
+                        @for (o of [{ v: true, l: 'Oui' }, { v: false, l: 'Non' }]; track o.l) {
+                          <button type="button" class="rounded-lg border px-3 py-1.5 text-xs font-semibold transition"
+                                  [class]="mesure(m.code).reponse === o.v ? (o.v ? 'border-emerald-500 bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-300' : 'border-slate-400 bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200') : 'border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800/50'"
+                                  [attr.aria-pressed]="mesure(m.code).reponse === o.v" (click)="repondreMesure(m.code, o.v)">{{ o.l }}</button>
+                        }
+                      </div>
+                      @if (m.saisie) {
+                        <input class="input w-full py-1.5 text-sm sm:w-48" [name]="'mes-' + m.code" [(ngModel)]="mesure(m.code).valeur" [placeholder]="m.saisie" [attr.aria-label]="m.saisie + ' — ' + m.libelle">
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            } @empty { <p class="text-sm text-slate-500 dark:text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Chargement des mesures préventives…</p> }
+          }
+
+          <!-- ÉTAPE 4 : Laboratoire (brouillon de la 1re CPN) -->
+          @case (3) {
+            <p class="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:bg-amber-500/10 dark:text-amber-200"><i class="fa-solid fa-circle-info mr-1"></i>Résultats disponibles à l’enregistrement (facultatif). Ils sont rangés dans la première consultation prénatale.</p>
+            <p class="section-titre !mb-0"><i class="fa-solid fa-flask"></i> Examens de laboratoire</p>
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              @for (e of referentiels.cpn()?.EXAMENS_LABO ?? []; track e.code) {
+                <div [class.sm:col-span-2]="e.code === 'autres'" [class.lg:col-span-3]="e.code === 'autres'">
+                  <label class="label" [for]="'labo-' + e.code">{{ e.libelle }}</label>
+                  <input [id]="'labo-' + e.code" class="input" [name]="'labo-' + e.code" [(ngModel)]="labo[e.code]">
+                </div>
+              }
+            </div>
+          }
+
+          <!-- ÉTAPE 5 : Rendez-vous et validation -->
+          @case (4) {
             <p class="section-titre !mb-0"><i class="fa-solid fa-calendar-check"></i> Premier rendez-vous</p>
             <div class="grid gap-5 sm:grid-cols-2">
               <div>
@@ -633,7 +682,7 @@
           <section class="mt-6 space-y-3">
             <p class="titre-section">Antécédents</p>
             <div>
-              <p class="flex items-center justify-between gap-2"><span><span class="sous-titre">1) Médicaux :</span> <span class="petit">(cocher)</span></span> <button type="button" class="petit underline" (click)="modifierEtape(2)">Modifier</button></p>
+              <p class="flex items-center justify-between gap-2"><span><span class="sous-titre">1) Médicaux :</span> <span class="petit">(cocher)</span></span> <button type="button" class="petit underline" (click)="modifierEtape(1)">Modifier</button></p>
               <div class="mt-1.5 flex flex-wrap gap-x-4 gap-y-2">
                 @for (c of casesFiche('ATCD_MEDICAUX'); track c.v) { <span class="item-case" [title]="c.v">{{ c.l }} <input type="checkbox" class="case" disabled [checked]="coche('atcdMedicaux', c.v)"></span> }
               </div>
@@ -641,14 +690,14 @@
               @if (form.antecedentsMedicaux) { <p class="flex flex-wrap items-baseline gap-x-2"><span class="petit">Autres :</span> <span class="valeur">{{ form.antecedentsMedicaux }}</span></p> }
             </div>
             <div>
-              <p class="flex items-center justify-between gap-2"><span><span class="sous-titre">2) Gynécologiques et Chirurgicaux :</span> <span class="petit">(Cocher)</span></span> <button type="button" class="petit underline" (click)="modifierEtape(3)">Modifier</button></p>
+              <p class="flex items-center justify-between gap-2"><span><span class="sous-titre">2) Gynécologiques et Chirurgicaux :</span> <span class="petit">(Cocher)</span></span> <button type="button" class="petit underline" (click)="modifierEtape(1)">Modifier</button></p>
               <div class="mt-1.5 flex flex-wrap gap-x-4 gap-y-2">
                 @for (c of casesFiche('ATCD_GYNECO_CHIRURGICAUX'); track c.v) { <span class="item-case" [title]="c.v">{{ c.l }} <input type="checkbox" class="case" disabled [checked]="coche('atcdGynecoChirurgicaux', c.v)"></span> }
               </div>
               @if (form.antecedentsChirurgicaux) { <p class="mt-1.5 flex flex-wrap items-baseline gap-x-2"><span class="petit">Autres :</span> <span class="valeur">{{ form.antecedentsChirurgicaux }}</span></p> }
             </div>
             <div class="space-y-2">
-              <p class="flex items-center justify-between gap-2"><span class="sous-titre">3) Obstétricaux</span> <button type="button" class="petit underline" (click)="modifierEtape(4)">Modifier</button></p>
+              <p class="flex items-center justify-between gap-2"><span class="sous-titre">3) Obstétricaux</span> <button type="button" class="petit underline" (click)="modifierEtape(1)">Modifier</button></p>
               <p class="flex flex-wrap items-baseline gap-x-2">
                 <span>Parité</span> <span class="valeur court">{{ form.parite ?? '' }}</span>
                 <span>Gestité</span> <span class="valeur court">{{ form.gestite ?? '' }}</span>
@@ -680,9 +729,33 @@
             </div>
           </section>
 
+          <!-- MESURES PRÉVENTIVES -->
+          <section class="mt-6 space-y-2">
+            <p class="flex items-center justify-between gap-2"><span class="titre-section">Mesures préventives</span> <button type="button" class="petit underline" (click)="modifierEtape(2)">Modifier</button></p>
+            @for (m of mesuresApercu; track m.libelle) {
+              <p class="flex flex-wrap items-baseline gap-x-2">
+                <span>{{ m.libelle }}</span>
+                <span class="item-case">Oui <input type="checkbox" class="case" disabled [checked]="m.reponse === true"></span>
+                <span class="item-case">Non <input type="checkbox" class="case" disabled [checked]="m.reponse === false"></span>
+                @if (m.valeur) { <span class="valeur">{{ m.valeur }}</span> }
+              </p>
+            } @empty { <p class="petit">Aucune mesure notée à l’enregistrement (à remplir en consultation).</p> }
+            <p class="petit">Date : {{ dateFiche }}</p>
+          </section>
+
+          <!-- LABORATOIRE -->
+          <section class="mt-6 space-y-2">
+            <p class="flex items-center justify-between gap-2"><span class="titre-section">Laboratoire</span> <button type="button" class="petit underline" (click)="modifierEtape(3)">Modifier</button></p>
+            <div class="grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
+              @for (e of referentiels.cpn()?.EXAMENS_LABO ?? []; track e.code) {
+                <p class="flex items-baseline gap-x-2"><span class="whitespace-nowrap">{{ e.libelle }} :</span> <span class="valeur">{{ labo[e.code] }}</span></p>
+              }
+            </div>
+          </section>
+
           <!-- RENDEZ-VOUS -->
           <section class="mt-6 max-w-xl">
-            <p class="mb-1 flex justify-end"><button type="button" class="petit underline" (click)="modifierEtape(5)">Modifier</button></p>
+            <p class="mb-1 flex justify-end"><button type="button" class="petit underline" (click)="modifierEtape(4)">Modifier</button></p>
             <table class="tableau">
               <thead>
                 <tr><th colspan="3">Rendez-vous (date)</th></tr>
