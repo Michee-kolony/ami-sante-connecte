@@ -5,7 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import { AvatarComponent } from '../../components/avatar.component';
 import { FicheCpnPatienteComponent } from '../../components/fiche-cpn-patiente.component';
 import { PatientSuiviComponent } from './patient-suivi.component';
-import { agLisible, aujourdhui, dateHeureFr, jourFr, jourLocal } from '../../data/format';
+import { agLisible, apercuDatation, aujourdhui, dateHeureChiffres, jourChiffres, jourLocal } from '../../data/format';
 import {
   CanalRappel, ConsultationResume, Dossier, EntreeJournal, FACTEURS_RISQUE, Grossesse, ISSUES, MODES_ACCOUCHEMENT,
   PatientesService, RendezVous, SaisieDatation, StatutRdv, profilCpnDe, profilCpnVersApi, profilCpnVide,
@@ -44,8 +44,8 @@ export class PatientDetailComponent implements OnChanges, OnDestroy {
   session = inject(SessionService);
   referentiels = inject(ReferentielsService);
   ag = agLisible;
-  jour = jourFr;
-  dateHeure = dateHeureFr;
+  jour = jourChiffres;
+  dateHeure = dateHeureChiffres;
 
   onglet: Onglet = 'resume';
   onglets: { k: Onglet; l: string; i: string }[] = [
@@ -378,6 +378,14 @@ export class PatientDetailComponent implements OnChanges, OnDestroy {
   // Datation
   formDatation = { methode: 'DDR' as SaisieDatation['methode'], ddr: '', ddrFiabilite: 'Fiable' as 'Fiable' | 'Incertaine' | 'Inconnue', dateReference: '', agSemaines: null as number | null, agJours: null as number | null, dpa: '', justification: '' };
 
+  /** AG du jour et DPA calculés pendant la saisie (aperçu ; le serveur recalcule). */
+  get apercuDatation() {
+    const f = this.formDatation;
+    return f.methode === 'DDR'
+      ? apercuDatation({ ddr: f.ddr })
+      : apercuDatation({ dateReference: f.dateReference, agSemaines: f.agSemaines, agJours: f.agJours });
+  }
+
   enregistrerDatation(): void {
     const g = this.grossesse;
     if (!g) return;
@@ -420,6 +428,10 @@ export class PatientDetailComponent implements OnChanges, OnDestroy {
     gestite: null as number | null, parite: null as number | null, enfantsVivants: null as number | null, avortements: null as number | null,
     dernierAccouchement: '',
   };
+
+  get apercuNouvelleGrossesse() {
+    return apercuDatation({ ddr: this.formGrossesse.ddr });
+  }
 
   basculerFacteurNouvelle(f: string): void {
     const l = this.formGrossesse.facteurs;

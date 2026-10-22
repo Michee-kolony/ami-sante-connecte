@@ -93,7 +93,7 @@ export class ShellComponent {
   private navTous: NavItem[] = [
     { label: 'Tableau de bord', icon: 'fa-gauge-high', path: '/admin/tableau-de-bord' },
     { label: 'Patientes', icon: 'fa-person-pregnant', path: '/admin/patientes' },
-    { label: 'Nouvel enregistrement', icon: 'fa-file-circle-plus', path: '/admin/patientes/nouvelle', clinique: true },
+    { label: 'Enregistrement CPN', icon: 'fa-file-circle-plus', path: '/admin/patientes/nouvelle', clinique: true },
     { label: 'Rendez-vous', icon: 'fa-calendar-check', path: '/admin/rendez-vous' },
     { label: 'Discussions', icon: 'fa-comment-medical', path: '/admin/discussions' },
     { label: 'Conseils aux mamans', icon: 'fa-newspaper', path: '/admin/conseils', clinique: true },

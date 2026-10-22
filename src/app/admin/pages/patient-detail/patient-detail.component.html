@@ -666,6 +666,12 @@
                 <div><label class="label" for="d-j">Jours</label><input id="d-j" type="number" min="0" max="6" class="input" [(ngModel)]="formDatation.agJours" name="dj"></div>
               </div>
             }
+            @if (apercuDatation; as a) {
+              <div class="grid grid-cols-2 gap-3 rounded-xl bg-brand-50 p-3 text-brand-900 dark:bg-brand-500/10 dark:text-brand-200" aria-live="polite">
+                <div><p class="text-xs">Âge gestationnel aujourd’hui</p><p class="text-lg font-bold">{{ ag(a.agJours) }}</p></div>
+                <div><p class="text-xs">DPA calculée</p><p class="text-lg font-bold">{{ jour(a.dpa) }}</p></div>
+              </div>
+            }
             <div><label class="label" for="d-dpa">DPA retenue <span class="text-xs font-normal text-slate-400">(si différente de la DPA calculée)</span></label><input id="d-dpa" type="date" class="input" [(ngModel)]="formDatation.dpa" name="ddpa"></div>
             <div>
               <label class="label" for="d-just">Motif {{ grossesse?.datation ? '(obligatoire : la valeur actuelle sera archivée)' : '(obligatoire si la DPA s’écarte de plus de 7 jours)' }}</label>
@@ -748,7 +754,14 @@
                 </select>
               </div>
             </div>
-            <p class="hint -mt-2">Sans DDR, la grossesse sera datée lors de la consultation (échographie ou examen clinique).</p>
+            @if (apercuNouvelleGrossesse; as a) {
+              <div class="grid grid-cols-2 gap-3 rounded-xl bg-brand-50 p-3 text-brand-900 dark:bg-brand-500/10 dark:text-brand-200" aria-live="polite">
+                <div><p class="text-xs">Âge gestationnel aujourd’hui</p><p class="text-lg font-bold">{{ ag(a.agJours) }}</p></div>
+                <div><p class="text-xs">DPA calculée</p><p class="text-lg font-bold">{{ jour(a.dpa) }}</p></div>
+              </div>
+            } @else {
+              <p class="hint -mt-2">Sans DDR, la grossesse sera datée lors de la consultation (échographie ou examen clinique).</p>
+            }
             <div>
               <span class="label">Antécédents mis à jour <span class="text-xs font-normal text-slate-400">(valeurs proposées : à vérifier)</span></span>
               <div class="grid grid-cols-2 gap-3 sm:grid-cols-5">

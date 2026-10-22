@@ -1,7 +1,7 @@
 import { Component, Input, OnChanges, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AvatarComponent } from '../../components/avatar.component';
-import { agLisible, dateHeureFr, jourFr } from '../../data/format';
+import { agLisible, dateHeureChiffres, jourChiffres } from '../../data/format';
 import { PatientesService, StatutRdv, SuiviPatiente } from '../../data/patientes.service';
 import { messageErreur } from '../../data/session.service';
 
@@ -138,8 +138,8 @@ export class PatientSuiviComponent implements OnChanges {
   @Input() id = '';
   private service = inject(PatientesService);
   ag = agLisible;
-  jour = jourFr;
-  dateHeure = dateHeureFr;
+  jour = jourChiffres;
+  dateHeure = dateHeureChiffres;
 
   suivi: SuiviPatiente | null = null;
   chargement = true;

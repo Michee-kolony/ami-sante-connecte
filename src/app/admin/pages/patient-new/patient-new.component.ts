@@ -1,7 +1,7 @@
 import { Component, OnDestroy, computed, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { aujourdhui, jourFr } from '../../data/format';
+import { aujourdhui, dpaNaegele, jourFr } from '../../data/format';
 import { Doublon, FACTEURS_RISQUE, PatientesService, SaisieDatation, doublonsDe, profilCpnVersApi, profilCpnVide } from '../../data/patientes.service';
 import { FicheCpnPatienteComponent } from '../../components/fiche-cpn-patiente.component';
 import { EtablissementsService } from '../../data/etablissements.service';
@@ -290,7 +290,7 @@ export class PatientNewComponent implements OnDestroy {
   }
 
   get dpaCalculee(): string | null {
-    if (this.form.ddrConnue) return this.form.ddr ? toIso(parse(this.form.ddr) + 280 * DAY) : null;
+    if (this.form.ddrConnue) return this.form.ddr ? dpaNaegele(this.form.ddr) : null;
     if (this.form.agSemaines === null || !this.form.dateReference) return null;
     const jours = this.form.agSemaines * 7 + (this.form.agJours ?? 0);
     return toIso(parse(this.form.dateReference) + (280 - jours) * DAY);

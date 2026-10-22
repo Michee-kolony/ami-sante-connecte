@@ -5,7 +5,7 @@
       <nav class="mb-1 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
         <a routerLink="/admin/patientes" class="hover:text-brand-700 dark:hover:text-brand-300">Patientes</a>
         <i class="fa-solid fa-chevron-right text-[9px]"></i>
-        <span class="text-slate-700 dark:text-slate-200">Nouvel enregistrement</span>
+        <span class="text-slate-700 dark:text-slate-200">Enregistrement CPN</span>
       </nav>
       <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Enregistrement CPN</h1>
       <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Création du dossier prénatal · {{ structureNom }}</p>
@@ -521,7 +521,7 @@
         </div>
         <div class="space-y-2 p-4 text-xs text-slate-600 dark:text-slate-300">
           <p class="flex justify-between"><span class="text-slate-500 dark:text-slate-400">Méthode</span>
-            <span class="font-medium text-slate-800 dark:text-slate-100">{{ form.dpaSaisie ? 'Validée cliniquement' : form.ddrConnue ? 'DDR + 280 j' : form.agMethode }}</span></p>
+            <span class="font-medium text-slate-800 dark:text-slate-100">{{ form.dpaSaisie ? 'Validée cliniquement' : form.ddrConnue ? 'DDR + 7 j + 9 mois' : form.agMethode }}</span></p>
           <p class="flex justify-between"><span class="text-slate-500 dark:text-slate-400">DDR</span><span class="font-medium text-slate-800 dark:text-slate-100">{{ form.ddrConnue ? (form.ddr ? fmt(form.ddr) : 'Non renseignée') : 'Inconnue' }}</span></p>
           @if (ddrIncertaine) {
             <p class="mt-2 rounded-lg bg-amber-50 dark:bg-amber-500/10 p-2 text-amber-800 dark:text-amber-300"><i class="fa-solid fa-triangle-exclamation mr-1"></i>DDR {{ form.ddrFiabilite.toLowerCase() }} : estimation à confirmer.</p>
