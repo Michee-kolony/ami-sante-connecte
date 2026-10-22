@@ -211,7 +211,7 @@ export class PatientNewComponent implements OnDestroy {
     const e = this.echo;
     return !!(e.date || e.motif.trim() || e.agSemaines !== null || e.conclusion.trim() || e.praticien.trim() || e.anomalies.trim()
       || e.placenta.localisation.trim() || e.liquideAmniotique.quantite || e.col.longueurMm !== null || this.fichiersEcho.length
-      || e.foetus.some(f => f.activiteCardiaque !== null || !!f.sexe || !!f.presentation || f.poidsEstimeG !== null || f.bipMm !== null));
+      || e.foetus.some(f => f.activiteCardiaque !== null || f.bcf !== null || !!f.sexe || !!f.presentation || f.poidsEstimeG !== null || f.bipMm !== null));
   }
 
   get echoDateFuture(): boolean {

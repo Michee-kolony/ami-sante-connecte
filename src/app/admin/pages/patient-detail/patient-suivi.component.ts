@@ -8,9 +8,10 @@ import { messageErreur } from '../../data/session.service';
 const ACTIFS: StatutRdv[] = ['Planifié', 'Confirmé', 'Reporté'];
 
 /**
- * Vue « suivi » pour les infirmier·ères : identité, grossesse en cours et rendez-vous, en lecture
- * seule. Antécédents, risques, consultations et journal restent réservés aux médecins (le serveur
- * ne les envoie pas).
+ * Fiche de la patiente pour les infirmier·ères et sages-femmes, en lecture seule : identité,
+ * contacts, résidence, grossesse en cours, rendez-vous et dates des visites. Antécédents, profil
+ * biologique, risques, contenu des consultations, échographies et journal restent réservés aux
+ * médecins (le serveur ne les envoie pas).
  */
 @Component({
   selector: 'app-patient-suivi',
@@ -54,7 +55,7 @@ const ACTIFS: StatutRdv[] = ['Planifié', 'Confirmé', 'Reporté'];
           </h1>
           <div class="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
             <span class="font-mono font-semibold text-slate-700 dark:text-slate-200">{{ p.numero }}</span>
-            @if (p.age != null) { <span><i class="fa-solid fa-cake-candles mr-1"></i>{{ p.age }} ans</span> }
+            @if (p.age != null) { <span><i class="fa-solid fa-cake-candles mr-1"></i>{{ p.age }} ans{{ p.dateNaissance ? ' (' + jour(p.dateNaissance) + ')' : '' }}</span> }
             @if (p.telephone) { <a [href]="'tel:' + p.telephone.split(' ').join('')" class="hover:text-brand-700"><i class="fa-solid fa-phone mr-1"></i>{{ p.telephone }}</a> }
             @if (p.province) { <span><i class="fa-solid fa-location-dot mr-1"></i>{{ p.commune ? p.commune + ', ' : '' }}{{ p.province }}</span> }
           </div>
@@ -64,8 +65,45 @@ const ACTIFS: StatutRdv[] = ['Planifié', 'Confirmé', 'Reporté'];
     </div>
 
     <div class="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-      <i class="fa-solid fa-user-doctor mt-0.5 text-brand-600 dark:text-brand-400"></i>
-      <p>Vue de suivi infirmier : grossesse en cours et rendez-vous. Les antécédents, facteurs de risque, consultations et résultats sont réservés aux médecins.</p>
+      <i class="fa-solid fa-shield-halved mt-0.5 text-brand-600 dark:text-brand-400"></i>
+      <p>Fiche de consultation pour infirmier·ères et sages-femmes. Les données médicales sensibles (antécédents, groupe sanguin, facteurs de risque, contenu des consultations, examens et échographies) sont réservées aux médecins.</p>
+    </div>
+
+    <div class="grid gap-6 md:grid-cols-2">
+      <!-- Informations personnelles -->
+      <div class="card p-5 sm:p-6">
+        <h2 class="card-title mb-4"><i class="fa-solid fa-id-card text-brand-600 dark:text-brand-400"></i> Informations personnelles</h2>
+        <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+          <div><dt class="text-xs text-slate-500 dark:text-slate-400">État civil</dt><dd class="text-slate-900 dark:text-white">{{ p.etatCivil || '—' }}</dd></div>
+          <div><dt class="text-xs text-slate-500 dark:text-slate-400">Occupation</dt><dd class="text-slate-900 dark:text-white">{{ p.occupation || '—' }}</dd></div>
+          <div><dt class="text-xs text-slate-500 dark:text-slate-400">Partenaire</dt><dd class="text-slate-900 dark:text-white">{{ p.nomPartenaire || '—' }}</dd></div>
+          <div><dt class="text-xs text-slate-500 dark:text-slate-400">Statut du dossier</dt><dd class="text-slate-900 dark:text-white">{{ p.statut }}</dd></div>
+          <div><dt class="text-xs text-slate-500 dark:text-slate-400">Téléphone</dt><dd class="text-slate-900 dark:text-white">{{ p.telephone || '—' }}</dd></div>
+          <div><dt class="text-xs text-slate-500 dark:text-slate-400">Autre téléphone</dt><dd class="text-slate-900 dark:text-white">{{ p.telephone2 || '—' }}</dd></div>
+        </dl>
+        @if (p.contactUrgence.nom || p.contactUrgence.telephone) {
+          <div class="mt-4 rounded-xl bg-slate-50 p-3 text-sm dark:bg-slate-800/50">
+            <p class="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">Personne à prévenir</p>
+            <p class="mt-1 text-slate-900 dark:text-white">{{ p.contactUrgence.nom }}{{ p.contactUrgence.lien ? ' (' + p.contactUrgence.lien + ')' : '' }}</p>
+            @if (p.contactUrgence.telephone) {
+              <a [href]="'tel:' + p.contactUrgence.telephone.split(' ').join('')" class="text-brand-700 hover:underline dark:text-brand-300"><i class="fa-solid fa-phone mr-1"></i>{{ p.contactUrgence.telephone }}</a>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Résidence -->
+      <div class="card p-5 sm:p-6">
+        <h2 class="card-title mb-4"><i class="fa-solid fa-house text-brand-600 dark:text-brand-400"></i> Résidence</h2>
+        <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+          <div><dt class="text-xs text-slate-500 dark:text-slate-400">Province</dt><dd class="text-slate-900 dark:text-white">{{ p.province || '—' }}</dd></div>
+          <div><dt class="text-xs text-slate-500 dark:text-slate-400">Commune</dt><dd class="text-slate-900 dark:text-white">{{ p.commune || '—' }}</dd></div>
+          <div><dt class="text-xs text-slate-500 dark:text-slate-400">Quartier</dt><dd class="text-slate-900 dark:text-white">{{ p.quartier || '—' }}</dd></div>
+          <div><dt class="text-xs text-slate-500 dark:text-slate-400">Avenue</dt><dd class="text-slate-900 dark:text-white">{{ p.avenue || '—' }}</dd></div>
+          <div><dt class="text-xs text-slate-500 dark:text-slate-400">Aire de santé</dt><dd class="text-slate-900 dark:text-white">{{ p.aireSante || '—' }}</dd></div>
+          <div><dt class="text-xs text-slate-500 dark:text-slate-400">Point de repère</dt><dd class="text-slate-900 dark:text-white">{{ p.repere || '—' }}</dd></div>
+        </dl>
+      </div>
     </div>
 
     <div class="grid gap-6 md:grid-cols-2">
@@ -131,6 +169,24 @@ const ACTIFS: StatutRdv[] = ['Planifié', 'Confirmé', 'Reporté'];
           </li>
         } @empty {
           <li class="px-5 py-8 text-center text-sm text-slate-500 dark:text-slate-400">Aucun rendez-vous.</li>
+        }
+      </ul>
+    </div>
+
+    <!-- Visites passées (sans contenu clinique) -->
+    <div class="card overflow-hidden">
+      <div class="card-header"><h2 class="card-title"><i class="fa-solid fa-clipboard-list text-brand-600 dark:text-brand-400"></i> Visites ({{ suivi.visites.length }})</h2></div>
+      <ul class="divide-y divide-slate-100 dark:divide-slate-800">
+        @for (v of suivi.visites; track v.id) {
+          <li class="flex flex-col gap-1 px-5 py-4 sm:flex-row sm:items-center sm:gap-4">
+            <div class="flex-1">
+              <p class="font-medium text-slate-900 dark:text-white">{{ dateHeure(v.date) }} · {{ v.type }}</p>
+              <p class="text-xs text-slate-500 dark:text-slate-400">{{ v.soignant.role.startsWith('Médecin') ? 'Dr ' : '' }}{{ v.soignant.nom }} · {{ v.soignant.role }}</p>
+            </div>
+            <span class="badge self-start bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 sm:self-auto"><i class="fa-solid fa-lock text-[10px]"></i> {{ v.statut }}</span>
+          </li>
+        } @empty {
+          <li class="px-5 py-8 text-center text-sm text-slate-500 dark:text-slate-400">Aucune visite enregistrée.</li>
         }
       </ul>
     </div>

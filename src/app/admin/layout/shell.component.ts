@@ -85,7 +85,7 @@ export class ShellComponent {
   menuOpen = false;
   pending = SYNC_QUEUE.filter(s => s.etat !== 'synchronisé').length;
 
-  /** Enregistrement (dossier médical) : masqué aux infirmier·ères — le serveur refuse aussi. Patientes et rendez-vous : vue de suivi. */
+  /** Enregistrement (dossier médical) : masqué aux infirmier·ères et sages-femmes — le serveur refuse aussi. Patientes et rendez-vous : vue de suivi. */
   get nav(): NavItem[] {
     return this.session.estInfirmier() ? this.navTous.filter(i => !i.clinique) : this.navTous;
   }
@@ -118,7 +118,7 @@ export class ShellComponent {
   navSuperAdmin: NavItem[] = this.user.superAdmin
     ? [
       { label: 'Établissements sanitaires', icon: 'fa-hospital', path: '/admin/etablissements' },
-      { label: 'Médecins et infirmiers', icon: 'fa-user-doctor', path: '/admin/soignants' },
+      { label: 'Gestion soignant', icon: 'fa-user-doctor', path: '/admin/soignants' },
     ]
     : [];
 }

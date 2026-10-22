@@ -368,9 +368,11 @@ export const QUANTITES_LIQUIDE = ['Normale', 'Oligoamnios', 'Hydramnios'] as con
 export const MATURITES_PLACENTA = ['Grade 0', 'Grade I', 'Grade II', 'Grade III'] as const;
 export const FOETUS_MAX = 4;
 
-/** Un fœtus : activité cardiaque, sexe, présentation, position et biométrie (mm, poids en g). */
+/** Un fœtus : activité cardiaque, BCF, sexe, présentation, position et biométrie (mm, poids en g). */
 export interface FoetusEcho {
   activiteCardiaque: boolean | null;
+  /** Bruits du cœur fœtal, en battements par minute. */
+  bcf: number | null;
   sexe: string;
   presentation: string;
   position: string;
@@ -383,7 +385,7 @@ export interface FoetusEcho {
 
 export function foetusVide(): FoetusEcho {
   return {
-    activiteCardiaque: null, sexe: '', presentation: '', position: '',
+    activiteCardiaque: null, bcf: null, sexe: '', presentation: '', position: '',
     bipMm: null, perimetreCranienMm: null, perimetreAbdominalMm: null, longueurFemoraleMm: null, poidsEstimeG: null,
   };
 }
@@ -437,11 +439,17 @@ export interface EntreeJournal {
   le: string;
 }
 
-/** Vue « suivi » (infirmier·ères) : identité, grossesse en cours et rendez-vous, sans données sensibles. */
+/**
+ * Fiche de la patiente pour les infirmier·ères et sages-femmes : informations administratives,
+ * grossesse en cours, rendez-vous et dates des visites. Aucune donnée médicale sensible.
+ */
 export interface SuiviPatiente {
   patiente: {
     id: string; numero: string; nom: string; postnom: string; prenom: string; age: number | null;
-    photoUrl: string | null; telephone: string; statut: StatutPatiente; province: string; commune: string;
+    dateNaissance: string | null; photoUrl: string | null; statut: StatutPatiente;
+    etatCivil: string; occupation: string; nomPartenaire: string; telephone: string; telephone2: string;
+    province: string; commune: string; quartier: string; avenue: string; repere: string; aireSante: string;
+    contactUrgence: { nom: string; lien: string; telephone: string };
   };
   etablissement: { id: string; nom: string; province: string } | null;
   grossesse: { id: string; numero: number; statut: string; agJours: number | null; dpa: string | null; datee: boolean } | null;
@@ -449,6 +457,8 @@ export interface SuiviPatiente {
     id: string; date: string; motif: string; lieu: string; consignes: string; statut: StatutRdv;
     historique: { action: string; ancienneDate: string | null; nouvelleDate: string | null; motif: string; le: string }[];
   }[];
+  /** Visites passées : date, type et soignant seulement (le contenu reste réservé aux médecins). */
+  visites: { id: string; date: string; type: TypeConsultation; statut: string; soignant: { nom: string; role: string } }[];
 }
 
 /** Saisie de datation envoyée au serveur (qui calcule la DPA et l'âge gestationnel). */

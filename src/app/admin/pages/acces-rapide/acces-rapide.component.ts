@@ -65,7 +65,7 @@ export class AccesRapideComponent {
         lien: '/admin/patientes/nouvelle', couleur: 'from-brand-600 to-brand-800',
       }] : []),
       ...(gestion ? [{
-        titre: 'Ajout soignant', description: 'Créer le compte d’un médecin ou d’un infirmier', icone: 'fa-user-doctor',
+        titre: 'Ajout soignant', description: 'Créer le compte d’un médecin, d’un infirmier ou d’une sage-femme', icone: 'fa-user-doctor',
         lien: '/admin/soignants', queryParams: { ajout: '1' }, couleur: 'from-emerald-500 to-teal-700',
       }] : []),
       ...(medecin ? [{
@@ -77,7 +77,7 @@ export class AccesRapideComponent {
         lien: '/admin/messages', couleur: 'from-orange-500 to-rose-600',
       },
       {
-        titre: 'Écrire à un collègue', description: 'Discuter avec un médecin ou un infirmier', icone: 'fa-comment-medical',
+        titre: 'Écrire à un collègue', description: 'Discuter avec un médecin, un infirmier ou une sage-femme', icone: 'fa-comment-medical',
         lien: '/admin/discussions', couleur: 'from-sky-500 to-cyan-700',
       },
     ];

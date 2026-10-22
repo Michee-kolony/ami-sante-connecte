@@ -56,8 +56,8 @@
           }
         </div>
         <p class="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-          <span class="badge" [class]="estMedecin ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300' : 'bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300'">
-            <i class="fa-solid" [class]="estMedecin ? 'fa-user-doctor' : 'fa-user-nurse'"></i> {{ s.role }}
+          <span class="badge" [class]="categorie.badge">
+            <i class="fa-solid" [class]="categorie.icone"></i> {{ s.role }}
           </span>
           <span class="font-mono">{{ s.matricule }}</span>
         </p>
@@ -200,7 +200,7 @@
               <label class="label" for="m-role">Rôle dans le système</label>
               <select id="m-role" name="role" class="input" [ngModel]="form.role" (ngModelChange)="changerRole($event)" [disabled]="estMoi">
                 @for (g of rolesParCategorie; track g.categorie) {
-                  <optgroup [label]="g.categorie === 'Médecin' ? 'Médecins' : 'Infirmiers et infirmières'">
+                  <optgroup [label]="categories[g.categorie].pluriel">
                     @for (r of g.roles; track r) { <option [ngValue]="r">{{ r }}</option> }
                   </optgroup>
                 }
@@ -237,7 +237,7 @@
               <div class="grid gap-4 sm:grid-cols-2">
                 <div><label class="label" for="m-tel">Téléphone <span class="req">*</span></label><input id="m-tel" name="telephone" class="input" [(ngModel)]="form.telephone" required inputmode="tel"></div>
                 <div><label class="label" for="m-mail">E-mail (identifiant de connexion) <span class="req">*</span></label><input id="m-mail" type="email" name="email" class="input" [(ngModel)]="form.email" required email></div>
-                <div><label class="label" for="m-ordre">N° d’Ordre ({{ categorieForm === 'Médecin' ? 'CNOM' : 'CNOI' }})</label><input id="m-ordre" name="numeroOrdre" class="input uppercase" [(ngModel)]="form.numeroOrdre"></div>
+                <div><label class="label" for="m-ordre">N° d’Ordre ({{ ordreForm }})</label><input id="m-ordre" name="numeroOrdre" class="input uppercase" [(ngModel)]="form.numeroOrdre"></div>
                 <div>
                   <label class="label" for="m-grade">Grade</label>
                   <select id="m-grade" name="grade" class="input" [(ngModel)]="form.grade">@for (g of grades; track g) { <option>{{ g }}</option> }</select>

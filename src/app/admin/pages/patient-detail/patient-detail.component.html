@@ -336,7 +336,7 @@
                       @for (fo of e.foetus; track $index; let n = $index) {
                         <p class="text-slate-600 dark:text-slate-300">
                           <span class="font-semibold">F{{ n + 1 }}</span> ·
-                          activité cardiaque {{ fo.activiteCardiaque === null ? 'non précisée' : fo.activiteCardiaque ? 'présente' : 'absente' }}{{ fo.sexe ? ' · ' + fo.sexe : '' }}{{ fo.presentation ? ' · ' + fo.presentation : '' }}{{ fo.poidsEstimeG != null ? ' · EPF ' + fo.poidsEstimeG + ' g' : '' }}
+                          activité cardiaque {{ fo.activiteCardiaque === null ? 'non précisée' : fo.activiteCardiaque ? 'présente' : 'absente' }}{{ fo.bcf != null ? ' · BCF ' + fo.bcf + ' bpm' : '' }}{{ fo.sexe ? ' · ' + fo.sexe : '' }}{{ fo.presentation ? ' · ' + fo.presentation : '' }}{{ fo.poidsEstimeG != null ? ' · EPF ' + fo.poidsEstimeG + ' g' : '' }}
                         </p>
                       }
                       @if (e.conclusion) { <p class="text-slate-900 dark:text-white"><span class="font-semibold">Conclusion :</span> {{ e.conclusion }}</p> }

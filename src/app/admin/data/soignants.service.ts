@@ -3,10 +3,11 @@ import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { API_URL } from '../../shared/api';
 
-export type CategorieSoignant = 'Médecin' | 'Infirmier';
+export type CategorieSoignant = 'Médecin' | 'Infirmier' | 'Sage-femme';
 export type RoleSoignant =
   | 'Médecin' | 'Médecin chef de service' | 'Médecin directeur'
-  | 'Infirmier(ère)' | 'Infirmier(ère) titulaire' | 'Infirmier(ère) superviseur(e)';
+  | 'Infirmier(ère)' | 'Infirmier(ère) titulaire' | 'Infirmier(ère) superviseur(e)'
+  | 'Sage-femme' | 'Sage-femme titulaire' | 'Sage-femme superviseur(e)';
 export type StatutSoignant = 'Actif' | 'Suspendu';
 export type PieceIdentite = 'Carte d’électeur' | 'Passeport' | 'Carte militaire' | 'Permis de conduire';
 
@@ -14,13 +15,31 @@ export type PieceIdentite = 'Carte d’électeur' | 'Passeport' | 'Carte militai
 export const ROLES_SOIGNANT: { categorie: CategorieSoignant; roles: RoleSoignant[] }[] = [
   { categorie: 'Médecin', roles: ['Médecin', 'Médecin chef de service', 'Médecin directeur'] },
   { categorie: 'Infirmier', roles: ['Infirmier(ère)', 'Infirmier(ère) titulaire', 'Infirmier(ère) superviseur(e)'] },
+  { categorie: 'Sage-femme', roles: ['Sage-femme', 'Sage-femme titulaire', 'Sage-femme superviseur(e)'] },
 ];
+
+/** Libellés et pictogrammes de chaque catégorie, pour les listes, badges et formulaires. */
+export const CATEGORIES: Record<CategorieSoignant, { pluriel: string; singulier: string; icone: string; badge: string }> = {
+  Médecin: {
+    pluriel: 'Médecins', singulier: 'médecin', icone: 'fa-user-doctor',
+    badge: 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',
+  },
+  Infirmier: {
+    pluriel: 'Infirmiers et infirmières', singulier: 'infirmier·ère', icone: 'fa-user-nurse',
+    badge: 'bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300',
+  },
+  'Sage-femme': {
+    pluriel: 'Sages-femmes', singulier: 'sage-femme', icone: 'fa-person-pregnant',
+    badge: 'bg-pink-50 text-pink-700 dark:bg-pink-500/10 dark:text-pink-300',
+  },
+};
 export const PIECES_IDENTITE: PieceIdentite[] = ['Carte d’électeur', 'Passeport', 'Carte militaire', 'Permis de conduire'];
 
 /** Grades et spécialités proposés selon la catégorie. */
 export const GRADES: Record<CategorieSoignant, string[]> = {
   Médecin: ['Médecin généraliste', 'Médecin spécialiste', 'Médecin résident', 'Professeur'],
   Infirmier: ['Licencié(e) (A0)', 'Gradué(e) (A1)', 'Diplômé(e) (A2)'],
+  'Sage-femme': ['Licencié(e) en sciences obstétricales (A0)', 'Gradué(e) sage-femme (A1)', 'Accoucheuse diplômée (A2)'],
 };
 export const SPECIALITES: Record<CategorieSoignant, string[]> = {
   Médecin: [
@@ -31,12 +50,20 @@ export const SPECIALITES: Record<CategorieSoignant, string[]> = {
     'Soins infirmiers généraux', 'Accoucheuse / sage-femme', 'Pédiatrie', 'Santé communautaire',
     'Soins d’urgence', 'Bloc opératoire', 'Anesthésie',
   ],
+  'Sage-femme': [
+    'Obstétrique', 'Consultations prénatales (CPN)', 'Salle d’accouchement', 'Soins postnatals',
+    'Soins néonatals', 'Planification familiale', 'Santé communautaire',
+  ],
 };
 /** Ordre professionnel où le soignant est inscrit. */
-export const ORDRE: Record<CategorieSoignant, string> = { Médecin: 'CNOM', Infirmier: 'CNOI' };
+export const ORDRE: Record<CategorieSoignant, string> = { Médecin: 'CNOM', Infirmier: 'CNOI', 'Sage-femme': 'ONSF' };
+
+/** Préfixe du matricule attribué par le serveur. */
+export const PREFIXE_MATRICULE: Record<CategorieSoignant, string> = { Médecin: 'MED', Infirmier: 'INF', 'Sage-femme': 'SFM' };
 
 export function categorieDuRole(role: RoleSoignant): CategorieSoignant {
-  return role.startsWith('Médecin') ? 'Médecin' : 'Infirmier';
+  if (role.startsWith('Médecin')) return 'Médecin';
+  return role.startsWith('Sage-femme') ? 'Sage-femme' : 'Infirmier';
 }
 
 export interface Affectation {
@@ -47,7 +74,7 @@ export interface Affectation {
 
 export interface Soignant {
   id: string;
-  /** Identifiant interne attribué par la plateforme, ex. MED-0004 ou INF-0012. */
+  /** Identifiant interne attribué par la plateforme, ex. MED-0004, INF-0012 ou SFM-0003. */
   matricule: string;
   // Identité
   prenom: string;
@@ -115,7 +142,7 @@ export function nomAuteur(a: AuteurAjout): string {
 }
 
 /**
- * Comptes du personnel soignant (médecins et infirmier·ères), stockés par backend-ami-connecte.
+ * Comptes du personnel soignant (médecins, infirmier·ères et sages-femmes), stockés par backend-ami-connecte.
  * Les photos sont envoyées au serveur, qui les dépose dans le bucket R2 (dossier soignant/).
  * Le mot de passe est haché côté serveur (bcrypt).
  */
@@ -147,9 +174,9 @@ export class SoignantsService {
     return !!n && this.soignants().some(s => s.numeroOrdre === n);
   }
 
-  /** Aperçu du matricule : MED-xxxx pour les médecins, INF-xxxx pour les infirmier·ères (attribué par le serveur). */
+  /** Aperçu du matricule : MED-, INF- ou SFM-xxxx selon la catégorie (attribué par le serveur). */
   prochainMatricule(role: RoleSoignant): string {
-    const prefixe = categorieDuRole(role) === 'Médecin' ? 'MED' : 'INF';
+    const prefixe = PREFIXE_MATRICULE[categorieDuRole(role)];
     const max = this.soignants()
       .filter(s => s.matricule.startsWith(prefixe + '-'))
       .reduce((m, s) => Math.max(m, parseInt(s.matricule.split('-')[1], 10) || 0), 0);

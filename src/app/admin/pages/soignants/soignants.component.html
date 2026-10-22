@@ -26,7 +26,7 @@
   }
 
   <!-- Statistiques -->
-  <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+  <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
     <div class="card flex items-center gap-4 p-4">
       <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"><i class="fa-solid fa-user-doctor"></i></div>
       <div>@if (enChargement()) { <div class="skeleton mb-1.5 h-7 w-12"></div> } @else { <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats().total }}</p> }<p class="text-xs text-slate-500 dark:text-slate-400">Soignants</p></div>
@@ -38,6 +38,10 @@
     <div class="card flex items-center gap-4 p-4">
       <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400"><i class="fa-solid fa-user-nurse"></i></div>
       <div>@if (enChargement()) { <div class="skeleton mb-1.5 h-7 w-12"></div> } @else { <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats().infirmiers }}</p> }<p class="text-xs text-slate-500 dark:text-slate-400">Infirmiers et infirmières</p></div>
+    </div>
+    <div class="card flex items-center gap-4 p-4">
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-pink-50 text-pink-600 dark:bg-pink-500/10 dark:text-pink-400"><i class="fa-solid fa-person-pregnant"></i></div>
+      <div>@if (enChargement()) { <div class="skeleton mb-1.5 h-7 w-12"></div> } @else { <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats().sagesFemmes }}</p> }<p class="text-xs text-slate-500 dark:text-slate-400">Sages-femmes</p></div>
     </div>
     <div class="card flex items-center gap-4 p-4">
       <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400"><i class="fa-solid fa-hospital"></i></div>
@@ -76,6 +80,7 @@
           <option value="Toutes">Toutes catégories</option>
           <option value="Médecin">Médecins</option>
           <option value="Infirmier">Infirmiers</option>
+          <option value="Sage-femme">Sages-femmes</option>
         </select>
         <i class="fa-solid fa-chevron-down pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
       </div>
@@ -103,7 +108,7 @@
         </thead>
         <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
           @for (m of filtres(); track m.id) {
-            @let estMedecin = categorie(m) === 'Médecin';
+            @let cat = categories[categorie(m)];
             <tr class="transition hover:bg-slate-50/70 dark:hover:bg-slate-800/50" [class.opacity-60]="m.statut === 'Suspendu'">
               <td class="table-td">
                 <div class="flex items-center gap-3">
@@ -117,8 +122,8 @@
                     <a [routerLink]="['/admin/soignants', m.id]" class="whitespace-nowrap font-medium text-slate-900 hover:text-brand-700 dark:text-white dark:hover:text-brand-300">{{ nomComplet(m) }} <span class="text-slate-500 dark:text-slate-400">{{ m.postnom }}</span></a>
                     <p class="flex items-center gap-1.5">
                       <span class="font-mono text-xs text-slate-500 dark:text-slate-400">{{ m.matricule }}</span>
-                      <span class="badge" [class]="estMedecin ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300' : 'bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300'">
-                        <i class="fa-solid" [class]="estMedecin ? 'fa-user-doctor' : 'fa-user-nurse'"></i> {{ estMedecin ? 'Médecin' : 'Infirmier' }}
+                      <span class="badge" [class]="cat.badge">
+                        <i class="fa-solid" [class]="cat.icone"></i> {{ categorie(m) }}
                       </span>
                     </p>
                     <a [href]="'tel:' + m.telephone.split(' ').join('')" class="whitespace-nowrap text-[11px] text-slate-400 hover:text-brand-700 dark:hover:text-brand-300"><i class="fa-solid fa-phone mr-1"></i>{{ m.telephone }}</a>
@@ -227,11 +232,11 @@
           }
         }
         @for (h of historique(); track h.id) {
-          @let estMedecin = categorie(h) === 'Médecin';
+          @let cat = categories[categorie(h)];
           <li class="flex items-start gap-3 px-5 py-3.5">
             <span class="mt-0.5 flex h-8 w-8 flex-none items-center justify-center rounded-full text-sm"
-                  [class]="estMedecin ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300' : 'bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300'">
-              <i class="fa-solid" [class]="estMedecin ? 'fa-user-doctor' : 'fa-user-nurse'"></i>
+                  [class]="cat.badge">
+              <i class="fa-solid" [class]="cat.icone"></i>
             </span>
             <div class="min-w-0 flex-1 text-sm">
               <p class="text-slate-700 dark:text-slate-300">
@@ -278,19 +283,19 @@
       </div>
 
       <div class="flex-1 space-y-7 overflow-y-auto px-5 py-6 sm:px-6">
-        <!-- Rôle : seule différence entre médecins et infirmiers -->
+        <!-- Rôle : seule différence entre médecins, infirmiers et sages-femmes -->
         <section class="rounded-2xl bg-brand-50/60 p-4 ring-1 ring-brand-100 dark:bg-brand-500/5 dark:ring-brand-500/20 sm:p-5">
           <label class="label" for="sg-role">Rôle dans le système <span class="req">*</span></label>
           <select id="sg-role" name="role" class="input" [ngModel]="form.role" (ngModelChange)="changerRole($event)" required>
             @for (g of rolesParCategorie; track g.categorie) {
-              <optgroup [label]="g.categorie === 'Médecin' ? 'Médecins' : 'Infirmiers et infirmières'">
+              <optgroup [label]="categories[g.categorie].pluriel">
                 @for (r of g.roles; track r) { <option [ngValue]="r">{{ r }}</option> }
               </optgroup>
             }
           </select>
           <p class="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
-            <i class="fa-solid" [class]="categorieForm === 'Médecin' ? 'fa-user-doctor' : 'fa-user-nurse'"></i>
-            Catégorie : <span class="font-semibold text-slate-700 dark:text-slate-200">{{ categorieForm === 'Médecin' ? 'médecin' : 'infirmier·ère' }}</span>
+            <i class="fa-solid" [class]="categories[categorieForm].icone"></i>
+            Catégorie : <span class="font-semibold text-slate-700 dark:text-slate-200">{{ categories[categorieForm].singulier }}</span>
             · inscription au {{ ordre }} · matricule <span class="font-mono font-semibold text-slate-700 dark:text-slate-200">{{ matriculePropose }}</span>
           </p>
         </section>
@@ -301,7 +306,7 @@
             @if (photoApercu) {
               <img [src]="photoApercu" alt="Aperçu de la photo du soignant" class="h-full w-full object-cover">
             } @else {
-              <div class="flex h-full w-full items-center justify-center text-3xl text-slate-300 dark:text-slate-600"><i class="fa-solid" [class]="categorieForm === 'Médecin' ? 'fa-user-doctor' : 'fa-user-nurse'"></i></div>
+              <div class="flex h-full w-full items-center justify-center text-3xl text-slate-300 dark:text-slate-600"><i class="fa-solid" [class]="categories[categorieForm].icone"></i></div>
             }
           </div>
           <div class="space-y-2">

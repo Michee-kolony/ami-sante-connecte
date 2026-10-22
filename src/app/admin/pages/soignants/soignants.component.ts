@@ -6,7 +6,7 @@ import { EnLigneComponent } from '../../components/en-ligne.component';
 import { PresenceService } from '../../data/presence.service';
 import { EtablissementsService } from '../../data/etablissements.service';
 import {
-  Affectation, AuteurAjout, CategorieSoignant, GRADES, ORDRE, PIECES_IDENTITE, PieceIdentite, ROLES_SOIGNANT, RoleSoignant,
+  Affectation, AuteurAjout, CATEGORIES, CategorieSoignant, GRADES, ORDRE, PIECES_IDENTITE, PieceIdentite, ROLES_SOIGNANT, RoleSoignant,
   SPECIALITES, Soignant, SoignantsService, StatutSoignant, categorieDuRole, nomAuteur,
 } from '../../data/soignants.service';
 import { SessionService, messageErreur } from '../../data/session.service';
@@ -65,6 +65,7 @@ export class SoignantsComponent implements OnDestroy {
   }
 
   readonly rolesParCategorie = ROLES_SOIGNANT;
+  readonly categories = CATEGORIES;
   readonly pieces = PIECES_IDENTITE;
   /** Seuls les établissements actifs peuvent recevoir un nouveau soignant. */
   etablissementsActifs = computed(() => this.etablissementsService.etablissements().filter(e => e.statut === 'Actif'));
@@ -143,6 +144,7 @@ export class SoignantsComponent implements OnDestroy {
       total: liste.length,
       medecins: liste.filter(s => categorieDuRole(s.role) === 'Médecin').length,
       infirmiers: liste.filter(s => categorieDuRole(s.role) === 'Infirmier').length,
+      sagesFemmes: liste.filter(s => categorieDuRole(s.role) === 'Sage-femme').length,
       multiSites: liste.filter(s => s.affectations.length > 1).length,
     };
   });

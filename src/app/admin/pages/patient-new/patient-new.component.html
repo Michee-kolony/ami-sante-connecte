@@ -508,6 +508,10 @@
                     </div>
                   </div>
                   <div>
+                    <label class="label" [for]="'echo-bcf-' + n">BCF <span class="text-xs font-normal text-slate-400">(battements/min)</span></label>
+                    <input [id]="'echo-bcf-' + n" [name]="'echoBcf' + n" type="number" min="0" max="250" class="input max-w-xs" [(ngModel)]="fo.bcf" placeholder="ex. 140">
+                  </div>
+                  <div>
                     <label class="label" [for]="'echo-sexe-' + n">Sexe du fœtus</label>
                     <select [id]="'echo-sexe-' + n" [name]="'echoSexe' + n" class="input" [(ngModel)]="fo.sexe"><option value="">Non précisé</option>@for (x of sexesFoetus; track x) { <option [value]="x">{{ x }}</option> }</select>
                   </div>
@@ -899,6 +903,7 @@
                 <p class="flex flex-wrap items-baseline gap-x-2">
                   <span class="font-semibold">F{{ n + 1 }}</span>
                   <span>Activité cardiaque :</span> <span class="valeur court">{{ fo.activiteCardiaque === null ? '' : fo.activiteCardiaque ? 'présente' : 'absente' }}</span>
+                  <span>BCF :</span> <span class="valeur court">{{ fo.bcf != null ? fo.bcf + ' bpm' : '' }}</span>
                   <span>Sexe :</span> <span class="valeur court">{{ fo.sexe }}</span>
                   <span>Présentation :</span> <span class="valeur court">{{ fo.presentation }}{{ fo.position ? ', ' + fo.position : '' }}</span>
                 </p>

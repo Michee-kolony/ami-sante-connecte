@@ -5,7 +5,7 @@ import { AvatarComponent } from '../../components/avatar.component';
 import { EtablissementsService } from '../../data/etablissements.service';
 import { SessionService, messageErreur } from '../../data/session.service';
 import {
-  Affectation, AuteurAjout, GRADES, ORDRE, PIECES_IDENTITE, ROLES_SOIGNANT, RoleSoignant, SPECIALITES, Soignant, SoignantsService,
+  Affectation, AuteurAjout, CATEGORIES, GRADES, ORDRE, PIECES_IDENTITE, ROLES_SOIGNANT, RoleSoignant, SPECIALITES, Soignant, SoignantsService,
   categorieDuRole, nomAuteur,
 } from '../../data/soignants.service';
 
@@ -67,6 +67,10 @@ export class SoignantDetailComponent implements OnChanges, OnDestroy {
     return this.soignant ? ORDRE[categorieDuRole(this.soignant.role)] : '';
   }
 
+  get categorie() {
+    return CATEGORIES[categorieDuRole(this.soignant?.role ?? 'Médecin')];
+  }
+
   get estMoi(): boolean {
     return this.soignant?.id === this.session.soignant()?.id;
   }
@@ -85,6 +89,7 @@ export class SoignantDetailComponent implements OnChanges, OnDestroy {
 
   // --- Modification par le médecin chef ---------------------------------------------
   readonly rolesParCategorie = ROLES_SOIGNANT;
+  readonly categories = CATEGORIES;
   readonly pieces = PIECES_IDENTITE;
   readonly dateMax = new Date().toISOString().slice(0, 10);
   etablissementsActifs = computed(() => this.etablissementsService.etablissements().filter(e => e.statut === 'Actif'));
@@ -128,6 +133,10 @@ export class SoignantDetailComponent implements OnChanges, OnDestroy {
 
   get categorieForm() {
     return categorieDuRole(this.form.role);
+  }
+
+  get ordreForm(): string {
+    return ORDRE[this.categorieForm];
   }
 
   /** Grades et spécialités de la catégorie, plus la valeur actuelle si elle n'y figure pas. */

@@ -7,7 +7,7 @@ import { PresenceService } from '../../data/presence.service';
 import { SessionService, messageErreur } from '../../data/session.service';
 
 /**
- * Discussions privées et chiffrées entre soignants (médecins et infirmier·ères), en temps réel.
+ * Discussions privées et chiffrées entre soignants (médecins, infirmier·ères et sages-femmes), en temps réel.
  * Route : /admin/discussions, ou /admin/discussions?avec=<id du soignant> pour ouvrir directement.
  */
 @Component({
