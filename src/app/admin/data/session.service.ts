@@ -126,11 +126,37 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   }));
 };
 
-/** Message d'erreur lisible renvoyé par le serveur. */
+/** Message en français selon le code HTTP, quand le serveur n'en donne pas (proxy, page HTML…). */
+const MESSAGES_HTTP: Record<number, string> = {
+  400: 'Requête invalide. Vérifiez les informations saisies.',
+  401: 'Session expirée, reconnectez-vous.',
+  403: 'Vous n’avez pas accès à cette action.',
+  404: 'Élément introuvable.',
+  408: 'Le serveur a mis trop de temps à répondre, réessayez.',
+  409: 'Conflit avec des données existantes.',
+  413: 'Fichier ou données trop volumineux.',
+  415: 'Format de fichier non pris en charge.',
+  429: 'Trop de demandes, patientez un instant puis réessayez.',
+  500: 'Erreur interne du serveur. Réessayez dans un instant.',
+  502: 'Serveur momentanément indisponible, réessayez dans un instant.',
+  503: 'Serveur momentanément indisponible, réessayez dans un instant.',
+  504: 'Le serveur a mis trop de temps à répondre, réessayez.',
+};
+
+/** Tournures anglaises connues (bibliothèques, proxy) : jamais montrées telles quelles. */
+const ANGLAIS = /\b(Path|is required|Cast to|failed|Unexpected|is not a valid|allowed|Cannot|Not Found|Bad Request|Internal Server Error|Gateway|Timeout|Unauthorized|Forbidden|Too Many Requests|Payload Too Large)\b/;
+
+/** Message d'erreur lisible, toujours en français. */
 export function messageErreur(err: unknown): string {
   if (err instanceof HttpErrorResponse) {
-    if (err.status === 0) return 'Serveur injoignable. Vérifiez que le backend est démarré.';
-    return err.error?.message ?? `Erreur ${err.status}.`;
+    if (err.status === 0) {
+      return navigator.onLine === false
+        ? 'Pas de connexion internet. Vérifiez votre réseau puis réessayez.'
+        : 'Serveur injoignable. Vérifiez votre connexion ou réessayez dans un instant.';
+    }
+    const message = typeof err.error?.message === 'string' ? err.error.message : '';
+    if (message && !ANGLAIS.test(message)) return message;
+    return MESSAGES_HTTP[err.status] ?? (err.status >= 500 ? MESSAGES_HTTP[500] : `Erreur ${err.status}.`);
   }
-  return 'Erreur inattendue.';
+  return 'Erreur inattendue. Réessayez.';
 }

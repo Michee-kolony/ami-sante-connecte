@@ -9,6 +9,7 @@ import {
 import { EtablissementsService } from '../../data/etablissements.service';
 import { MesurePreventive, ReferentielsService, parGroupe } from '../../data/referentiels.service';
 import { SessionService, messageErreur } from '../../data/session.service';
+import { enJpeg } from '../../components/prise-photo.component';
 
 interface Step {
   title: string;
@@ -77,23 +78,6 @@ function parse(iso: string): number {
 
 function toIso(ms: number): string {
   return new Date(ms).toISOString().slice(0, 10);
-}
-
-/**
- * Photo convertie en JPEG (1000 px max) : plus légère sur une connexion lente, et lisible
- * par le générateur de la carte patiente côté serveur (qui ne lit ni le WebP ni le HEIC).
- */
-async function enJpeg(fichier: File, cote = 1000): Promise<File> {
-  const image = await createImageBitmap(fichier);
-  const echelle = Math.min(1, cote / Math.max(image.width, image.height));
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.round(image.width * echelle);
-  canvas.height = Math.round(image.height * echelle);
-  canvas.getContext('2d')!.drawImage(image, 0, 0, canvas.width, canvas.height);
-  image.close();
-  const blob = await new Promise<Blob | null>(ok => canvas.toBlob(ok, 'image/jpeg', 0.88));
-  if (!blob) throw new Error('Conversion impossible');
-  return new File([blob], fichier.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
 }
 
 /**
