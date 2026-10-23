@@ -34,8 +34,11 @@ export interface Discussion {
   dernierMessageLe: string | null;
 }
 
+/** Discussion avec une patiente de l'application mobile (interlocuteur de rôle « Patiente »). */
+export const estPatiente = (d: Discussion | null | undefined): boolean => d?.interlocuteur?.role === 'Patiente';
+
 /**
- * Discussions privées entre soignants. L'historique vient de l'API ; les nouveaux messages,
+ * Discussions privées : entre soignants, et avec les patientes de l'application mobile. L'historique vient de l'API ; les nouveaux messages,
  * accusés de lecture et « en train d'écrire » arrivent en temps réel par socket.io.
  */
 @Injectable({ providedIn: 'root' })
@@ -57,6 +60,12 @@ export class DiscussionsService {
   private minuteursEcriture = new Map<string, ReturnType<typeof setTimeout>>();
 
   readonly totalNonLus = computed(() => this.discussions().reduce((t, d) => t + d.nonLus, 0));
+
+  /** Discussions avec des collègues (page Discussions) et avec des patientes (page Messages). */
+  readonly collegues = computed(() => this.discussions().filter(d => !estPatiente(d)));
+  readonly patientes = computed(() => this.discussions().filter(d => estPatiente(d)));
+  readonly nonLusCollegues = computed(() => this.collegues().reduce((t, d) => t + d.nonLus, 0));
+  readonly nonLusPatientes = computed(() => this.patientes().reduce((t, d) => t + d.nonLus, 0));
 
   /** Message reçu d'un collègue alors que sa discussion n'est pas affichée (popup, son…). */
   readonly arrivees = new Subject<{ message: MessageDiscussion; discussion: Discussion }>();
@@ -96,6 +105,19 @@ export class DiscussionsService {
     const existante = this.discussions().find(x => x.id === d.id);
     if (!existante) this.discussions.update(l => [d, ...l]);
     return existante ?? d;
+  }
+
+  /** Ouvre (ou crée) la discussion avec une patiente (numéro AC-PAT-… ou identifiant). */
+  async ouvrirAvecPatiente(patienteId: string): Promise<Discussion> {
+    const d = await firstValueFrom(this.http.post<Discussion>(this.url, { patienteId }));
+    const existante = this.discussions().find(x => x.id === d.id);
+    if (!existante) this.discussions.update(l => [d, ...l]);
+    return existante ?? d;
+  }
+
+  /** Patientes joignables par l'application (espace activé), par nom ou numéro. */
+  rechercherPatientes(q: string): Promise<Interlocuteur[]> {
+    return firstValueFrom(this.http.get<Interlocuteur[]>(`${this.url}/patientes`, { params: q ? { q } : {} }));
   }
 
   async chargerMessages(discussionId: string, plusAnciens = false): Promise<void> {

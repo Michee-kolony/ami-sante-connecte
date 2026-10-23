@@ -1,17 +1,16 @@
-import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { AvatarComponent } from './avatar.component';
 import { Discussion, DiscussionsService } from '../data/discussions.service';
-import { MessagesService } from '../data/messages.service';
+import { PresenceService } from '../data/presence.service';
 import { SessionService } from '../data/session.service';
-import { PATIENTES } from '../data/mock-data';
 
 type Onglet = 'collegues' | 'patientes';
 
 /**
  * Bouton rond flottant (en bas à droite, sur toutes les pages de l'espace administrateur) :
- * ouvre un panneau listant les discussions entre soignants (temps réel) et les conversations
- * avec les patientes (maquette statique). Un clic ouvre la conversation sur sa page.
+ * ouvre un panneau listant les discussions avec les collègues et avec les patientes de
+ * l'application mobile, en temps réel. Un clic ouvre la conversation sur sa page.
  */
 @Component({
   selector: 'app-conversations-flottantes',
@@ -55,7 +54,7 @@ type Onglet = 'collegues' | 'patientes';
             } @else if (!discussions.charge()) {
               <p class="p-6 text-center text-sm text-slate-500 dark:text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Chargement…</p>
             } @else {
-              @for (d of discussions.discussions(); track d.id) {
+              @for (d of discussions.collegues(); track d.id) {
                 @let s = d.interlocuteur;
                 <button type="button" (click)="ouvrirDiscussion(d)"
                         class="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/60">
@@ -78,24 +77,38 @@ type Onglet = 'collegues' | 'patientes';
                 <p class="p-6 text-center text-sm text-slate-500 dark:text-slate-400">Aucune discussion pour le moment.</p>
               }
             }
+          } @else if (!session.connecte()) {
+            <p class="p-6 text-center text-sm text-slate-500 dark:text-slate-400">
+              <a routerLink="/admin/connexion" (click)="ouvert.set(false)" class="font-medium text-brand-600 hover:underline dark:text-brand-300">Connectez-vous</a>
+              pour voir vos conversations avec les patientes.
+            </p>
+          } @else if (!discussions.charge()) {
+            <p class="p-6 text-center text-sm text-slate-500 dark:text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Chargement…</p>
           } @else {
-            @for (f of fils(); track f.patienteId) {
-              <button type="button" (click)="ouvrirPatiente(f.patienteId)"
+            @for (d of discussions.patientes(); track d.id) {
+              @let s = d.interlocuteur;
+              <button type="button" (click)="ouvrirPatiente(d)"
                       class="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/60">
-                <app-avatar [photo]="f.patiente.photo" [prenom]="f.patiente.prenom" [nomFamille]="f.patiente.nom" class="h-11 w-11 rounded-full text-sm" />
+                <span class="relative flex-none">
+                  <app-avatar [photo]="s?.photo ?? undefined" [prenom]="s?.prenom ?? '?'" [nomFamille]="s?.nom ?? ''" class="h-11 w-11 rounded-full text-sm" />
+                  @if (s && presence.estEnLigne(s.id)) { <span class="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-accent-500 ring-2 ring-white dark:ring-slate-900" title="En ligne"></span> }
+                </span>
                 <span class="min-w-0 flex-1">
                   <span class="flex items-baseline justify-between gap-2">
-                    <span class="truncate text-sm font-semibold text-slate-900 dark:text-white">{{ f.patiente.prenom }} {{ f.patiente.nom }}</span>
-                    <span class="flex-none text-[11px] text-slate-400">{{ heure(f.dernier?.date ?? null) }}</span>
+                    <span class="truncate text-sm font-semibold text-slate-900 dark:text-white">{{ s?.prenom }} {{ s?.nom }}</span>
+                    <span class="flex-none text-[11px] text-slate-400">{{ heure(d.dernierMessageLe) }}</span>
                   </span>
                   <span class="flex items-center justify-between gap-2">
-                    <span class="truncate text-xs" [class]="f.nonLus ? 'font-medium text-slate-800 dark:text-slate-100' : 'text-slate-500 dark:text-slate-400'">
-                      {{ f.dernier?.texte ?? (f.canal ? 'Aucun message' : 'Pas de consentement de contact') }}
+                    <span class="truncate text-xs" [class]="d.nonLus ? 'font-medium text-slate-800 dark:text-slate-100' : 'text-slate-500 dark:text-slate-400'">
+                      @if (discussions.enTrainDecrire().has(d.id)) { <em class="text-brand-600 dark:text-brand-300">écrit…</em> }
+                      @else { {{ d.dernierMessage?.texte ?? s?.matricule }} }
                     </span>
-                    @if (f.nonLus) { <span class="flex-none rounded-full bg-accent-500 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">{{ f.nonLus }}</span> }
+                    @if (d.nonLus) { <span class="flex-none rounded-full bg-accent-500 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">{{ d.nonLus }}</span> }
                   </span>
                 </span>
               </button>
+            } @empty {
+              <p class="p-6 text-center text-sm text-slate-500 dark:text-slate-400">Aucune conversation avec une patiente pour le moment.</p>
             }
           }
         </div>
@@ -122,7 +135,7 @@ type Onglet = 'collegues' | 'patientes';
 })
 export class ConversationsFlottantesComponent {
   discussions = inject(DiscussionsService);
-  private messages = inject(MessagesService);
+  presence = inject(PresenceService);
   session = inject(SessionService);
   private router = inject(Router);
 
@@ -130,18 +143,11 @@ export class ConversationsFlottantesComponent {
   readonly onglet = signal<Onglet>('collegues');
 
   readonly onglets = [
-    { id: 'collegues' as const, libelle: 'Collègues', icone: 'fa-user-doctor', nonLus: this.discussions.totalNonLus },
-    { id: 'patientes' as const, libelle: 'Patientes', icone: 'fa-person-pregnant', nonLus: this.messages.totalNonLus },
+    { id: 'collegues' as const, libelle: 'Collègues', icone: 'fa-user-doctor', nonLus: this.discussions.nonLusCollegues },
+    { id: 'patientes' as const, libelle: 'Patientes', icone: 'fa-person-pregnant', nonLus: this.discussions.nonLusPatientes },
   ];
 
-  readonly totalNonLus = computed(() => this.discussions.totalNonLus() + this.messages.totalNonLus());
-
-  /** Conversations avec les patientes (maquette statique), les plus récentes en premier. */
-  readonly fils = computed(() =>
-    this.messages.conversations()
-      .map(c => ({ ...c, patiente: PATIENTES.find(p => p.id === c.patienteId)!, dernier: c.messages.at(-1) }))
-      .filter(f => f.patiente)
-      .sort((a, b) => (b.dernier?.date ?? '').localeCompare(a.dernier?.date ?? '')));
+  readonly totalNonLus = this.discussions.totalNonLus;
 
   @HostListener('document:keydown.escape')
   fermer(): void {
@@ -170,8 +176,9 @@ export class ConversationsFlottantesComponent {
     this.router.navigate(['/admin/discussions']);
   }
 
-  ouvrirPatiente(id: string): void {
+  ouvrirPatiente(d: Discussion): void {
+    this.discussions.aOuvrir.set(d.id);
     this.ouvert.set(false);
-    this.router.navigate(['/admin/messages'], { queryParams: { patiente: id } });
+    this.router.navigate(['/admin/messages']);
   }
 }

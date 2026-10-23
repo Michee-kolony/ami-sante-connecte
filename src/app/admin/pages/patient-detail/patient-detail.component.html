@@ -86,6 +86,11 @@
             <button type="button" class="btn-secondary px-3 py-1.5 text-xs" (click)="ouvrirCarte()">
               <i class="fa-solid fa-id-card"></i> Carte patiente
             </button>
+            @if (p.espaceEnLigne === 'Activé') {
+              <a routerLink="/admin/messages" [queryParams]="{ patiente: p.numero }" class="btn-secondary px-3 py-1.5 text-xs" title="Écrire à la patiente dans son application">
+                <i class="fa-solid fa-comment-medical"></i> Écrire
+              </a>
+            }
             @if (session.peutGererSoignants()) {
               <button type="button" class="btn-ghost px-3 py-1.5 text-xs text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10" (click)="ouvrirSuppression()">
                 <i class="fa-solid fa-trash"></i> Supprimer

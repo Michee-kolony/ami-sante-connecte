@@ -4,7 +4,7 @@
       <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Discussions</h1>
       <p class="mt-1 flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
         <i class="fa-solid fa-lock text-accent-600 dark:text-accent-400"></i>
-        Messagerie privée entre médecins et infirmier·ères · messages chiffrés, visibles uniquement par les participants.
+        Messagerie privée entre médecins et infirmier·ères · messages chiffrés, visibles uniquement par les participants. Les échanges avec les patientes sont dans <a routerLink="/admin/messages" class="font-medium text-brand-600 hover:underline dark:text-brand-300">Messages</a>.
       </p>
     </div>
     <div class="flex flex-wrap gap-2">
@@ -45,7 +45,10 @@
               </span>
               <span class="min-w-0 flex-1">
                 <span class="flex items-baseline justify-between gap-2">
-                  <span class="truncate text-sm font-semibold text-slate-900 dark:text-white">{{ nom(d.interlocuteur) }}</span>
+                  <span class="flex min-w-0 items-center gap-1.5">
+                    <span class="truncate text-sm font-semibold text-slate-900 dark:text-white">{{ nom(d.interlocuteur) }}</span>
+                    @if (d.interlocuteur?.role === 'Patiente') { <span class="badge flex-none bg-accent-50 text-[10px] text-accent-700 dark:bg-accent-500/10 dark:text-accent-300">Patiente</span> }
+                  </span>
                   <span class="flex-none text-[11px]" [class]="d.nonLus ? 'font-semibold text-brand-600 dark:text-brand-400' : 'text-slate-400'">{{ dateCourte(d.dernierMessageLe) }}</span>
                 </span>
                 <span class="flex items-center justify-between gap-2">
@@ -86,7 +89,7 @@
             <p class="truncate font-semibold text-slate-900 dark:text-white">{{ nom(d.interlocuteur) }}</p>
             <p class="truncate text-xs" [class]="service.enTrainDecrire().has(d.id) ? 'italic text-accent-600 dark:text-accent-400' : 'text-slate-500 dark:text-slate-400'">
               @if (service.enTrainDecrire().has(d.id)) { en train d’écrire… }
-              @else { {{ d.interlocuteur?.role }} · {{ d.interlocuteur && presence.estEnLigne(d.interlocuteur.id) ? 'en ligne' : 'hors ligne' }} }
+              @else { {{ d.interlocuteur?.role }}{{ d.interlocuteur?.role === 'Patiente' ? ' · ' + d.interlocuteur?.matricule : '' }} · {{ d.interlocuteur && presence.estEnLigne(d.interlocuteur.id) ? 'en ligne' : 'hors ligne' }} }
             </p>
           </div>
           <span class="hidden items-center gap-1 rounded-full bg-accent-50 px-2.5 py-1 text-[11px] font-medium text-accent-700 dark:bg-accent-500/10 dark:text-accent-300 sm:flex"><i class="fa-solid fa-lock"></i> Chiffrée</span>

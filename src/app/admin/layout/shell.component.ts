@@ -2,7 +2,6 @@ import { Component, afterNextRender, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { STRUCTURE, SYNC_QUEUE, UTILISATEUR } from '../data/mock-data';
 import { UrgencesService } from '../data/urgences.service';
-import { MessagesService } from '../data/messages.service';
 import { SessionService } from '../data/session.service';
 import { PresenceService } from '../data/presence.service';
 import { DiscussionsService } from '../data/discussions.service';
@@ -30,7 +29,6 @@ interface NavItem {
   templateUrl: './shell.component.html',
 })
 export class ShellComponent {
-  messages = inject(MessagesService);
 
   constructor() {
     // Une fois l'écran affiché, on prépare la page Urgences en tâche de fond :
@@ -56,8 +54,8 @@ export class ShellComponent {
 
   /** Badge du menu : messages non lus et nouvelles urgences comptés en direct. */
   badge(item: NavItem): number | undefined {
-    if (item.path === '/admin/messages') return this.messages.totalNonLus();
-    if (item.path === '/admin/discussions') return this.discussions.totalNonLus() || undefined;
+    if (item.path === '/admin/messages') return this.discussions.nonLusPatientes() || undefined;
+    if (item.path === '/admin/discussions') return this.discussions.nonLusCollegues() || undefined;
     if (item.path === '/admin/urgences') return this.urgences.nouvelles();
     if (item.path === '/admin/accouchements') return this.alertesMaternite.actives().length || undefined;
     return item.badge;
@@ -66,7 +64,7 @@ export class ShellComponent {
   session = inject(SessionService);
   /** Démarre le battement de présence sur toutes les pages de l'espace administrateur. */
   private presence = inject(PresenceService);
-  /** Discussions entre soignants : compteur de messages non lus dans le menu, en temps réel. */
+  /** Discussions (collègues et patientes) : compteurs de messages non lus dans le menu, en temps réel. */
   private discussions = inject(DiscussionsService);
   /** Alertes du partogramme : badge du menu, bandeau et alarme sonore en direct (zone rouge). */
   alertesMaternite = inject(AlertesMaterniteService);

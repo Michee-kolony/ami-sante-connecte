@@ -65,7 +65,7 @@ export const ADMIN_ROUTES: Routes = [
       { path: 'discussions', component: DiscussionsComponent, canActivate: [connecteGuard], title: 'Discussions · AMI Santé Connect' },
       // Articles de conseils : médecins seulement (le serveur refuse aussi les infirmier·ères).
       { path: 'conseils', component: ArticlesComponent, canActivate: [connecteGuard, medecinGuard], title: 'Conseils aux mamans · AMI Santé Connect' },
-      { path: 'messages', component: MessagesComponent, title: 'Messages · AMI Santé Connect' },
+      { path: 'messages', component: MessagesComponent, canActivate: [connecteGuard], title: 'Messages · AMI Santé Connect' },
       // Accouchement (modules I à VI) et suivi de l'enfant (carnet PEV) : serveur.
       { path: 'accouchements', component: SalleTravailComponent, canActivate: [connecteGuard, materniteGuard], title: 'Salle de travail · AMI Santé Connect' },
       { path: 'accouchements/:id', component: AccouchementComponent, canActivate: [connecteGuard, materniteGuard], title: 'Dossier d’accouchement · AMI Santé Connect' },

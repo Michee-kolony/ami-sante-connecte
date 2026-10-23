@@ -1,8 +1,18 @@
 <!-- Pleine largeur ; la carte occupe toute la hauteur sous la barre du haut (4rem) et le titre -->
 <div class="flex flex-col gap-4">
-  <div [class]="actif() ? 'hidden md:block' : ''">
-    <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Messages</h1>
-    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Échangez avec les patientes que vous avez consultées, uniquement sur les canaux qu’elles ont acceptés.</p>
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between" [class]="actif() ? 'hidden md:flex' : ''">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Messages</h1>
+      <p class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
+        <span><i class="fa-solid fa-lock text-accent-600 dark:text-accent-400"></i> Échanges chiffrés avec les patientes de l’application AMI Santé Connect.</span>
+        @if (service.charge()) {
+          <span class="inline-flex items-center gap-1.5 font-medium text-accent-700 dark:text-accent-300">
+            <span class="h-2 w-2 rounded-full bg-accent-500"></span>{{ nbEnLigne() }} en ligne
+          </span>
+        }
+      </p>
+    </div>
+    <button type="button" class="btn-primary" (click)="ouvrirRecherche()"><i class="fa-solid fa-pen-to-square"></i> Nouvelle conversation</button>
   </div>
 
   <div class="card grid grid-cols-1 overflow-hidden md:grid-cols-[18rem_minmax(0,1fr)] xl:grid-cols-[22rem_minmax(0,1fr)] 2xl:grid-cols-[26rem_minmax(0,1fr)]"
@@ -19,92 +29,125 @@
         </div>
       </div>
       <ul class="min-h-0 flex-1 divide-y divide-slate-100 overflow-y-auto dark:divide-slate-800">
-        @for (f of fils(); track f.patienteId) {
+        @if (!service.charge()) {
+          @for (i of [1, 2, 3, 4]; track i) {
+            <li class="flex items-center gap-3 px-4 py-3.5" aria-hidden="true"><div class="skeleton h-11 w-11 rounded-full"></div><div class="flex-1 space-y-1.5"><div class="skeleton h-3.5 w-28"></div><div class="skeleton h-3 w-40"></div></div></li>
+          }
+        }
+        @for (d of liste(); track d.id) {
+          @let s = d.interlocuteur;
           <li>
-            <button type="button" (click)="ouvrir(f.patienteId)"
+            <button type="button" (click)="ouvrir(d)"
                     class="flex w-full items-center gap-3 px-4 py-3.5 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                    [class]="selection() === f.patienteId ? 'bg-brand-50/70 dark:bg-brand-500/10' : ''">
-              <div class="relative">
-                <app-avatar [photo]="f.patiente.photo" [prenom]="f.patiente.prenom" [nomFamille]="f.patiente.nom" class="h-11 w-11 rounded-full text-sm" />
-                <span class="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-white text-[10px] ring-2 ring-white dark:bg-slate-900 dark:ring-slate-900"
-                      [class]="f.canal === 'WhatsApp' ? 'text-[#25d366]' : f.canal ? 'text-brand-600 dark:text-brand-400' : 'text-slate-400'">
-                  <i class="{{ icone(f.canal) }}"></i>
-                </span>
-              </div>
+                    [class]="service.ouverte() === d.id ? 'bg-brand-50/70 dark:bg-brand-500/10' : ''">
+              <span class="relative flex-none">
+                <app-avatar [photo]="s?.photo ?? undefined" [prenom]="s?.prenom ?? '?'" [nomFamille]="s?.nom ?? ''" class="h-11 w-11 rounded-full text-sm" />
+                @if (enLigne(d)) {
+                  <span class="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-accent-500 ring-2 ring-white dark:ring-slate-900" title="En ligne"></span>
+                }
+              </span>
               <div class="min-w-0 flex-1">
                 <div class="flex items-baseline justify-between gap-2">
-                  <p class="truncate font-medium text-slate-900 dark:text-white">{{ f.patiente.prenom }} {{ f.patiente.nom }}</p>
-                  @if (derniereDate(f)) {
-                    <span class="flex-none text-[11px]" [class]="f.nonLus ? 'font-semibold text-accent-600 dark:text-accent-400' : 'text-slate-400'">{{ jour(derniereDate(f)) === 'Aujourd’hui' ? heure(derniereDate(f)) : jour(derniereDate(f)) }}</span>
-                  }
+                  <p class="truncate font-medium text-slate-900 dark:text-white">{{ s?.prenom }} {{ s?.nom }}</p>
+                  <span class="flex-none text-[11px]" [class]="d.nonLus ? 'font-semibold text-accent-600 dark:text-accent-400' : 'text-slate-400'">{{ dateCourte(d.dernierMessageLe) }}</span>
                 </div>
                 <div class="flex items-center justify-between gap-2">
-                  <p class="truncate text-xs" [class]="f.nonLus ? 'font-medium text-slate-700 dark:text-slate-200' : 'text-slate-500 dark:text-slate-400'">{{ apercu(f) }}</p>
-                  @if (f.nonLus) {
-                    <span class="flex h-5 min-w-5 flex-none items-center justify-center rounded-full bg-accent-500 px-1.5 text-[11px] font-semibold text-white">{{ f.nonLus }}</span>
+                  @if (service.enTrainDecrire().has(d.id)) {
+                    <p class="truncate text-xs italic text-accent-600 dark:text-accent-400">en train d’écrire…</p>
+                  } @else {
+                    <p class="truncate text-xs" [class]="d.nonLus ? 'font-medium text-slate-700 dark:text-slate-200' : 'text-slate-500 dark:text-slate-400'">{{ apercu(d) }}</p>
+                  }
+                  @if (d.nonLus) {
+                    <span class="flex h-5 min-w-5 flex-none items-center justify-center rounded-full bg-accent-500 px-1.5 text-[11px] font-semibold text-white">{{ d.nonLus }}</span>
                   }
                 </div>
               </div>
             </button>
           </li>
         } @empty {
-          <li class="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400">Aucune patiente trouvée.</li>
+          @if (service.charge()) {
+            <li class="flex flex-col items-center gap-3 px-6 py-12 text-center">
+              <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800"><i class="fa-regular fa-comments text-xl"></i></span>
+              <p class="text-sm text-slate-500 dark:text-slate-400">{{ recherche() ? 'Aucune patiente trouvée.' : 'Aucune conversation pour l’instant. Les patientes peuvent vous écrire depuis leur application.' }}</p>
+              @if (!recherche()) { <button type="button" class="btn-secondary py-2 text-xs" (click)="ouvrirRecherche()"><i class="fa-solid fa-plus"></i> Écrire à une patiente</button> }
+            </li>
+          }
         }
       </ul>
     </aside>
 
     <!-- Conversation -->
-    @if (actif(); as f) {
+    @if (actif(); as d) {
+      @let s = d.interlocuteur;
       <section class="flex min-h-0 min-w-0 flex-col">
         <header class="flex items-center gap-3 border-b border-slate-100 px-3 py-3 dark:border-slate-800 sm:px-5">
           <button type="button" class="btn-ghost -ml-1 px-2.5 md:hidden" (click)="fermer()" aria-label="Retour à la liste"><i class="fa-solid fa-arrow-left"></i></button>
-          <app-avatar [photo]="f.patiente.photo" [prenom]="f.patiente.prenom" [nomFamille]="f.patiente.nom" class="h-10 w-10 rounded-full text-sm" />
+          <span class="relative flex-none">
+            <app-avatar [photo]="s?.photo ?? undefined" [prenom]="s?.prenom ?? '?'" [nomFamille]="s?.nom ?? ''" class="h-10 w-10 rounded-full text-sm" />
+            @if (enLigne(d)) { <span class="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-accent-500 ring-2 ring-white dark:ring-slate-900"></span> }
+          </span>
           <div class="min-w-0 flex-1">
-            <p class="truncate font-semibold text-slate-900 dark:text-white">{{ f.patiente.prenom }} {{ f.patiente.nom }} <span class="font-normal text-slate-500 dark:text-slate-400">{{ f.patiente.postnom }}</span></p>
-            <p class="truncate text-xs text-slate-500 dark:text-slate-400">
-              <i class="{{ icone(f.canal) }} mr-1"></i>{{ f.canal ?? 'Aucun canal' }}<span class="hidden sm:inline"> · {{ f.patiente.ageGestationnel }}</span><span class="hidden lg:inline"> · dernière consultation le {{ fmt(f.derniereConsultation) }}</span>
+            <p class="truncate font-semibold text-slate-900 dark:text-white">{{ s?.prenom }} {{ s?.nom }}</p>
+            <p class="truncate text-xs" [class]="service.enTrainDecrire().has(d.id) ? 'italic text-accent-600 dark:text-accent-400' : enLigne(d) ? 'text-accent-600 dark:text-accent-400' : 'text-slate-500 dark:text-slate-400'">
+              @if (service.enTrainDecrire().has(d.id)) { en train d’écrire… }
+              @else { <span class="font-mono">{{ s?.matricule }}</span> · {{ enLigne(d) ? 'en ligne' : 'hors ligne' }} }
             </p>
           </div>
-          <a [routerLink]="['/admin/patientes', f.patienteId]" class="btn-secondary flex-none px-3 py-2 text-xs" title="Ouvrir le dossier"><i class="fa-solid fa-folder-open"></i><span class="hidden sm:inline"> Dossier</span></a>
+          @if (session.estMedecin() && s?.matricule) {
+            <a [routerLink]="['/admin/patientes', s!.matricule]" class="btn-secondary flex-none px-3 py-2 text-xs" title="Ouvrir le dossier"><i class="fa-solid fa-folder-open"></i><span class="hidden sm:inline"> Dossier</span></a>
+          }
         </header>
 
         <!-- Fil des messages -->
         <div #fil class="min-h-0 flex-1 space-y-2 overflow-y-auto bg-slate-50/70 px-3 py-5 dark:bg-slate-950/40 sm:px-6">
-          @if (f.consentement) {
-            <p class="mx-auto mb-4 max-w-md rounded-xl bg-amber-50 px-3 py-2 text-center text-[11px] text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">
-              <i class="fa-solid fa-lock mr-1"></i>
-              @if (f.canal === 'Application') { Messages chiffrés dans l’application. } @else { Message transmis par {{ f.canal }} : n’y mettez aucun détail médical sensible. }
-            </p>
-          }
-
-          @for (m of f.messages; track m.id; let i = $index) {
-            @if (nouveauJour(i)) {
-              <div class="py-2 text-center"><span class="rounded-full bg-white px-3 py-1 text-[11px] font-medium text-slate-500 shadow-sm dark:bg-slate-800 dark:text-slate-400">{{ jour(m.date) }}</span></div>
-            }
-            <div class="flex" [class]="m.auteur === 'medecin' ? 'justify-end' : 'justify-start'">
-              <div class="max-w-[88%] rounded-2xl px-3.5 py-2 text-sm shadow-sm sm:max-w-[75%] xl:max-w-[65%] 2xl:max-w-[55%]"
-                   [class]="m.auteur === 'medecin'
-                     ? 'rounded-br-md bg-brand-700 text-white dark:bg-brand-600'
-                     : 'rounded-bl-md bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100'">
-                <p class="whitespace-pre-line break-words">{{ m.texte }}</p>
-                <p class="mt-1 flex items-center justify-end gap-1 text-[10px]" [class]="m.auteur === 'medecin' ? 'text-brand-100' : 'text-slate-400'">
-                  {{ heure(m.date) }}
-                  @if (m.auteur === 'medecin') {
-                    <i class="fa-solid" [class]="m.statut === 'lu' ? 'fa-check-double text-accent-300' : 'fa-check'" [title]="m.statut === 'lu' ? 'Lu' : 'Envoyé'"></i>
-                  }
-                </p>
-              </div>
+          <p class="mx-auto mb-4 max-w-md rounded-xl bg-amber-50 px-3 py-2 text-center text-[11px] text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">
+            <i class="fa-solid fa-lock mr-1"></i> Messages chiffrés dans l’application. Ne partagez que les informations utiles à la prise en charge.
+          </p>
+          @if (chargementFil) {
+            <div class="space-y-3" aria-hidden="true">
+              @for (c of ['w-48', 'ml-auto w-56', 'w-40', 'ml-auto w-32']; track $index) { <div class="skeleton h-10 rounded-2xl {{ c }}"></div> }
             </div>
-          } @empty {
-            @if (f.consentement) {
-              <p class="py-10 text-center text-sm text-slate-500 dark:text-slate-400">Aucun message. Écrivez le premier message à {{ f.patiente.prenom }}.</p>
+          } @else {
+            @if (service.plusAnciens()[d.id]) {
+              <div class="text-center"><button type="button" class="btn-ghost py-1.5 text-xs" (click)="plusAnciens()"><i class="fa-solid fa-clock-rotate-left"></i> Messages précédents</button></div>
+            }
+            @for (g of groupes(); track g.jour) {
+              <div class="py-2 text-center"><span class="rounded-full bg-white px-3 py-1 text-[11px] font-medium text-slate-500 shadow-sm dark:bg-slate-800 dark:text-slate-400">{{ g.libelle }}</span></div>
+              @for (m of g.messages; track m.id) {
+                @let mien = m.auteurId === moi;
+                <div class="flex flex-col" [class]="mien ? 'items-end' : 'items-start'">
+                  <div class="max-w-[88%] rounded-2xl px-3.5 py-2 text-sm shadow-sm sm:max-w-[75%] xl:max-w-[65%] 2xl:max-w-[55%]"
+                       [class]="mien ? 'rounded-br-md bg-brand-700 text-white dark:bg-brand-600' : 'rounded-bl-md bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100'"
+                       [class.opacity-60]="m.etat === 'envoi'">
+                    <p class="whitespace-pre-line break-words">{{ m.texte }}</p>
+                    <p class="mt-1 flex items-center justify-end gap-1 text-[10px]" [class]="mien ? 'text-brand-100' : 'text-slate-400'">
+                      {{ heure(m.envoyeLe) }}
+                      @if (mien) {
+                        @if (m.etat === 'envoi') { <i class="fa-regular fa-clock" title="Envoi…"></i> }
+                        @else if (m.etat !== 'echec') {
+                          <i class="fa-solid" [class]="estLu(m, d) ? 'fa-check-double text-accent-300' : 'fa-check'" [title]="estLu(m, d) ? 'Lu' : 'Envoyé'"></i>
+                        }
+                      }
+                    </p>
+                  </div>
+                  @if (m.etat === 'echec') {
+                    <p class="mt-1 text-[11px] text-rose-500"><i class="fa-solid fa-circle-exclamation"></i> Non envoyé ·
+                      <button type="button" class="font-semibold underline" (click)="renvoyer(m)">Réessayer</button></p>
+                  }
+                </div>
+              }
+            } @empty {
+              <p class="py-10 text-center text-sm text-slate-500 dark:text-slate-400">Aucun message. Écrivez le premier message à {{ s?.prenom }}.</p>
             }
           }
         </div>
 
         <!-- Saisie -->
-        @if (f.consentement) {
+        @if (s?.statut === 'Actif') {
           <div class="relative border-t border-slate-100 p-3 dark:border-slate-800 sm:p-4">
+            @if (erreur) {
+              <p class="mb-2 text-xs text-rose-600 dark:text-rose-400" role="alert"><i class="fa-solid fa-circle-exclamation mr-1"></i>{{ erreur }}</p>
+            }
             @if (afficherModeles) {
               <ul class="absolute bottom-full left-3 right-3 z-10 mb-2 max-h-72 space-y-1 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-900 sm:left-4 sm:right-auto sm:w-[min(28rem,calc(100%-2rem))]">
                 <li class="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Messages rapides</li>
@@ -117,8 +160,9 @@
               <button type="button" class="btn-ghost flex-none px-3 py-2.5" (click)="afficherModeles = !afficherModeles" title="Messages rapides" [class.text-brand-700]="afficherModeles">
                 <i class="fa-solid fa-bolt"></i><span class="sr-only">Messages rapides</span>
               </button>
-              <textarea name="texte" rows="1" class="input max-h-32 min-h-[2.75rem] resize-none rounded-2xl" [(ngModel)]="texte" (keydown)="clavier($event)"
-                        [placeholder]="'Écrire à ' + f.patiente.prenom + '…'" maxlength="1000"></textarea>
+              <textarea #saisie name="texte" rows="1" class="input max-h-32 min-h-[2.75rem] resize-none rounded-2xl" [(ngModel)]="texte"
+                        (keydown)="clavier($event)" (input)="surSaisie()" [maxlength]="TAILLE_MAX"
+                        [placeholder]="'Écrire à ' + (s?.prenom ?? 'la patiente') + '…'" aria-label="Message"></textarea>
               <button type="submit" class="btn-primary h-11 w-11 flex-none rounded-full p-0" [disabled]="!texte.trim()" aria-label="Envoyer">
                 <i class="fa-solid fa-paper-plane"></i>
               </button>
@@ -128,7 +172,7 @@
         } @else {
           <div class="flex items-start gap-3 border-t border-slate-100 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-300">
             <i class="fa-solid fa-ban mt-0.5 text-slate-400"></i>
-            <p>{{ f.patiente.prenom }} n’a pas donné son accord pour être contactée par message. Recueillez son consentement lors de la prochaine consultation pour pouvoir lui écrire.</p>
+            <p>L’application de {{ s?.prenom }} n’est plus active : elle ne peut plus recevoir de message.</p>
           </div>
         }
       </section>
@@ -136,8 +180,50 @@
       <section class="hidden flex-col items-center justify-center gap-3 p-10 text-center md:flex">
         <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 text-2xl text-brand-600 dark:bg-brand-500/10 dark:text-brand-400"><i class="fa-regular fa-comments"></i></div>
         <p class="font-semibold text-slate-900 dark:text-white">Sélectionnez une conversation</p>
-        <p class="max-w-sm text-sm text-slate-500 dark:text-slate-400">Choisissez une patiente dans la liste pour lire ses messages et lui répondre.</p>
+        <p class="max-w-sm text-sm text-slate-500 dark:text-slate-400">Les patientes vous écrivent depuis leur application. Vous voyez quand elles sont en ligne et quand elles ont lu vos messages.</p>
+        @if (erreur) { <p class="text-xs text-rose-600 dark:text-rose-400" role="alert">{{ erreur }}</p> }
       </section>
     }
   </div>
 </div>
+
+<!-- Nouvelle conversation : patientes dont l'application est activée -->
+@if (rechercheOuverte) {
+  <div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="titre-recherche">
+    <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" (click)="rechercheOuverte = false"></div>
+    <div class="relative flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl dark:bg-slate-900 sm:rounded-2xl">
+      <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+        <div>
+          <h2 id="titre-recherche" class="font-semibold text-slate-900 dark:text-white">Écrire à une patiente</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Patientes dont l’application est activée</p>
+        </div>
+        <button type="button" class="btn-ghost px-2.5" (click)="rechercheOuverte = false" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="border-b border-slate-100 p-3 dark:border-slate-800">
+        <input class="input py-2 text-sm" placeholder="Nom, prénom ou numéro (AC-PAT-…)" [(ngModel)]="rechercheQ" (ngModelChange)="surRecherche()" name="rechercheQ" autofocus>
+      </div>
+      <ul class="min-h-0 flex-1 divide-y divide-slate-100 overflow-y-auto dark:divide-slate-800">
+        @if (chargementRecherche && !resultats.length) {
+          @for (i of [1, 2, 3]; track i) { <li class="flex items-center gap-3 px-5 py-3" aria-hidden="true"><div class="skeleton h-10 w-10 rounded-full"></div><div class="flex-1 space-y-1.5"><div class="skeleton h-3.5 w-32"></div><div class="skeleton h-3 w-24"></div></div></li> }
+        }
+        @for (p of resultats; track p.id) {
+          <li>
+            <button type="button" class="flex w-full items-center gap-3 px-5 py-3 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/40" (click)="demarrerAvec(p.id)">
+              <span class="relative flex-none">
+                <app-avatar [photo]="p.photo ?? undefined" [prenom]="p.prenom" [nomFamille]="p.nom" class="h-10 w-10 rounded-full text-xs" />
+                @if (presence.estEnLigne(p.id)) { <span class="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-accent-500 ring-2 ring-white dark:ring-slate-900"></span> }
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="block truncate text-sm font-semibold text-slate-900 dark:text-white">{{ p.prenom }} {{ p.nom }}</span>
+                <span class="block truncate font-mono text-xs text-slate-500 dark:text-slate-400">{{ p.matricule }}</span>
+              </span>
+              @if (presence.estEnLigne(p.id)) { <span class="text-[11px] font-medium text-accent-600 dark:text-accent-400">en ligne</span> }
+            </button>
+          </li>
+        } @empty {
+          @if (!chargementRecherche) { <li class="px-5 py-8 text-center text-sm text-slate-500 dark:text-slate-400">Aucune patiente trouvée.</li> }
+        }
+      </ul>
+    </div>
+  </div>
+}

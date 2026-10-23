@@ -37,6 +37,8 @@ export class PresenceService implements OnDestroy {
   private ecouteurs = new Map<string, Set<(donnees: any) => void>>();
 
   readonly enLigne = signal<SoignantEnLigne[]>([]);
+  /** Patientes connectées à l'application mobile (identifiants seulement). */
+  readonly patientesEnLigne = signal<Set<string>>(new Set());
   /** Liste reçue du serveur (avant, ou pendant une reconnexion : squelette). */
   readonly charge = signal(false);
 
@@ -52,8 +54,9 @@ export class PresenceService implements OnDestroy {
     this.fermer();
   }
 
+  /** Soignant ou patiente (application mobile) actuellement en ligne. */
   estEnLigne(id: string): boolean {
-    return this.enLigne().some(s => s.id === id);
+    return this.enLigne().some(s => s.id === id) || this.patientesEnLigne().has(id);
   }
 
   /** S'abonne à un événement temps réel ; renvoie la fonction de désabonnement. */
@@ -87,6 +90,7 @@ export class PresenceService implements OnDestroy {
       this.enLigne.set(liste);
       this.charge.set(true);
     });
+    this.socket.on('presence:patientes', (ids: string[]) => this.patientesEnLigne.set(new Set(ids)));
     // Serveur redémarré ou réseau coupé : socket.io se reconnecte seul et le serveur renvoie la liste.
     this.socket.on('disconnect', () => this.charge.set(false));
   }
@@ -95,6 +99,7 @@ export class PresenceService implements OnDestroy {
     this.socket?.disconnect();
     this.socket = undefined;
     this.enLigne.set([]);
+    this.patientesEnLigne.set(new Set());
     this.charge.set(false);
   }
 }

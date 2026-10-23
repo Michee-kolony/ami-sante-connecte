@@ -113,7 +113,12 @@ export class NotificationsMessagesComponent {
   ouvrir(b: Bulle): void {
     this.service.aOuvrir.set(b.discussion.id);
     this.fermer(b);
-    this.router.navigate(['/admin/discussions']);
+    this.router.navigate([this.page(b.discussion)]);
+  }
+
+  /** Conversation avec une patiente : page Messages ; avec un collègue : page Discussions. */
+  private page(d: Discussion): string {
+    return d.interlocuteur?.role === 'Patiente' ? '/admin/messages' : '/admin/discussions';
   }
 
   fermer(b: Bulle): void {
@@ -173,7 +178,7 @@ export class NotificationsMessagesComponent {
     n.onclick = () => {
       window.focus();
       this.service.aOuvrir.set(discussion.id);
-      this.router.navigate(['/admin/discussions']);
+      this.router.navigate([this.page(discussion)]);
       n.close();
     };
   }

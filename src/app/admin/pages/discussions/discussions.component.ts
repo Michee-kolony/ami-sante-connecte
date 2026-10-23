@@ -1,5 +1,6 @@
 import { AfterViewChecked, Component, ElementRef, Input, OnDestroy, ViewChild, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { AvatarComponent } from '../../components/avatar.component';
 import { Discussion, DiscussionsService, Interlocuteur, MessageDiscussion } from '../../data/discussions.service';
 import { heureFr, jourLocal } from '../../data/format';
@@ -13,7 +14,7 @@ import { SessionService, messageErreur } from '../../data/session.service';
 @Component({
   selector: 'app-discussions',
   standalone: true,
-  imports: [FormsModule, AvatarComponent],
+  imports: [FormsModule, RouterLink, AvatarComponent],
   templateUrl: './discussions.component.html',
 })
 export class DiscussionsComponent implements AfterViewChecked, OnDestroy {
@@ -45,7 +46,7 @@ export class DiscussionsComponent implements AfterViewChecked, OnDestroy {
     // Clic sur un popup de nouveau message : ouvre la discussion concernée.
     effect(() => {
       const id = this.service.aOuvrir();
-      const d = id ? this.service.discussions().find(x => x.id === id) : null;
+      const d = id ? this.service.collegues().find(x => x.id === id) : null;
       if (!d) return;
       untracked(() => {
         this.service.aOuvrir.set(null);
@@ -64,7 +65,7 @@ export class DiscussionsComponent implements AfterViewChecked, OnDestroy {
 
   liste = computed(() => {
     const q = this.recherche().trim().toLowerCase();
-    return this.service.discussions().filter(d => !q || `${d.interlocuteur?.prenom} ${d.interlocuteur?.nom} ${d.interlocuteur?.role}`.toLowerCase().includes(q));
+    return this.service.collegues().filter(d => !q || `${d.interlocuteur?.prenom} ${d.interlocuteur?.nom} ${d.interlocuteur?.role}`.toLowerCase().includes(q));
   });
 
   /** Messages regroupés par jour, pour les séparateurs « Aujourd'hui », « Hier »… */
