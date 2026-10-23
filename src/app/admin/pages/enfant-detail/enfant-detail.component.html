@@ -1,0 +1,312 @@
+<div class="mx-auto max-w-7xl space-y-6">
+  <nav class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+    <a routerLink="/admin/enfants" class="hover:text-brand-700 dark:hover:text-brand-300">Enfants</a>
+    <i class="fa-solid fa-chevron-right text-[9px]"></i>
+    <span class="font-mono text-slate-700 dark:text-slate-200">{{ id }}</span>
+  </nav>
+
+  @if (chargement) {
+    <div class="space-y-4" aria-hidden="true"><div class="skeleton h-28 w-full rounded-2xl"></div><div class="skeleton h-96 w-full rounded-2xl"></div></div>
+  } @else if (!e) {
+    <p class="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300" role="alert">{{ erreur || 'Dossier introuvable.' }}</p>
+  } @else {
+    <!-- En-tête -->
+    <div class="card p-5 sm:p-6">
+      <div class="flex flex-col gap-5 lg:flex-row lg:items-center">
+        <span class="flex h-16 w-16 flex-none items-center justify-center rounded-full text-2xl text-white" [class]="e.sexe === 'Féminin' ? 'bg-pink-500' : e.sexe === 'Masculin' ? 'bg-brand-600' : 'bg-slate-500'"><i class="fa-solid fa-baby"></i></span>
+        <div class="flex-1">
+          <p class="font-mono text-xs text-slate-500">{{ e.numero }}</p>
+          <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ e.prenom || 'Bébé ' + e.rang }} {{ e.nom }} {{ e.postnom }}</h1>
+          <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            {{ e.sexe }} · né(e) le {{ dateHeure(e.neLe) }} · {{ e.age?.libelle }}
+            @if (e.mere) { · Mère : <a [routerLink]="['/admin/patientes', e.mere.numero]" class="font-medium text-brand-700 hover:underline dark:text-brand-300">{{ e.mere.prenom }} {{ e.mere.nom }}</a> {{ e.mere.telephone ? '(' + e.mere.telephone + ')' : '' }} }
+          </p>
+        </div>
+        @if (e.carnet; as c) {
+          <div class="flex items-center gap-6">
+            <div class="text-center"><p class="text-2xl font-bold tabular-nums text-slate-900 dark:text-white">{{ c.resume.vaccinsFaits }}/{{ c.resume.vaccinsTotal }}</p><p class="text-xs text-slate-500">vaccins</p></div>
+            @if (c.resume.enRetard) { <div class="text-center"><p class="text-2xl font-bold text-rose-600">{{ c.resume.enRetard }}</p><p class="text-xs text-slate-500">en retard</p></div> }
+            @if (c.resume.completementVaccine) { <span class="badge bg-accent-50 text-accent-700 ring-1 ring-accent-200 dark:bg-accent-500/10 dark:text-accent-300"><i class="fa-solid fa-shield-heart"></i> Complètement vacciné</span> }
+          </div>
+        }
+        <div class="flex items-center gap-2">
+          <label class="sr-only" for="statut">Statut</label>
+          <select id="statut" class="input w-auto py-1.5 text-xs" [ngModel]="e.statut" (ngModelChange)="changerStatut($event)" [disabled]="envoi || e.etatNaissance !== 'Vivant'">
+            @for (s of statuts; track s) { <option>{{ s }}</option> }
+          </select>
+        </div>
+      </div>
+      @if (e.carnet?.prochaineSeance; as ps) {
+        <div class="mt-5 flex flex-col gap-3 rounded-2xl bg-brand-50 p-4 dark:bg-brand-500/10 sm:flex-row sm:items-center">
+          <i class="fa-solid fa-calendar-day text-xl text-brand-700 dark:text-brand-300"></i>
+          <div class="flex-1">
+            <p class="text-sm font-semibold text-brand-900 dark:text-white">Prochaine séance : {{ jour(ps.date) }}</p>
+            <p class="text-sm text-brand-800 dark:text-brand-200">@for (d of ps.doses; track d.code) { <span class="mr-2 inline-flex items-center gap-1"><span class="badge {{ classeDose(d.statut) }}">{{ d.libelle }}</span></span> }</p>
+          </div>
+          @if (suivi) { <button class="btn-primary" (click)="ouvrirSeance()"><i class="fa-solid fa-syringe"></i> Enregistrer une séance</button> }
+        </div>
+      }
+    </div>
+
+    @if (erreur) { <p class="flex items-start gap-2 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300" role="alert"><i class="fa-solid fa-circle-exclamation mt-0.5"></i> {{ erreur }}</p> }
+    @if (notification) { <p class="flex items-center gap-2 rounded-xl bg-accent-50 px-4 py-3 text-sm text-accent-800 dark:bg-accent-500/10 dark:text-accent-300" role="status"><i class="fa-solid fa-circle-check"></i> {{ notification }}</p> }
+
+    <div class="card overflow-hidden">
+      <div class="flex overflow-x-auto border-b border-slate-100 dark:border-slate-800" role="tablist">
+        @for (t of onglets; track t.k) {
+          <button role="tab" class="flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition" [attr.aria-selected]="onglet === t.k"
+                  [class]="onglet === t.k ? 'border-brand-700 text-brand-800 dark:text-brand-300' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100'"
+                  (click)="onglet = t.k"><i class="fa-solid {{ t.i }}"></i> {{ t.l }}</button>
+        }
+      </div>
+    </div>
+
+    @switch (onglet) {
+      <!-- ============================== CARNET ============================== -->
+      @case ('carnet') {
+        @if (!e.carnet) {
+          <p class="card p-6 text-sm text-slate-500">Pas de calendrier vaccinal (enfant mort-né).</p>
+        } @else {
+          <div class="space-y-4">
+            @for (s of seances; track s.seance) {
+              <div class="card overflow-hidden">
+                <div class="card-header">
+                  <h2 class="card-title">{{ s.seance }}</h2>
+                  <span class="badge {{ classeDose($any(etatSeance(s.doses))) }}"><i class="fa-solid {{ iconeDose($any(etatSeance(s.doses))) }}"></i> {{ etatSeance(s.doses) }}</span>
+                </div>
+                <ul class="divide-y divide-slate-100 dark:divide-slate-800">
+                  @for (d of s.doses; track d.code) {
+                    <li class="flex flex-col gap-2 px-5 py-3 sm:flex-row sm:items-center">
+                      <span class="flex h-8 w-8 flex-none items-center justify-center rounded-full text-xs {{ classeDose(d.statut) }}"><i class="fa-solid {{ iconeDose(d.statut) }}"></i></span>
+                      <div class="min-w-0 flex-1">
+                        <p class="text-sm font-semibold text-slate-900 dark:text-white">{{ d.libelle }} <span class="ml-1 text-xs font-normal text-slate-500">{{ d.type !== 'Vaccin' ? d.type + ' · ' : '' }}{{ d.maladies }}</span></p>
+                        <p class="text-xs text-slate-500">{{ d.voie }}</p>
+                      </div>
+                      <div class="text-right text-xs">
+                        @if (d.administration; as a) {
+                          <p class="font-medium text-accent-700 dark:text-accent-300">Faite le {{ jour(a.date) }}{{ a.lot ? ' · lot ' + a.lot : '' }}</p>
+                          @if (administration(d.code); as adm) {
+                            <p class="text-slate-500">par {{ adm.administreePar.nom }}
+                              <button type="button" class="ml-1 text-rose-600 hover:underline" (click)="annulation = { v: adm, motif: '' }">annuler</button></p>
+                          }
+                        } @else {
+                          <p class="text-slate-600 dark:text-slate-300">Prévue le {{ jour(d.datePrevue) }}</p>
+                          <p class="text-slate-500">{{ d.statut }}{{ d.dateLimite ? ' · limite ' + jour(d.dateLimite) : '' }}</p>
+                        }
+                      </div>
+                    </li>
+                  }
+                </ul>
+              </div>
+            }
+            @if (annulees.length) {
+              <div class="card p-5">
+                <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Saisies annulées</p>
+                @for (v of annulees; track v.id) {
+                  <p class="text-xs text-slate-500 line-through">{{ v.code }} du {{ jour(v.date) }}</p><p class="mb-2 text-xs text-slate-500">Annulée par {{ v.annulation?.par?.nom }} : {{ v.annulation?.motif }}</p>
+                }
+              </div>
+            }
+          </div>
+        }
+      }
+
+      <!-- ============================ CROISSANCE ============================ -->
+      @case ('croissance') {
+        <div class="grid gap-6 lg:grid-cols-3">
+          <div class="card lg:col-span-2">
+            <div class="card-header"><h2 class="card-title"><i class="fa-solid fa-chart-line text-brand-600 dark:text-brand-400"></i> Courbe de poids</h2></div>
+            <div class="h-72 p-4"><canvas #courbe role="img" aria-label="Évolution du poids de l’enfant"></canvas></div>
+            <div class="overflow-x-auto border-t border-slate-100 dark:border-slate-800">
+              <table class="min-w-full text-sm">
+                <thead class="bg-slate-50/70 dark:bg-slate-800/50"><tr><th class="table-th">Date</th><th class="table-th">Âge</th><th class="table-th">Poids</th><th class="table-th">Taille</th><th class="table-th">PC</th></tr></thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                  @for (m of mesures; track m.date + m.mois) {
+                    <tr><td class="table-td">{{ jour(m.date) }}</td><td class="table-td">{{ m.mois }} mois</td><td class="table-td">{{ m.poidsG != null ? m.poidsG + ' g' : '—' }}</td><td class="table-td">{{ m.tailleCm ?? '—' }} cm</td><td class="table-td">{{ m.pc ?? '—' }} cm</td></tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            @if (e.suivis.length) {
+              <ul class="divide-y divide-slate-100 border-t border-slate-100 dark:divide-slate-800 dark:border-slate-800">
+                @for (s of e.suivis; track s.id) {
+                  @if (s.alimentation || s.developpement || s.observations) {
+                    <li class="px-5 py-3 text-sm"><span class="font-medium text-slate-900 dark:text-white">{{ jour(s.date) }}</span> · {{ s.alimentation }} {{ s.developpement ? '· ' + s.developpement : '' }} {{ s.observations ? '· ' + s.observations : '' }} <span class="text-xs text-slate-400">— {{ s.auteur.nom }}</span></li>
+                  }
+                }
+              </ul>
+            }
+          </div>
+          @if (suivi) {
+            <div class="card p-5 sm:p-6">
+              <h2 class="section-titre"><i class="fa-solid fa-weight-scale"></i> Visite de suivi</h2>
+              <div class="grid grid-cols-2 gap-3">
+                <div class="col-span-2"><label class="label">Date</label><input type="date" class="input" [(ngModel)]="formSuivi.date"></div>
+                <div><label class="label">Poids (g)</label><input type="number" class="input" [(ngModel)]="formSuivi.poidsG"></div>
+                <div><label class="label">Taille (cm)</label><input type="number" class="input" [(ngModel)]="formSuivi.tailleCm"></div>
+                <div><label class="label">PC (cm)</label><input type="number" class="input" [(ngModel)]="formSuivi.perimetreCranienCm"></div>
+                <div><label class="label">PB (cm)</label><input type="number" step="0.1" class="input" [(ngModel)]="formSuivi.perimetreBrachialCm"></div>
+                <div><label class="label">T° (°C)</label><input type="number" step="0.1" class="input" [(ngModel)]="formSuivi.temperature"></div>
+                <div class="col-span-2"><label class="label">Alimentation</label><select class="input" [(ngModel)]="formSuivi.alimentation"><option value="">—</option>@for (a of alimentations; track a) { <option>{{ a }}</option> }</select></div>
+                <div class="col-span-2"><label class="label">Développement</label><input class="input" [(ngModel)]="formSuivi.developpement"></div>
+                <div class="col-span-2"><label class="label">Observations</label><textarea rows="2" class="input" [(ngModel)]="formSuivi.observations"></textarea></div>
+              </div>
+              <button class="btn-primary mt-4 w-full" (click)="ajouterSuivi()" [disabled]="envoi"><i class="fa-solid fa-plus"></i> Enregistrer la visite</button>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- ============================= NAISSANCE ============================= -->
+      @case ('naissance') {
+        @if (formNaissance; as n) {
+          <fieldset [disabled]="!session.estMaternite() || envoi" class="card min-w-0 p-5 sm:p-6">
+            <div class="grid gap-6 lg:grid-cols-3">
+              <div class="space-y-2 text-sm">
+                <p class="section-titre"><i class="fa-solid fa-ruler"></i> Mensurations</p>
+                <div class="grid grid-cols-3 gap-3">
+                  <div><label class="text-xs text-slate-500">Poids (g)</label><input type="number" class="input" [(ngModel)]="n.poidsG"></div>
+                  <div><label class="text-xs text-slate-500">Taille</label><input type="number" class="input" [(ngModel)]="n.tailleCm"></div>
+                  <div><label class="text-xs text-slate-500">PC</label><input type="number" class="input" [(ngModel)]="n.perimetreCranienCm"></div>
+                </div>
+                <p class="pt-2 text-slate-600 dark:text-slate-300">SENN : maintien T° {{ n.senn.maintienTemperature === true ? 'oui' : n.senn.maintienTemperature === false ? 'non' : '—' }} · T° {{ n.senn.temperatureAxillaire ?? '—' }} · Crédé {{ n.senn.crede === true ? 'oui' : n.senn.crede === false ? 'non' : '—' }}</p>
+                <p class="text-slate-600 dark:text-slate-300">Cordon : lame stérile {{ n.soinsCordon.lameSterile ? 'oui' : 'non' }} · fil stérile {{ n.soinsCordon.filSterile ? 'oui' : 'non' }}</p>
+                <p class="text-slate-600 dark:text-slate-300">Mise au sein &lt; 1 h : {{ n.miseAuSeinMoins1h === true ? 'oui' : n.miseAuSeinMoins1h === false ? 'non' : '—' }}</p>
+                <p class="text-slate-600 dark:text-slate-300">Malformations : {{ n.malformations.presentes ? 'oui — ' + n.malformations.description : n.malformations.presentes === false ? 'non' : '—' }}</p>
+              </div>
+              <div>
+                <p class="section-titre"><i class="fa-solid fa-star-of-life"></i> APGAR</p>
+                <table class="w-full text-sm">
+                  <thead><tr class="text-xs text-slate-500"><th class="text-left font-medium">Minute</th><th class="font-medium">Total</th></tr></thead>
+                  <tbody>
+                    @for (m of [['m1', '1 min'], ['m5', '5 min'], ['m10', '10 min']]; track m[0]) {
+                      <tr><td class="py-1">{{ m[1] }}</td><td class="py-1 text-center font-semibold tabular-nums">{{ $any(e.naissance.apgar)[m[0]]?.total ?? '—' }}/10</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+              <div class="space-y-2 text-sm text-slate-600 dark:text-slate-300">
+                <p class="section-titre"><i class="fa-solid fa-kit-medical"></i> Réanimation et traitement</p>
+                <p>Réanimation : {{ n.reanimation.faite ? 'oui' : n.reanimation.faite === false ? 'non' : '—' }}{{ n.reanimation.stimulation ? ' · stimulation' : '' }}{{ n.reanimation.aspiration ? ' · aspiration' : '' }}{{ n.reanimation.ventilation ? ' · ventilation' : '' }}</p>
+                <p>Vitamine K1 : {{ n.traitement.vitamineK1 ? 'oui' : n.traitement.vitamineK1 === false ? 'non' : '—' }}</p>
+                <p>Antibiotique : {{ n.traitement.antibiotique ? 'oui ' + n.traitement.antibiotiquePrecision : n.traitement.antibiotique === false ? 'non' : '—' }}</p>
+                <p>ARV : {{ n.traitement.arv ? 'oui ' + n.traitement.arvPrecision : n.traitement.arv === false ? 'non' : '—' }}</p>
+              </div>
+            </div>
+            @if (session.estMaternite()) {
+              <div class="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
+                <p class="text-xs text-slate-500">Les autres données de naissance se corrigent depuis le dossier d’accouchement.</p>
+                <button class="btn-primary" (click)="enregistrerNaissance()"><i class="fa-solid fa-check"></i> Enregistrer les mensurations</button>
+              </div>
+            }
+          </fieldset>
+        }
+      }
+
+      <!-- ============================ RENDEZ-VOUS ============================ -->
+      @case ('rendez-vous') {
+        <div class="grid gap-6 lg:grid-cols-3">
+          <div class="card overflow-hidden lg:col-span-2">
+            <div class="card-header"><h2 class="card-title"><i class="fa-solid fa-calendar-days text-brand-600 dark:text-brand-400"></i> Rendez-vous ({{ e.rendezVous.length }})</h2></div>
+            <ul class="divide-y divide-slate-100 dark:divide-slate-800">
+              @for (r of e.rendezVous; track r.id) {
+                <li class="flex flex-col gap-2 px-5 py-3.5 sm:flex-row sm:items-center">
+                  <div class="flex-1">
+                    <p class="text-sm font-medium text-slate-900 dark:text-white">{{ dateHeure(r.date) }}</p>
+                    <p class="text-sm text-slate-600 dark:text-slate-300">{{ r.motif }}</p>
+                  </div>
+                  <span class="badge {{ classeRdv(r.statut) }}">{{ r.statut }}</span>
+                  @if (attendu(r.statut)) {
+                    <div class="flex flex-wrap gap-1">
+                      @if (r.statut !== 'Confirmé') { <button class="btn-ghost px-2 py-1 text-xs" (click)="ouvrirAction(r, 'confirmer')">Confirmer</button> }
+                      <button class="btn-ghost px-2 py-1 text-xs" (click)="ouvrirAction(r, 'reporter')">Reporter</button>
+                      <button class="btn-ghost px-2 py-1 text-xs" (click)="ouvrirAction(r, 'absent')">Absent</button>
+                      <button class="btn-ghost px-2 py-1 text-xs text-rose-600" (click)="ouvrirAction(r, 'annuler')">Annuler</button>
+                    </div>
+                  }
+                </li>
+              } @empty { <li class="px-5 py-8 text-center text-sm text-slate-500">Aucun rendez-vous.</li> }
+            </ul>
+          </div>
+          @if (suivi) {
+            <div class="card p-5 sm:p-6">
+              <h2 class="section-titre"><i class="fa-solid fa-calendar-plus"></i> Nouveau rendez-vous</h2>
+              <div class="space-y-3">
+                <div><label class="label">Date et heure</label><input type="datetime-local" class="input" [(ngModel)]="formRdv.date"></div>
+                <div><label class="label">Motif</label><input class="input" [(ngModel)]="formRdv.motif" placeholder="Rattrapage vaccinal, pesée…"></div>
+                <div><label class="label">Consignes pour la mère</label><input class="input" [(ngModel)]="formRdv.consignes"></div>
+                <button class="btn-primary w-full" (click)="creerRdv()" [disabled]="envoi || !formRdv.date"><i class="fa-solid fa-calendar-plus"></i> Planifier</button>
+              </div>
+              <p class="hint">Visible par la mère dans son espace. Les séances de vaccination sont programmées automatiquement.</p>
+            </div>
+          }
+        </div>
+      }
+    }
+  }
+</div>
+
+<!-- Séance de vaccination -->
+@if (seanceOuverte && e) {
+  <div class="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 backdrop-blur-sm sm:items-center sm:p-4" (click)="seanceOuverte = false">
+    <div class="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-2xl bg-white shadow-2xl dark:bg-slate-900 sm:rounded-2xl" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="titre-seance">
+      <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-800">
+        <h2 id="titre-seance" class="text-lg font-semibold text-slate-900 dark:text-white">Séance de vaccination</h2>
+        <button class="btn-ghost px-2" (click)="seanceOuverte = false" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="space-y-4 p-6">
+        <p class="text-sm text-slate-500">Cochez les doses administrées aujourd’hui (celles de la séance prévue sont pré-cochées).</p>
+        <ul class="max-h-72 divide-y divide-slate-100 overflow-y-auto rounded-xl border border-slate-100 dark:divide-slate-800 dark:border-slate-800">
+          @for (d of dosesSaisissables; track d.code) {
+            <li class="flex items-center gap-3 px-4 py-2.5">
+              <input type="checkbox" class="h-4 w-4 rounded border-slate-300 text-brand-700" [id]="'d-' + d.code" [(ngModel)]="choix[d.code]">
+              <label [for]="'d-' + d.code" class="flex-1 text-sm"><span class="font-medium text-slate-900 dark:text-white">{{ d.libelle }}</span> <span class="text-xs text-slate-500">{{ d.seance }} · {{ d.statut }}</span></label>
+              @if (choix[d.code] && d.type === 'Vaccin') { <input class="input w-32 py-1.5 text-xs" placeholder="N° de lot" [(ngModel)]="lots[d.code]"> }
+            </li>
+          }
+        </ul>
+        <div class="grid gap-3 sm:grid-cols-3">
+          <div><label class="label">Date</label><input type="date" class="input" [(ngModel)]="seance.date"></div>
+          <div><label class="label">Site</label><input class="input" [(ngModel)]="seance.site" placeholder="Cuisse gauche…"></div>
+          <div><label class="label">Lieu</label><input class="input" [(ngModel)]="seance.lieu" placeholder="Centre, stratégie avancée…"></div>
+          <div class="sm:col-span-3"><label class="label">Observations (MAPI…)</label><input class="input" [(ngModel)]="seance.observations"></div>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 border-t border-slate-100 px-6 py-4 dark:border-slate-800">
+        <button class="btn-secondary" (click)="seanceOuverte = false">Annuler</button>
+        <button class="btn-primary" (click)="vacciner()" [disabled]="envoi || !nbChoisies"><i class="fa-solid" [class]="envoi ? 'fa-spinner fa-spin' : 'fa-syringe'"></i> Enregistrer {{ nbChoisies }} dose(s)</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Annulation d'une dose -->
+@if (annulation) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm" (click)="annulation = null">
+    <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+      <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Annuler la saisie {{ annulation.v.code }}</h2>
+      <p class="mt-1 text-sm text-slate-500">La saisie reste visible, barrée, avec votre nom et le motif.</p>
+      <input class="input mt-4" placeholder="Motif (obligatoire)" [(ngModel)]="annulation.motif">
+      <div class="mt-5 flex justify-end gap-2">
+        <button class="btn-secondary" (click)="annulation = null">Retour</button>
+        <button class="btn-primary bg-rose-600 hover:bg-rose-700" (click)="annulerDose()" [disabled]="envoi || !annulation.motif.trim()">Annuler la saisie</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Action sur un rendez-vous -->
+@if (actionRdv; as a) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm" (click)="actionRdv = null">
+    <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+      <h2 class="text-lg font-semibold capitalize text-slate-900 dark:text-white">{{ a.action }} le rendez-vous</h2>
+      <p class="mt-1 text-sm text-slate-500">{{ dateHeure(a.r.date) }} · {{ a.r.motif }}</p>
+      @if (a.action === 'reporter') { <div class="mt-4"><label class="label">Nouvelle date</label><input type="datetime-local" class="input" [(ngModel)]="a.date"></div> }
+      @if (a.action !== 'confirmer') { <div class="mt-3"><label class="label">Motif {{ a.action === 'reporter' || a.action === 'annuler' ? '(obligatoire)' : '' }}</label><input class="input" [(ngModel)]="a.motif"></div> }
+      <div class="mt-5 flex justify-end gap-2">
+        <button class="btn-secondary" (click)="actionRdv = null">Retour</button>
+        <button class="btn-primary" (click)="validerAction()" [disabled]="envoi || ((a.action === 'reporter' || a.action === 'annuler') && !a.motif.trim())">Valider</button>
+      </div>
+    </div>
+  </div>
+}

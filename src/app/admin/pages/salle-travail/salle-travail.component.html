@@ -1,0 +1,202 @@
+<div class="mx-auto max-w-7xl space-y-6">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Salle de travail</h1>
+      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Parturientes admises, partogramme et alertes en direct. Les zones rouges sont notifiées automatiquement aux médecins.</p>
+    </div>
+    <button type="button" class="btn-primary" (click)="ouvrirAdmission()"><i class="fa-solid fa-bed-pulse"></i> Admettre une patiente</button>
+  </div>
+
+  <!-- Statistiques -->
+  <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="card flex items-center gap-4 p-4">
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"><i class="fa-solid fa-person-pregnant"></i></div>
+      <div><p class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats.travail }}</p><p class="text-xs text-slate-500 dark:text-slate-400">En travail</p></div>
+    </div>
+    <div class="card flex items-center gap-4 p-4">
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-accent-50 text-accent-600 dark:bg-accent-500/10 dark:text-accent-400"><i class="fa-solid fa-baby"></i></div>
+      <div><p class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats.postPartum }}</p><p class="text-xs text-slate-500 dark:text-slate-400">En post-partum</p></div>
+    </div>
+    <div class="card flex items-center gap-4 p-4">
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400"><i class="fa-solid fa-circle-exclamation"></i></div>
+      <div><p class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats.rouge }}</p><p class="text-xs text-slate-500 dark:text-slate-400">Partogramme en zone rouge</p></div>
+    </div>
+    <div class="card flex items-center gap-4 p-4">
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400"><i class="fa-solid fa-bell"></i></div>
+      <div><p class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats.critiques }}</p><p class="text-xs text-slate-500 dark:text-slate-400">Alertes critiques à prendre en charge</p></div>
+    </div>
+  </div>
+
+  @if (erreur) {
+    <p class="flex items-start gap-2 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300" role="alert"><i class="fa-solid fa-circle-exclamation mt-0.5"></i> {{ erreur }}</p>
+  }
+
+  <!-- Alertes à prendre en charge -->
+  @if (alertesService.actives().length) {
+    <div class="card overflow-hidden border-rose-200 dark:border-rose-500/30">
+      <div class="card-header bg-rose-50/60 dark:bg-rose-500/5">
+        <h2 class="card-title"><i class="fa-solid fa-bell text-rose-600 dark:text-rose-400"></i> Alertes à prendre en charge ({{ alertesService.actives().length }})</h2>
+      </div>
+      <ul class="divide-y divide-slate-100 dark:divide-slate-800">
+        @for (a of alertesService.actives(); track a.id) {
+          <li class="flex flex-col gap-3 px-5 py-3.5 sm:flex-row sm:items-center">
+            <span class="flex h-9 w-9 flex-none items-center justify-center rounded-lg"
+                  [class]="a.niveau === 'Critique' ? 'bg-rose-600 text-white' : 'bg-amber-400 text-amber-950'">
+              <i class="fa-solid {{ iconeAlerte(a.code) }}"></i>
+            </span>
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-semibold text-slate-900 dark:text-white">
+                {{ a.code }} · {{ a.patiente?.prenom }} {{ a.patiente?.nom }}
+                <span class="ml-1 font-mono text-xs font-normal text-slate-500">{{ a.numero }}</span>
+              </p>
+              <p class="text-sm text-slate-600 dark:text-slate-300">{{ a.message }}</p>
+              <p class="text-xs text-slate-400">{{ dateHeure(a.le) }}{{ a.medecinsNotifies.length ? ' · ' + a.medecinsNotifies.length + ' médecin(s) notifié(s)' : '' }}</p>
+            </div>
+            <div class="flex gap-2">
+              <a [routerLink]="['/admin/accouchements', a.numero]" class="btn-secondary px-3 py-1.5 text-xs">Dossier</a>
+              <button class="btn-primary px-3 py-1.5 text-xs" (click)="acquitter(a)"><i class="fa-solid fa-hand"></i> Prendre en charge</button>
+            </div>
+          </li>
+        }
+      </ul>
+    </div>
+  }
+
+  <!-- Dossiers -->
+  <div class="card overflow-hidden">
+    <div class="card-header flex-wrap">
+      <h2 class="card-title"><i class="fa-solid fa-bed-pulse text-brand-600 dark:text-brand-400"></i> Dossiers d’accouchement</h2>
+      <div class="flex gap-2">
+        @for (f of filtres; track f) {
+          <button type="button" (click)="changerFiltre(f)"
+                  class="rounded-full px-3 py-1.5 text-xs font-medium ring-1 transition"
+                  [class]="filtre === f ? 'bg-brand-700 text-white ring-brand-700 dark:bg-brand-600 dark:ring-brand-600' : 'bg-white text-slate-600 ring-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-700'">{{ f }}</button>
+        }
+      </div>
+    </div>
+    @if (chargement) {
+      <div class="space-y-3 p-5" aria-hidden="true">@for (i of [1, 2, 3]; track i) { <div class="skeleton h-12 w-full"></div> }</div>
+    } @else {
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
+          <thead class="bg-slate-50/70 dark:bg-slate-800/50">
+            <tr>
+              <th class="table-th">Parturiente</th>
+              <th class="table-th">Admise le</th>
+              <th class="table-th">Statut</th>
+              <th class="table-th">Dernière mesure</th>
+              <th class="table-th">Zone</th>
+              <th class="table-th">Alertes</th>
+              <th class="table-th"><span class="sr-only">Ouvrir</span></th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+            @for (d of dossiers; track d.id) {
+              <tr class="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                <td class="table-td">
+                  <div class="flex items-center gap-3">
+                    <app-avatar [photo]="d.patiente?.photoUrl ?? undefined" [prenom]="d.patiente?.prenom || d.patiente?.nom || ''" [nomFamille]="d.patiente?.nom ?? ''"
+                                class="h-11 w-11 rounded-full text-sm ring-2 ring-white dark:ring-slate-900" />
+                    <div>
+                      <p class="font-medium text-slate-900 dark:text-white">{{ d.patiente?.prenom }} {{ d.patiente?.nom }} {{ d.patiente?.postnom }}</p>
+                      <p class="font-mono text-xs text-slate-500">{{ d.numero }} · {{ d.patiente?.numero }}</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="table-td whitespace-nowrap">{{ dateHeure(d.admiseLe) }}</td>
+                <td class="table-td">
+                  <span class="badge" [class]="d.statut === 'En travail' ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300' : d.statut === 'Post-partum' ? 'bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'">{{ d.statut }}</span>
+                  @if (d.statut === 'En travail') { <p class="mt-1 text-xs text-slate-500">Phase {{ d.phase.toLowerCase() }}</p> }
+                  @if (d.accoucheeLe) { <p class="mt-1 text-xs text-slate-500">Accouchée le {{ dateHeure(d.accoucheeLe) }}</p> }
+                </td>
+                <td class="table-td whitespace-nowrap text-xs">
+                  @if (d.derniereSurveillance; as s) {
+                    <p>{{ dateHeure(s.le) }}</p>
+                    <p class="text-slate-500">{{ s.dilatationCm != null ? s.dilatationCm + ' cm' : '—' }} · BCF {{ s.bcf ?? '—' }}</p>
+                  } @else { <span class="text-slate-400">Aucune</span> }
+                </td>
+                <td class="table-td">@if (d.zoneActuelle) { <span class="badge {{ zone(d.zoneActuelle) }}">{{ d.zoneActuelle }}</span> } @else { <span class="text-xs text-slate-400">—</span> }</td>
+                <td class="table-td">
+                  @if (d.alertesActives) {
+                    <span class="badge bg-rose-50 text-rose-700 ring-1 ring-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/30"><i class="fa-solid fa-bell"></i> {{ d.alertesActives }}</span>
+                  } @else { <span class="text-xs text-slate-400">—</span> }
+                </td>
+                <td class="table-td text-right"><a [routerLink]="['/admin/accouchements', d.numero]" class="btn-secondary px-3 py-1.5 text-xs">Ouvrir <i class="fa-solid fa-chevron-right text-[10px]"></i></a></td>
+              </tr>
+            } @empty {
+              <tr><td colspan="7" class="px-5 py-10 text-center text-sm text-slate-500 dark:text-slate-400">Aucun dossier {{ filtre === 'Clôturé' ? 'clôturé' : 'en cours' }}.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</div>
+
+<!-- Admission -->
+@if (admissionOuverte) {
+  <div class="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 p-0 backdrop-blur-sm sm:items-center sm:p-4" (click)="admissionOuverte = false">
+    <div class="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-t-2xl bg-white shadow-2xl dark:bg-slate-900 sm:rounded-2xl" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="titre-admission">
+      <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-800">
+        <h2 id="titre-admission" class="text-lg font-semibold text-slate-900 dark:text-white">Admission en salle de travail</h2>
+        <button class="btn-ghost px-2" (click)="admissionOuverte = false" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="space-y-5 p-6">
+        @if (!choisie) {
+          <form (ngSubmit)="chercher()">
+            <label class="label" for="rech">Patiente enregistrée</label>
+            <div class="flex gap-2">
+              <input id="rech" name="rech" class="input" placeholder="Nom, identifiant AC-PAT ou téléphone" [(ngModel)]="recherche" autocomplete="off">
+              <button class="btn-secondary" [disabled]="rechercheEnCours || recherche.trim().length < 2"><i class="fa-solid" [class]="rechercheEnCours ? 'fa-spinner fa-spin' : 'fa-magnifying-glass'"></i></button>
+            </div>
+            <p class="hint">Une patiente arrivée sans dossier est d’abord enregistrée (Enregistrement CPN) ; sa grossesse est ouverte à l’admission si besoin.</p>
+          </form>
+          <ul class="divide-y divide-slate-100 rounded-xl border border-slate-100 dark:divide-slate-800 dark:border-slate-800">
+            @for (p of resultats; track p.id) {
+              <li><button type="button" class="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50" (click)="choisir(p)">
+                <app-avatar [photo]="p.photoUrl ?? undefined" [prenom]="p.prenom || p.nom" [nomFamille]="p.nom" class="h-11 w-11 rounded-full text-sm ring-2 ring-white dark:ring-slate-900" />
+                <span class="flex-1"><span class="block font-medium text-slate-900 dark:text-white">{{ p.prenom }} {{ p.nom }} {{ p.postnom }}</span>
+                  <span class="block text-xs text-slate-500">{{ p.numero }} · {{ p.age != null ? p.age + ' ans' : 'Âge inconnu' }}{{ p.grossesse?.dpa ? ' · DPA ' + p.grossesse!.dpa : '' }}</span></span>
+                <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
+              </button></li>
+            } @empty {
+              @if (recherche && !rechercheEnCours) { <li class="px-4 py-3 text-sm text-slate-500">Aucun résultat (lancez la recherche).</li> }
+            }
+          </ul>
+        } @else {
+          <div class="flex items-center gap-4 rounded-xl bg-brand-50 p-4 dark:bg-brand-500/10">
+            <!-- Photo d'identification : vérifier que c'est bien la bonne patiente avant l'admission -->
+            <app-avatar [photo]="choisie.photoUrl ?? undefined" [prenom]="choisie.prenom || choisie.nom" [nomFamille]="choisie.nom"
+                        class="h-24 w-24 rounded-2xl text-2xl shadow ring-4 ring-white dark:ring-slate-900" />
+            <div class="min-w-0 flex-1">
+              <p class="font-semibold text-slate-900 dark:text-white">{{ choisie.prenom }} {{ choisie.nom }} {{ choisie.postnom }}</p>
+              <p class="font-mono text-xs text-slate-500">{{ choisie.numero }}</p>
+              <p class="mt-1 text-xs text-slate-500">{{ choisie.age != null ? choisie.age + ' ans' : 'Âge inconnu' }}{{ choisie.grossesse?.dpa ? ' · DPA ' + choisie.grossesse!.dpa : '' }}{{ choisie.telephoneMasque ? ' · ' + choisie.telephoneMasque : '' }}</p>
+              @if (!choisie.photoUrl) { <p class="mt-1 text-xs text-amber-600 dark:text-amber-400"><i class="fa-solid fa-camera mr-1"></i>Pas de photo au dossier : vérifiez l’identité autrement.</p> }
+            </div>
+            <button class="btn-ghost self-start px-2 text-xs" (click)="choisie = null">Changer</button>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400"><i class="fa-solid fa-circle-info mr-1"></i>Identité, groupe sanguin, antécédents, DDR et DPA sont repris du dossier ; vous les complétez ensuite dans l’admission.</p>
+          <div><label class="label" for="motif">Motif de consultation</label><input id="motif" class="input" [(ngModel)]="form.motif" placeholder="Contractions utérines douloureuses…"></div>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div><label class="label" for="adm">Heure d’admission</label><input id="adm" type="datetime-local" class="input" [(ngModel)]="form.admiseLe"></div>
+            <div><label class="label" for="dt">Début du travail</label><input id="dt" type="datetime-local" class="input" [(ngModel)]="form.debutTravail"></div>
+          </div>
+          <div>
+            <label class="label" for="prov">Provenance</label>
+            <select id="prov" class="input" [(ngModel)]="form.provenance"><option value="">Non renseignée</option>
+              @for (p of referentiel?.PROVENANCES ?? []; track p.code) { <option [value]="p.code">{{ p.code }} — {{ p.libelle }}</option> }
+            </select>
+          </div>
+        }
+        @if (erreurAdmission) {
+          <p class="flex items-start gap-2 rounded-xl bg-rose-50 px-3 py-2.5 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300" role="alert"><i class="fa-solid fa-circle-exclamation mt-0.5"></i> {{ erreurAdmission }}</p>
+        }
+      </div>
+      <div class="flex justify-end gap-2 border-t border-slate-100 px-6 py-4 dark:border-slate-800">
+        <button class="btn-secondary" (click)="admissionOuverte = false">Annuler</button>
+        <button class="btn-primary" (click)="admettre()" [disabled]="!choisie || envoi"><i class="fa-solid" [class]="envoi ? 'fa-spinner fa-spin' : 'fa-bed-pulse'"></i> Admettre</button>
+      </div>
+    </div>
+  </div>
+}

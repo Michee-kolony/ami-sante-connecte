@@ -2,6 +2,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { API_URL } from '../../shared/api';
+import type { ResumeEnfant } from './enfants.service';
 
 // --- Types renvoyés par backend-ami-connecte (suivi prénatal) ---------------------------
 
@@ -345,6 +346,8 @@ export interface RendezVous {
   id: string;
   patienteId: string;
   grossesseId: string | null;
+  /** Rendez-vous d'un enfant de la patiente (vaccination, suivi). */
+  enfantId?: string | null;
   consultationId: string | null;
   date: string;
   motif: string;
@@ -359,6 +362,7 @@ export interface RendezVous {
 
 export interface RendezVousAgenda extends RendezVous {
   patiente: { id: string; numero: string; nom: string; postnom: string; prenom: string } | null;
+  enfant?: { id: string; numero: string; nom: string; prenom: string } | null;
 }
 
 // --- Échographie obstétricale ------------------------------------------------------------
@@ -424,6 +428,10 @@ export interface Dossier {
   premiereConsultation: { consultationId: string; medecin: Auteur; date: string; etablissementId: string | null } | null;
   /** Établissement de prise en charge (null s'il a été suspendu ou supprimé). */
   etablissement: { id: string; code: string; nom: string; province: string } | null;
+  /** Dossiers d'accouchement (salle de travail → sortie). */
+  accouchements: { id: string; numero: string; grossesseId: string; statut: string; admiseLe: string; accoucheeLe: string | null; mode: string | null }[];
+  /** Enfants rattachés au compte de la patiente, avec leur prochaine vaccination. */
+  enfants: ResumeEnfant[];
 }
 
 export interface EntreeJournal {
@@ -453,8 +461,9 @@ export interface SuiviPatiente {
   };
   etablissement: { id: string; nom: string; province: string } | null;
   grossesse: { id: string; numero: number; statut: string; agJours: number | null; dpa: string | null; datee: boolean } | null;
+  enfants: ResumeEnfant[];
   rendezVous: {
-    id: string; date: string; motif: string; lieu: string; consignes: string; statut: StatutRdv;
+    id: string; date: string; motif: string; lieu: string; consignes: string; statut: StatutRdv; enfantId?: string | null;
     historique: { action: string; ancienneDate: string | null; nouvelleDate: string | null; motif: string; le: string }[];
   }[];
   /** Visites passées : date, type et soignant seulement (le contenu reste réservé aux médecins). */

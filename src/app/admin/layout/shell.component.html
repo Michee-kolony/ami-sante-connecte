@@ -154,6 +154,18 @@
       </div>
     </header>
 
+    <!-- Alerte du partogramme reçue en direct (zone rouge notifiée aux médecins) -->
+    @if (alertesMaternite.derniere(); as a) {
+      <div class="sticky top-16 z-20 flex flex-col gap-2 bg-rose-600 px-4 py-3 text-white shadow-lg sm:flex-row sm:items-center sm:px-6 lg:px-8" role="alert">
+        <i class="fa-solid fa-bell animate-pulse text-lg"></i>
+        <p class="flex-1 text-sm"><strong>{{ a.alerte.code }} — {{ a.patiente?.prenom }} {{ a.patiente?.nom }}</strong> ({{ a.numero }}) : {{ a.alerte.message }}</p>
+        <div class="flex gap-2">
+          <a [routerLink]="['/admin/accouchements', a.numero]" (click)="alertesMaternite.derniere.set(null)" class="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-rose-700">Ouvrir le partogramme</a>
+          <button type="button" class="rounded-lg px-2 py-1.5 text-xs hover:bg-white/10" (click)="alertesMaternite.derniere.set(null)" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+      </div>
+    }
+
     <main class="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
       <router-outlet />
     </main>

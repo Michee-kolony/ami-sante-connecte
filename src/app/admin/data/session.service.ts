@@ -61,6 +61,8 @@ export class SessionService {
   /** Dossier médical numérique : médecins uniquement (règle appliquée aussi par le serveur). */
   readonly estMedecin = computed(() => !!this.soignant()?.role.startsWith('Médecin'));
   readonly estInfirmier = computed(() => !!this.soignant() && !this.estMedecin());
+  /** Salle de travail et dossier d'accouchement : médecins et sages-femmes (règle du serveur). */
+  readonly estMaternite = computed(() => this.estMedecin() || !!this.soignant()?.role.startsWith('Sage-femme'));
 
   get jeton(): string | null {
     return this.session()?.jeton ?? null;
@@ -113,7 +115,8 @@ export class SessionService {
 
 /** Ajoute le jeton aux appels de l'API et renvoie vers la connexion s'il a expiré. */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
-  if (!req.url.startsWith(API_URL)) return next(req);
+  // Espace patiente : jeton de la patiente, ajouté par EspaceMamanService (jamais celui d'un soignant).
+  if (!req.url.startsWith(API_URL) || req.url.startsWith(`${API_URL}/espace-patiente`)) return next(req);
   const session = inject(SessionService);
   const jeton = session.jeton;
   const requete = jeton ? req.clone({ setHeaders: { Authorization: `Bearer ${jeton}` } }) : req;

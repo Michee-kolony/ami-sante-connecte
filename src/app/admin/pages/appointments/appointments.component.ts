@@ -64,6 +64,9 @@ const ACTIFS: StatutRdv[] = ['Planifié', 'Confirmé', 'Reporté'];
               @if (r.patiente) {
                 <a [routerLink]="['/admin/patientes', r.patiente.numero]" class="font-medium text-slate-900 dark:text-white hover:text-brand-700 dark:hover:text-brand-300">{{ r.patiente.prenom }} {{ r.patiente.nom }} {{ r.patiente.postnom }}</a>
               }
+              @if (r.enfant) {
+                <a [routerLink]="['/admin/enfants', r.enfant.numero]" class="badge ml-1 bg-pink-50 text-pink-700 ring-1 ring-pink-200 hover:bg-pink-100 dark:bg-pink-500/10 dark:text-pink-300 dark:ring-pink-500/30"><i class="fa-solid fa-baby"></i> {{ r.enfant.prenom || 'Bébé' }}</a>
+              }
               <p class="text-sm text-slate-500 dark:text-slate-400">{{ r.motif }} · {{ heure(r.date) }} · <span class="font-mono text-xs">{{ r.patiente?.numero }}</span></p>
               @if (r.statut === 'Reporté' && r.historique.length) {
                 <p class="text-xs text-amber-700 dark:text-amber-300"><i class="fa-solid fa-clock-rotate-left mr-1"></i>Reporté — {{ r.historique[r.historique.length - 1].motif }}</p>

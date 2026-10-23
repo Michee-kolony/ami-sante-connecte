@@ -403,6 +403,30 @@
               <p class="mt-3 text-[11px] text-slate-400">Le dossier appartient à la patiente : tous les médecins peuvent le consulter, chaque ouverture est journalisée.</p>
             </div>
 
+            <!-- Maternité & enfants -->
+            <div class="card p-5">
+              <p class="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white"><i class="fa-solid fa-baby text-pink-500"></i> Maternité & enfants</p>
+              @if (session.estMaternite() && grossesse && !accouchementEnCours) {
+                <a [routerLink]="['/admin/accouchements']" [queryParams]="{ patiente: p.numero }" class="btn-primary mt-3 w-full py-2 text-xs"><i class="fa-solid fa-bed-pulse"></i> Admettre en salle de travail</a>
+              }
+              <ul class="mt-3 space-y-2 text-sm">
+                @for (a of dossier.accouchements; track a.id) {
+                  <li><a [routerLink]="['/admin/accouchements', a.numero]" class="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 hover:bg-slate-100 dark:bg-slate-800/50 dark:hover:bg-slate-800">
+                    <span><span class="font-medium text-slate-900 dark:text-white">{{ a.accoucheeLe ? 'Accouchement ' + (a.mode ?? '') : 'En salle de travail' }}</span><span class="block text-xs text-slate-500">{{ a.numero }} · {{ dateHeure(a.accoucheeLe ?? a.admiseLe) }} · {{ a.statut }}</span></span>
+                    <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i></a></li>
+                }
+                @for (e of dossier.enfants; track e.id) {
+                  <li><a [routerLink]="['/admin/enfants', e.numero]" class="flex items-center justify-between gap-2 rounded-lg bg-pink-50/60 px-3 py-2 hover:bg-pink-50 dark:bg-pink-500/5 dark:hover:bg-pink-500/10">
+                    <span><span class="font-medium text-slate-900 dark:text-white">{{ e.prenom || 'Bébé ' + e.rang }} · {{ e.age?.libelle }}</span>
+                      <span class="block text-xs text-slate-500">
+                        @if (e.vaccination; as v) { {{ v.vaccinsFaits }}/{{ v.vaccinsTotal }} vaccins{{ v.enRetard ? ' · ' + v.enRetard + ' en retard' : '' }}{{ v.prochaineSeance ? ' · prochaine séance ' + jour(v.prochaineSeance.date) : '' }} } @else { {{ e.etatNaissance }} }
+                      </span></span>
+                    <i class="fa-solid fa-syringe text-xs text-pink-500"></i></a></li>
+                }
+                @if (!dossier.accouchements.length && !dossier.enfants.length) { <li class="text-xs text-slate-500">Aucun accouchement enregistré.</li> }
+              </ul>
+            </div>
+
             <!-- Contact -->
             <div class="card p-5">
               <div class="flex items-center justify-between">

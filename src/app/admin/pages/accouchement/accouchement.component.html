@@ -1,0 +1,719 @@
+<div class="mx-auto max-w-7xl space-y-6">
+  <nav class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+    <a routerLink="/admin/accouchements" class="hover:text-brand-700 dark:hover:text-brand-300">Salle de travail</a>
+    <i class="fa-solid fa-chevron-right text-[9px]"></i>
+    <span class="font-mono text-slate-700 dark:text-slate-200">{{ id }}</span>
+  </nav>
+
+  @if (chargement) {
+    <div class="space-y-4" aria-hidden="true"><div class="skeleton h-28 w-full rounded-2xl"></div><div class="skeleton h-96 w-full rounded-2xl"></div></div>
+  } @else if (!d) {
+    <p class="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300" role="alert">{{ erreur || 'Dossier introuvable.' }}</p>
+  } @else {
+    <!-- En-tête -->
+    <div class="card p-5 sm:p-6">
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-center">
+        <app-avatar [photo]="d.patiente?.photoUrl ?? undefined" [prenom]="d.admission.prenom || d.admission.nom" [nomFamille]="d.admission.nom"
+                    class="h-20 w-20 rounded-2xl text-xl shadow ring-4 ring-white dark:ring-slate-900" />
+        <div class="flex-1">
+          <p class="font-mono text-xs text-slate-500">{{ d.numero }}</p>
+          <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ d.admission.prenom }} {{ d.admission.nom }} {{ d.admission.postnom }}</h1>
+          <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            {{ d.admission.age != null ? d.admission.age + ' ans · ' : '' }}G{{ d.admission.gestite ?? '?' }} P{{ d.admission.parite ?? '?' }}
+            · Admise le {{ dateHeure(d.admission.admiseLe) }}{{ d.admission.dpa ? ' · DPA ' + jour(d.admission.dpa) : '' }}
+            @if (d.patiente) { · <a [routerLink]="['/admin/patientes', d.patiente.numero]" class="font-medium text-brand-700 hover:underline dark:text-brand-300">Dossier {{ d.patiente.numero }}</a> }
+          </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="badge" [class]="d.statut === 'En travail' ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300' : d.statut === 'Post-partum' ? 'bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'">{{ d.statut }}</span>
+          @if (d.statut === 'En travail') { <span class="badge bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">Phase {{ d.phaseActiveLe ? 'active' : 'de latence' }}</span> }
+          @if (d.partogramme.dilatation.zoneActuelle; as z) { <span class="badge {{ zone(z) }}">Zone {{ z.toLowerCase() }}</span> }
+          @if (alertesActives.length) { <span class="badge bg-rose-600 text-white"><i class="fa-solid fa-bell"></i> {{ alertesActives.length }} alerte(s)</span> }
+          @if (session.estMedecin()) {
+            <button type="button" class="btn-ghost px-2.5 py-1.5 text-xs text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10" (click)="ouvrirSuppression()">
+              <i class="fa-solid fa-trash-can"></i> Supprimer le dossier
+            </button>
+          }
+        </div>
+      </div>
+      @if (clos) {
+        <p class="mt-4 rounded-xl bg-slate-50 px-4 py-2.5 text-sm text-slate-600 dark:bg-slate-800/50 dark:text-slate-300"><i class="fa-solid fa-lock mr-1"></i> Dossier clôturé par {{ d.cloture?.par?.nom }} le {{ dateHeure(d.cloture?.le) }} : consultation seule.</p>
+      }
+    </div>
+
+    @if (erreur) {
+      <p class="flex items-start gap-2 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300" role="alert"><i class="fa-solid fa-circle-exclamation mt-0.5"></i> {{ erreur }}</p>
+    }
+    @if (notification) {
+      <p class="flex items-center gap-2 rounded-xl bg-accent-50 px-4 py-3 text-sm text-accent-800 dark:bg-accent-500/10 dark:text-accent-300" role="status"><i class="fa-solid fa-circle-check"></i> {{ notification }}</p>
+    }
+
+    <!-- Onglets -->
+    <div class="card overflow-hidden">
+      <div class="flex overflow-x-auto border-b border-slate-100 dark:border-slate-800" role="tablist">
+        @for (t of onglets; track t.k) {
+          <button role="tab" class="flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition" [attr.aria-selected]="onglet === t.k"
+                  [class]="onglet === t.k ? 'border-brand-700 text-brand-800 dark:text-brand-300' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100'"
+                  (click)="onglet = t.k">
+            <i class="fa-solid {{ t.i }}"></i> {{ t.l }}
+          </button>
+        }
+      </div>
+    </div>
+
+    <fieldset [disabled]="clos || envoi" class="min-w-0">
+    @switch (onglet) {
+      <!-- ============================== I. ADMISSION ============================== -->
+      @case ('admission') {
+        @let a = formAdmission;
+        <div class="grid gap-6 lg:grid-cols-2">
+          <div class="card p-5 sm:p-6">
+            <h2 class="section-titre"><i class="fa-solid fa-id-card"></i> A. Identité</h2>
+            <div class="grid gap-4 sm:grid-cols-3">
+              <div><label class="label">Nom</label><input class="input" [(ngModel)]="a.nom"></div>
+              <div><label class="label">Post-nom</label><input class="input" [(ngModel)]="a.postnom"></div>
+              <div><label class="label">Prénom</label><input class="input" [(ngModel)]="a.prenom"></div>
+              <div><label class="label">Âge</label><input type="number" class="input" [(ngModel)]="a.age"></div>
+              <div class="sm:col-span-2"><label class="label">Occupation</label><input class="input" [(ngModel)]="a.occupation"></div>
+              <div><label class="label">État matrimonial</label>
+                <select class="input" [(ngModel)]="a.etatMatrimonial"><option value="">—</option>@for (x of ['Célibataire', 'Mariée', 'Union libre', 'Divorcée', 'Veuve']; track x) { <option>{{ x }}</option> }</select></div>
+              <div><label class="label">Provenance</label>
+                <select class="input" [(ngModel)]="a.provenance"><option value="">—</option>@for (p of ref?.PROVENANCES ?? []; track p.code) { <option [value]="p.code">{{ p.code }} — {{ p.libelle }}</option> }</select></div>
+              <div><label class="label">Précision provenance</label><input class="input" [(ngModel)]="a.provenancePrecision" placeholder="Nom de l’AS / HZ"></div>
+              <div><label class="label">Nom du partenaire</label><input class="input" [(ngModel)]="a.nomPartenaire"></div>
+              <div class="sm:col-span-2"><label class="label">Adresse</label><input class="input" [(ngModel)]="a.adresse"></div>
+              <div class="sm:col-span-2"><label class="label">Personne à prévenir</label><input class="input" [(ngModel)]="a.personneAPrevenir.nom"></div>
+              <div><label class="label">N° de téléphone</label><input class="input" [(ngModel)]="a.personneAPrevenir.telephone"></div>
+            </div>
+          </div>
+
+          <div class="card p-5 sm:p-6">
+            <h2 class="section-titre"><i class="fa-solid fa-notes-medical"></i> B. Anamnèse</h2>
+            <div class="grid gap-4 sm:grid-cols-4">
+              <div class="sm:col-span-4"><label class="label">Motif de consultation</label><input class="input" [(ngModel)]="a.motif"></div>
+              <div><label class="label">Groupe</label><select class="input" [(ngModel)]="a.groupeSanguin"><option value="">—</option>@for (x of ['A', 'B', 'AB', 'O']; track x) { <option>{{ x }}</option> }</select></div>
+              <div><label class="label">Rhésus</label><select class="input" [(ngModel)]="a.rhesus"><option value="">—</option><option>Positif</option><option>Négatif</option></select></div>
+              <div class="sm:col-span-2"><label class="label">Statut hémoglobinique</label><select class="input" [(ngModel)]="a.statutHb"><option value="">—</option>@for (x of ref?.STATUTS_HB ?? []; track x) { <option>{{ x }}</option> }</select></div>
+              <div><label class="label">Gestité</label><input type="number" min="0" class="input" [(ngModel)]="a.gestite"></div>
+              <div><label class="label">Parité</label><input type="number" min="0" class="input" [(ngModel)]="a.parite"></div>
+              <div><label class="label">Avortements</label><input type="number" min="0" class="input" [(ngModel)]="a.avortements"></div>
+              <div><label class="label">Enfants en vie</label><input type="number" min="0" class="input" [(ngModel)]="a.enfantsVivants"></div>
+              <div class="sm:col-span-2"><label class="label">DDR</label><input type="date" class="input" [(ngModel)]="a.ddr"></div>
+              <div class="sm:col-span-2"><label class="label">DPA</label><input type="date" class="input" [(ngModel)]="a.dpa"></div>
+            </div>
+            <div class="mt-5 space-y-3 rounded-xl border border-slate-100 p-4 dark:border-slate-800">
+              <p class="text-sm font-semibold text-slate-800 dark:text-slate-200">Statut VIH</p>
+              <div class="flex flex-wrap gap-4 text-sm text-slate-600 dark:text-slate-300">
+                <span class="flex items-center gap-2">Conseillée <app-oui-non [(valeur)]="a.vih.conseillee" /></span>
+                <span class="flex items-center gap-2">Testée <app-oui-non [(valeur)]="a.vih.testee" /></span>
+                <span class="flex items-center gap-2">Informée <app-oui-non [(valeur)]="a.vih.informee" /></span>
+              </div>
+              <div class="grid gap-3 sm:grid-cols-3">
+                <div><label class="label">Résultat</label><select class="input" [(ngModel)]="a.vih.resultat"><option value="">—</option>@for (x of ref?.RESULTATS_VIH ?? []; track x) { <option>{{ x }}</option> }</select></div>
+                <div><label class="label">Prise ARV : régime</label><input class="input" [(ngModel)]="a.arv.regime"></div>
+                <div><label class="label">Depuis le</label><input type="date" class="input" [(ngModel)]="a.arv.depuisLe"></div>
+              </div>
+            </div>
+            <div class="mt-4"><label class="label">Début du travail (date et heure)</label><input type="datetime-local" class="input" [(ngModel)]="a.debutTravailLocal"></div>
+          </div>
+
+          <div class="card p-5 sm:p-6 lg:col-span-2">
+            <h2 class="section-titre"><i class="fa-solid fa-clock-rotate-left"></i> Antécédents</h2>
+            <div class="grid gap-4 lg:grid-cols-2">
+              <div><label class="label">Médico-chirurgicaux</label><textarea rows="5" class="input" [(ngModel)]="a.antecedents.medicoChirurgicaux"></textarea></div>
+              <div>
+                <p class="label">Gynéco-obstétricaux</p>
+                @let go = a.antecedents.gynecoObstetricaux;
+                <div class="grid grid-cols-3 gap-3">
+                  <div><label class="text-xs text-slate-500">Vivants</label><input type="number" min="0" class="input" [(ngModel)]="go.vivants"></div>
+                  <div><label class="text-xs text-slate-500">Morts</label><input type="number" min="0" class="input" [(ngModel)]="go.morts"></div>
+                  <div><label class="text-xs text-slate-500">Mort-nés</label><input type="number" min="0" class="input" [(ngModel)]="go.mortNes"></div>
+                  <div><label class="text-xs text-slate-500">Eutocies</label><input type="number" min="0" class="input" [(ngModel)]="go.eutocies"></div>
+                  <div><label class="text-xs text-slate-500">Dystocies</label><input type="number" min="0" class="input" [(ngModel)]="go.dystocies"></div>
+                  <div><label class="text-xs text-slate-500">Bébés &gt; 4 kg</label><input type="number" min="0" class="input" [(ngModel)]="go.bebesPlus4kg"></div>
+                </div>
+                <p class="mt-4 text-xs font-semibold text-slate-600 dark:text-slate-300">Césariennes (année et indication)</p>
+                @for (c of go.cesariennes; track $index) {
+                  <div class="mt-2 flex gap-2">
+                    <input type="number" class="input w-28" placeholder="Année" [(ngModel)]="c.annee">
+                    <input class="input flex-1" placeholder="Indication" [(ngModel)]="c.indication">
+                    <button type="button" class="btn-ghost px-2" (click)="go.cesariennes.splice($index, 1)" aria-label="Retirer"><i class="fa-solid fa-xmark"></i></button>
+                  </div>
+                }
+                <button type="button" class="btn-ghost mt-2 px-2 py-1 text-xs" (click)="ajouterCesarienne()"><i class="fa-solid fa-plus"></i> Ajouter une césarienne</button>
+                <div class="mt-3"><label class="text-xs text-slate-500">Autres</label><input class="input" [(ngModel)]="go.autres"></div>
+              </div>
+            </div>
+            <div class="mt-6 flex items-center justify-between border-t border-slate-100 pt-4 dark:border-slate-800">
+              <p class="text-xs text-slate-500">Admise par {{ d.admission.admisePar?.nom }} le {{ dateHeure(d.admission.admiseLe) }}.</p>
+              <button class="btn-primary" (click)="enregistrerAdmission()"><i class="fa-solid fa-check"></i> Enregistrer l’admission</button>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- ============================ II. EXAMEN CLINIQUE ============================ -->
+      @case ('examen') {
+        @let e = formExamen;
+        <div class="grid gap-6 lg:grid-cols-2">
+          <div class="card p-5 sm:p-6">
+            <h2 class="section-titre"><i class="fa-solid fa-user-doctor"></i> Examen physique</h2>
+            <div class="grid gap-4 sm:grid-cols-3">
+              <div><label class="label">Poids (kg)</label><input type="number" class="input" [(ngModel)]="e.physique.poidsKg"></div>
+              <div><label class="label">Taille (cm)</label><input type="number" class="input" [(ngModel)]="e.physique.tailleCm"></div>
+              <div><label class="label">T° (°C)</label><input type="number" step="0.1" class="input" [(ngModel)]="e.physique.temperature"></div>
+              <div><label class="label">Pouls</label><input type="number" class="input" [(ngModel)]="e.physique.pouls"></div>
+              <div><label class="label">TA systolique</label><input type="number" class="input" [(ngModel)]="e.physique.taSystolique"></div>
+              <div><label class="label">TA diastolique</label><input type="number" class="input" [(ngModel)]="e.physique.taDiastolique"></div>
+              <div><label class="label">Conjonctives</label><select class="input" [(ngModel)]="e.physique.conjonctives"><option value="">—</option>@for (x of ref?.CONJONCTIVES ?? []; track x) { <option>{{ x }}</option> }</select></div>
+              <div><label class="label">État général</label><select class="input" [(ngModel)]="e.physique.etatGeneral"><option value="">—</option>@for (x of ref?.ETATS_GENERAUX ?? []; track x) { <option>{{ x }}</option> }</select></div>
+              <div><p class="label">Œdèmes</p><app-oui-non [(valeur)]="e.physique.oedemes" /></div>
+            </div>
+            <p class="mt-5 text-xs font-semibold uppercase tracking-wide text-slate-500">Systèmes</p>
+            <div class="mt-2 grid gap-3 sm:grid-cols-2">
+              @for (s of ref?.SYSTEMES ?? []; track s.code) {
+                <div><label class="text-xs text-slate-500">{{ s.libelle }}</label><input class="input" [(ngModel)]="e.physique.systemes[s.code]" placeholder="RAS"></div>
+              }
+            </div>
+          </div>
+
+          <div class="card p-5 sm:p-6">
+            <h2 class="section-titre"><i class="fa-solid fa-person-pregnant"></i> Examen gynéco-obstétrical</h2>
+            @let o = e.obstetrical;
+            <div class="grid gap-4 sm:grid-cols-3">
+              <div><label class="label">HU (cm)</label><input type="number" class="input" [(ngModel)]="o.hauteurUterineCm"></div>
+              <div><label class="label">Présentation</label><select class="input" [(ngModel)]="o.presentation"><option value="">—</option>@for (x of ref?.PRESENTATIONS ?? []; track x) { <option>{{ x }}</option> }</select></div>
+              <div><label class="label">Position</label><input class="input" [(ngModel)]="o.position" placeholder="OIGA…"></div>
+              <div><label class="label">BCF (bpm)</label><input type="number" class="input" [(ngModel)]="o.bcf"></div>
+              <div><label class="label">Contractions / 10 min</label><input type="number" class="input" [(ngModel)]="o.contractions10min"></div>
+              <div><p class="label">MFA</p><app-oui-non [(valeur)]="o.mouvementsFoetauxActifs" /></div>
+              <div class="sm:col-span-3"><label class="label">Contractions (description)</label><input class="input" [(ngModel)]="o.contractions"></div>
+              <div class="sm:col-span-3"><label class="label">Examen au spéculum</label><input class="input" [(ngModel)]="o.speculum"></div>
+              <div class="sm:col-span-3"><label class="label">Col (aspect)</label><input class="input" [(ngModel)]="o.colAspect"></div>
+            </div>
+            <p class="mt-5 text-xs font-semibold uppercase tracking-wide text-slate-500">Toucher vaginal</p>
+            <div class="mt-2 grid gap-4 sm:grid-cols-3">
+              <div><label class="text-xs text-slate-500">Effacé (%)</label><input type="number" class="input" [(ngModel)]="o.toucherVaginal.effacementPct"></div>
+              <div><label class="text-xs text-slate-500">Dilaté (cm)</label><input type="number" class="input" [(ngModel)]="o.toucherVaginal.dilatationCm"></div>
+              <div><p class="text-xs text-slate-500">Œdème du col</p><app-oui-non [(valeur)]="o.toucherVaginal.oedemeCol" /></div>
+            </div>
+            <p class="mt-5 text-xs font-semibold uppercase tracking-wide text-slate-500">Poche des eaux</p>
+            <div class="mt-2 grid gap-4 sm:grid-cols-3">
+              <div><label class="text-xs text-slate-500">État</label><select class="input" [(ngModel)]="o.pocheEaux.etat"><option value="">—</option>@for (x of ref?.ETATS_POCHE ?? []; track x) { <option>{{ x }}</option> }</select></div>
+              @if (o.pocheEaux.etat === 'Rompue') {
+                <div><label class="text-xs text-slate-500">Rompue le</label><input type="datetime-local" class="input" [(ngModel)]="o.pocheEaux.rompueLe"></div>
+                <div><label class="text-xs text-slate-500">Aspect du LA</label><select class="input" [(ngModel)]="o.pocheEaux.aspectLiquide"><option value="">—</option>@for (x of ref?.ASPECTS_LA ?? []; track x) { <option>{{ x }}</option> }</select></div>
+              }
+            </div>
+            <div class="mt-4 grid gap-4 sm:grid-cols-2">
+              <div><label class="label">Degré d’engagement</label><select class="input" [(ngModel)]="o.engagement"><option value="">—</option>@for (x of ref?.ENGAGEMENTS ?? []; track x) { <option>{{ x }}</option> }</select></div>
+              <div><label class="label">Appréciation du bassin</label><select class="input" [(ngModel)]="o.bassin"><option value="">—</option>@for (x of ref?.BASSINS ?? []; track x) { <option>{{ x }}</option> }</select></div>
+            </div>
+          </div>
+
+          <div class="card p-5 sm:p-6">
+            <h2 class="section-titre"><i class="fa-solid fa-flask"></i> Laboratoire d’entrée</h2>
+            <div class="grid gap-3 sm:grid-cols-2">
+              @for (l of ref?.EXAMENS_LABO_ENTREE ?? []; track l.code) {
+                <div><label class="text-xs text-slate-500">{{ l.libelle }}</label><input class="input" [(ngModel)]="e.laboratoire[l.code]"></div>
+              }
+            </div>
+          </div>
+
+          <div class="card p-5 sm:p-6">
+            <h2 class="section-titre"><i class="fa-solid fa-clipboard-check"></i> Conclusion</h2>
+            <div class="space-y-4">
+              <div><label class="label">Conclusion</label><textarea rows="2" class="input" [(ngModel)]="e.conclusion"></textarea></div>
+              <div><label class="label">Pronostic</label><textarea rows="2" class="input" [(ngModel)]="e.pronostic"></textarea></div>
+              <div><label class="label">Conduite à tenir</label><textarea rows="2" class="input" [(ngModel)]="e.conduiteATenir"></textarea></div>
+              <div><label class="label">Heure de l’examen</label><input type="datetime-local" class="input" [(ngModel)]="e.examineLe"></div>
+            </div>
+            <div class="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
+              <p class="text-xs text-slate-500">
+                @if (d.examenClinique?.examinateur; as ex) { Examinateur : {{ ex.nom }} ({{ ex.role }}) } @else { L’examinateur sera le soignant connecté. }
+              </p>
+              <button class="btn-primary" (click)="enregistrerExamen()"><i class="fa-solid fa-check"></i> Enregistrer l’examen</button>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- ====================== III. SURVEILLANCE DU TRAVAIL ====================== -->
+      @case ('travail') {
+        <div class="space-y-6">
+          <!-- Alertes -->
+          @if (alertesActives.length) {
+            <div class="card overflow-hidden border-rose-200 dark:border-rose-500/30">
+              <ul class="divide-y divide-slate-100 dark:divide-slate-800">
+                @for (al of alertesActives; track al.id) {
+                  <li class="flex flex-col gap-2 px-5 py-3 sm:flex-row sm:items-center" [class]="al.niveau === 'Critique' ? 'bg-rose-50/70 dark:bg-rose-500/5' : 'bg-amber-50/70 dark:bg-amber-500/5'">
+                    <i class="fa-solid fa-bell" [class]="al.niveau === 'Critique' ? 'text-rose-600' : 'text-amber-500'"></i>
+                    <div class="flex-1">
+                      <p class="text-sm font-semibold text-slate-900 dark:text-white">{{ al.code }} <span class="ml-1 text-xs font-normal text-slate-500">{{ dateHeure(al.le) }}</span></p>
+                      <p class="text-sm text-slate-700 dark:text-slate-300">{{ al.message }}</p>
+                    </div>
+                    <button type="button" class="btn-secondary px-3 py-1.5 text-xs" (click)="acquitter(al)"><i class="fa-solid fa-hand"></i> Prendre en charge</button>
+                  </li>
+                }
+              </ul>
+            </div>
+          }
+
+          <app-partogramme [p]="d.partogramme" [admiseLe]="d.admission.admiseLe" />
+
+          @if (!d.accouchement && !clos) {
+            <!-- Saisie -->
+            <div class="card p-5 sm:p-6">
+              <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+                <h2 class="card-title"><i class="fa-solid fa-pen-to-square text-brand-600 dark:text-brand-400"></i> Nouvelle surveillance ·
+                  <span class="badge" [class]="phaseSaisie === 'Active' ? 'bg-brand-700 text-white' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'">Phase {{ phaseSaisie === 'Active' ? 'active (≥ 4 cm)' : 'de latence (< 4 cm)' }}</span>
+                </h2>
+                <input type="datetime-local" class="input w-auto" [(ngModel)]="formSurv.le" aria-label="Heure de la mesure (vide : maintenant)">
+              </div>
+              @let s = formSurv;
+              <div class="grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
+                <div><label class="label">BCF</label><input type="number" class="input" [class.!border-rose-500]="bcfHorsNorme" [(ngModel)]="s.bcf">
+                  @if (bcfHorsNorme) { <p class="mt-1 text-xs font-medium text-rose-600">Hors 120–160</p> }</div>
+                <div><label class="label">Dilatation (cm)</label><input type="number" min="0" max="10" class="input" [(ngModel)]="s.dilatationCm"></div>
+                <div><label class="label">Contractions /10 min</label><input type="number" class="input" [(ngModel)]="s.contractions10min"></div>
+                <div><label class="label">Durée (s)</label><input type="number" class="input" [(ngModel)]="s.dureeContractionsSec"></div>
+                <div><label class="label">{{ phaseSaisie === 'Active' ? 'Pertes de sang' : 'Saignement' }}</label><select class="input" [(ngModel)]="s.saignement"><option value="">—</option>@for (x of ref?.SAIGNEMENTS ?? []; track x) { <option>{{ x }}</option> }</select></div>
+                <div><label class="label">T° {{ phaseSaisie === 'Active' ? 'axillaire' : '' }}</label><input type="number" step="0.1" class="input" [(ngModel)]="s.temperature"></div>
+                <div><label class="label">Pouls</label><input type="number" class="input" [(ngModel)]="s.pouls"></div>
+                <div><label class="label">TA syst.</label><input type="number" class="input" [(ngModel)]="s.taSystolique"></div>
+                <div><label class="label">TA diast.</label><input type="number" class="input" [(ngModel)]="s.taDiastolique"></div>
+                <div><label class="label">Diurèse</label><input class="input" [(ngModel)]="s.diurese"></div>
+                @if (phaseSaisie === 'Active') {
+                  <div><label class="label">Membranes</label><select class="input" [(ngModel)]="s.membranes"><option value="">—</option>@for (x of ref?.MEMBRANES ?? []; track x) { <option>{{ x }}</option> }</select></div>
+                  <div><label class="label">Liquide amniotique</label><select class="input" [(ngModel)]="s.liquideAmniotique"><option value="">—</option>@for (x of ref?.ASPECTS_LA ?? []; track x) { <option>{{ x }}</option> }</select></div>
+                  <div><label class="label">Ocytocine (U/ml)</label><input type="number" class="input" [(ngModel)]="s.ocytocine.uParMl"></div>
+                  <div><label class="label">Ocytocine (gttes/min)</label><input type="number" class="input" [(ngModel)]="s.ocytocine.gouttesMin"></div>
+                  <div><label class="label">Engagement</label><select class="input" [(ngModel)]="s.engagement"><option value="">—</option>@for (x of ref?.ENGAGEMENTS_PARTOGRAMME ?? []; track x.code) { <option [value]="x.code">{{ x.code }} — {{ x.libelle }}</option> }</select></div>
+                  <div class="sm:col-span-3 lg:col-span-3"><label class="label">Médicaments IV</label><input class="input" [(ngModel)]="s.medicamentsIV"></div>
+                  <div class="sm:col-span-3 lg:col-span-3"><label class="label">Incident</label><input class="input" [(ngModel)]="s.incident"></div>
+                } @else {
+                  <div class="sm:col-span-3 lg:col-span-3"><label class="label">Affection</label><input class="input" [(ngModel)]="s.affection"></div>
+                  <div class="sm:col-span-3 lg:col-span-3"><label class="label">Traitements</label><input class="input" [(ngModel)]="s.traitements"></div>
+                }
+              </div>
+              @if (nouvellesAlertes.length) {
+                <div class="mt-4 space-y-2">
+                  @for (al of nouvellesAlertes; track al.id) {
+                    <p class="flex items-start gap-2 rounded-xl px-3 py-2.5 text-sm" role="alert"
+                       [class]="al.niveau === 'Critique' ? 'bg-rose-600 text-white' : 'bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-200'">
+                      <i class="fa-solid fa-triangle-exclamation mt-0.5"></i> <span><strong>{{ al.code }}</strong> — {{ al.message }}{{ al.medecinsNotifies.length ? ' Médecins notifiés.' : '' }}</span>
+                    </p>
+                  }
+                </div>
+              }
+              <div class="mt-5 flex justify-end gap-2">
+                <button type="button" class="btn-secondary" (click)="nouvelleSaisie()">Effacer</button>
+                <button type="button" class="btn-primary" (click)="enregistrerSurveillance()"><i class="fa-solid" [class]="envoi ? 'fa-spinner fa-spin' : 'fa-plus'"></i> Enregistrer la mesure</button>
+              </div>
+            </div>
+          }
+
+          <!-- Tableau -->
+          <div class="card overflow-hidden">
+            <div class="card-header"><h2 class="card-title"><i class="fa-solid fa-table text-brand-600 dark:text-brand-400"></i> Tableau de surveillance ({{ d.surveillances.length }})</h2></div>
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-slate-100 text-xs dark:divide-slate-800">
+                <thead class="bg-slate-50/70 dark:bg-slate-800/50">
+                  <tr>
+                    <th class="table-th">Heure</th><th class="table-th">Temps depuis (h)<br><span class="font-normal normal-case">arrivée / rupture / début</span></th>
+                    <th class="table-th">Phase</th><th class="table-th">Dil.</th><th class="table-th">BCF</th><th class="table-th">CU /10′ · s</th>
+                    <th class="table-th">Sang</th><th class="table-th">T° · Pouls · TA</th><th class="table-th">Diurèse</th>
+                    <th class="table-th">Membr. · LA · Eng.</th><th class="table-th">Ocyto.</th><th class="table-th">Notes</th><th class="table-th">Par</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                  @for (x of surveillancesRecentes(); track x.id) {
+                    <tr>
+                      <td class="whitespace-nowrap px-3 py-2">{{ dateHeure(x.le) }}</td>
+                      <td class="whitespace-nowrap px-3 py-2 tabular-nums">{{ x.tempsDepuis?.arriveeH ?? '—' }} / {{ x.tempsDepuis?.ruptureH ?? '—' }} / {{ x.tempsDepuis?.debutTravailH ?? '—' }}</td>
+                      <td class="px-3 py-2">{{ x.phase }}</td>
+                      <td class="px-3 py-2 font-semibold">{{ x.dilatationCm ?? '—' }}</td>
+                      <td class="px-3 py-2 font-semibold" [class.text-rose-600]="x.bcf != null && (x.bcf < 120 || x.bcf > 160)">{{ x.bcf ?? '—' }}</td>
+                      <td class="px-3 py-2">{{ x.contractions10min ?? '—' }} · {{ x.dureeContractionsSec ?? '—' }}</td>
+                      <td class="px-3 py-2">{{ x.saignement || '—' }}</td>
+                      <td class="whitespace-nowrap px-3 py-2">{{ x.temperature ?? '—' }} · {{ x.pouls ?? '—' }} · {{ x.taSystolique ?? '—' }}/{{ x.taDiastolique ?? '—' }}</td>
+                      <td class="px-3 py-2">{{ x.diurese || '—' }}</td>
+                      <td class="px-3 py-2">{{ x.membranes || '—' }} · {{ x.liquideAmniotique || '—' }} · {{ x.engagement || '—' }}</td>
+                      <td class="whitespace-nowrap px-3 py-2">{{ x.ocytocine.uParMl != null ? x.ocytocine.uParMl + ' U/ml' : '—' }}{{ x.ocytocine.gouttesMin != null ? ' · ' + x.ocytocine.gouttesMin + ' gt/min' : '' }}</td>
+                      <td class="min-w-40 px-3 py-2">{{ [x.affection, x.traitements, x.medicamentsIV, x.incident].join(' ').trim() || '—' }}</td>
+                      <td class="whitespace-nowrap px-3 py-2 text-slate-500">{{ x.auteur.nom }}</td>
+                    </tr>
+                  } @empty {
+                    <tr><td colspan="13" class="px-5 py-8 text-center text-sm text-slate-500">Aucune surveillance saisie.</td></tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- ============================ IV. ACCOUCHEMENT ============================ -->
+      @case ('accouchement') {
+        @let ac = formAcc;
+        <div class="grid gap-6 lg:grid-cols-2">
+          <div class="card p-5 sm:p-6">
+            <h2 class="section-titre"><i class="fa-solid fa-hand-holding-medical"></i> Type d’accouchement</h2>
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div><label class="label">Type <span class="req">*</span></label><select class="input" [(ngModel)]="ac.mode"><option value="">—</option>@for (x of ref?.MODES_ACCOUCHEMENT ?? []; track x) { <option>{{ x }}</option> }</select></div>
+              <div><label class="label">Heure <span class="req">*</span></label><input type="datetime-local" class="input" [(ngModel)]="ac.heure"></div>
+              @if (ac.mode === 'Césarienne') {
+                <div class="sm:col-span-2"><label class="label">Indication de la césarienne <span class="req">*</span></label><input class="input" [(ngModel)]="ac.indicationCesarienne"></div>
+              }
+              <div><p class="label">Gémellaire / multiple</p><app-oui-non [(valeur)]="ac.multiple" /></div>
+              <div><label class="label">Nombre d’enfants</label><input type="number" min="1" max="6" class="input" [(ngModel)]="ac.nombreEnfants"></div>
+              <div><p class="label">Déchirure</p><app-oui-non [(valeur)]="ac.dechirure.presente" /></div>
+              @if (ac.dechirure.presente) {
+                <div><label class="label">Degré</label><select class="input" [(ngModel)]="ac.dechirure.degre"><option [ngValue]="null">—</option>@for (x of [1, 2, 3, 4]; track x) { <option [ngValue]="x">{{ x }}<sup>e</sup> degré</option> }</select></div>
+              } @else { <div></div> }
+              <div><p class="label">Épisiotomie</p><app-oui-non [(valeur)]="ac.episiotomie" /></div>
+              <div></div>
+              <div><label class="label">Accoucheur</label><input class="input" [(ngModel)]="ac.accoucheur" [placeholder]="session.soignant() ? session.soignant()!.prenom + ' ' + session.soignant()!.nom : ''"></div>
+              <div><label class="label">Assisté par</label><input class="input" [(ngModel)]="ac.assiste"></div>
+            </div>
+          </div>
+
+          <div class="card p-5 sm:p-6">
+            <h2 class="section-titre"><i class="fa-solid fa-droplet"></i> Délivrance</h2>
+            @let dl = ac.delivrance;
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div><p class="label">Ocytocine 10 UI IM</p><app-oui-non [(valeur)]="dl.ocytocine10UI.administree" /></div>
+              <div><label class="label">Heure</label><input type="datetime-local" class="input" [(ngModel)]="dl.ocytocine10UI.heure" [disabled]="!dl.ocytocine10UI.administree"></div>
+              <div><p class="label">Traction contrôlée</p><app-oui-non [(valeur)]="dl.tractionControlee" /></div>
+              <div><p class="label">Massage utérin</p><app-oui-non [(valeur)]="dl.massageUterin" /></div>
+              <div><label class="label">Délivrance</label><select class="input" [(ngModel)]="dl.mode"><option value="">—</option>@for (x of ref?.MODES_DELIVRANCE ?? []; track x) { <option>{{ x }}</option> }</select></div>
+              <div><label class="label">Heure</label><input type="datetime-local" class="input" [(ngModel)]="dl.heure"></div>
+              <div><p class="label">Placenta complet</p><app-oui-non [(valeur)]="dl.placenta.complet" /></div>
+              <div><label class="label">Aspect du placenta</label><input class="input" [(ngModel)]="dl.placenta.aspect"></div>
+              <div><p class="label">Membranes complètes</p><app-oui-non [(valeur)]="dl.membranesCompletes" /></div>
+              <div>
+                <label class="label">Pertes de sang (ml)</label><input type="number" min="0" class="input" [(ngModel)]="dl.pertesSangMl">
+                @if (hemorragieCalculee) {
+                  <p class="mt-1 text-xs font-semibold" [class]="hemorragieCalculee === 'Pathologique' ? 'text-rose-600' : 'text-accent-600'">Hémorragie {{ hemorragieCalculee.toLowerCase() }} ({{ hemorragieCalculee === 'Pathologique' ? '> 500 ml' : '≤ 500 ml' }})</p>
+                }
+              </div>
+              @if (dl.pertesSangMl == null) {
+                <div class="sm:col-span-2"><label class="label">Hémorragie (volume non mesuré)</label><select class="input" [(ngModel)]="dl.hemorragie"><option value="">—</option><option>Physiologique</option><option>Pathologique</option></select></div>
+              }
+            </div>
+          </div>
+          <div class="flex items-center justify-between gap-3 lg:col-span-2">
+            <p class="text-xs text-slate-500">
+              @if (d.accouchement?.enregistrePar; as ep) { Enregistré par {{ ep.nom }} le {{ dateHeure(d.accouchement?.enregistreLe) }}. } @else { La grossesse sera close et la patiente passera en suivi postnatal. }
+            </p>
+            <button class="btn-primary" (click)="enregistrerAccouchement()"><i class="fa-solid fa-check"></i> {{ d.accouchement ? 'Mettre à jour' : 'Enregistrer l’accouchement' }}</button>
+          </div>
+        </div>
+      }
+
+      <!-- ============================== V. NOUVEAU-NÉ ============================== -->
+      @case ('nouveau-nes') {
+        <div class="space-y-6">
+          @if (d.nouveauNes.length) {
+            <div class="grid gap-4 md:grid-cols-2">
+              @for (n of d.nouveauNes; track n.id) {
+                <a [routerLink]="['/admin/enfants', n.numero]" class="card flex items-center gap-4 p-4 transition hover:ring-2 hover:ring-brand-200 dark:hover:ring-brand-500/30">
+                  <span class="flex h-12 w-12 flex-none items-center justify-center rounded-full text-lg text-white" [class]="n.sexe === 'Féminin' ? 'bg-pink-500' : n.sexe === 'Masculin' ? 'bg-brand-600' : 'bg-slate-500'"><i class="fa-solid fa-baby"></i></span>
+                  <div class="min-w-0 flex-1">
+                    <p class="font-semibold text-slate-900 dark:text-white">{{ n.prenom || 'Bébé ' + n.rang }} {{ n.nom }} <span class="font-mono text-xs font-normal text-slate-500">{{ n.numero }}</span></p>
+                    <p class="text-xs text-slate-500">{{ n.sexe }} · né(e) le {{ dateHeure(n.neLe) }} · {{ n.etatNaissance }}</p>
+                    @if (n.vaccination?.prochaineSeance; as ps) { <p class="mt-1 text-xs text-brand-700 dark:text-brand-300"><i class="fa-solid fa-syringe mr-1"></i>Prochaine séance {{ jour(ps.date) }} : {{ ps.doses.length }} dose(s)</p> }
+                  </div>
+                  <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
+                </a>
+              }
+            </div>
+          }
+
+          @if (!d.accouchement) {
+            <p class="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-300"><i class="fa-solid fa-circle-info mr-1"></i> Enregistrez d’abord l’accouchement (module IV).</p>
+          } @else if (!clos) {
+            @let n = formNN;
+            <div class="card p-5 sm:p-6">
+              <h2 class="section-titre"><i class="fa-solid fa-baby"></i> Nouveau-né n° {{ d.nouveauNes.length + 1 }}</h2>
+              <div class="grid gap-4 sm:grid-cols-4">
+                <div><label class="label">Prénom</label><input class="input" [(ngModel)]="n.prenom"></div>
+                <div><label class="label">Sexe <span class="req">*</span></label><select class="input" [(ngModel)]="n.sexe"><option value="">—</option>@for (x of ref?.SEXES ?? []; track x) { <option>{{ x }}</option> }</select></div>
+                <div><label class="label">Né(e) le</label><input type="datetime-local" class="input" [(ngModel)]="n.neLe"></div>
+                <div><label class="label">État</label><select class="input" [(ngModel)]="n.etatNaissance">@for (x of ref?.ETATS_NAISSANCE ?? []; track x) { <option>{{ x }}</option> }</select></div>
+              </div>
+
+              <div class="mt-6 grid gap-6 lg:grid-cols-2">
+                <div class="space-y-4">
+                  <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">SENN, cordon, allaitement</p>
+                  <div class="grid gap-3 sm:grid-cols-2 text-sm text-slate-600 dark:text-slate-300">
+                    <span class="flex items-center justify-between gap-2">Maintien de la T° <app-oui-non [(valeur)]="n.naissance.senn.maintienTemperature" /></span>
+                    <div><label class="text-xs text-slate-500">T° axillaire</label><input type="number" step="0.1" class="input" [(ngModel)]="n.naissance.senn.temperatureAxillaire"></div>
+                    <span class="flex items-center justify-between gap-2">Crédé <app-oui-non [(valeur)]="n.naissance.senn.crede" /></span>
+                    <span class="flex items-center justify-between gap-2">Mise au sein &lt; 1 h <app-oui-non [(valeur)]="n.naissance.miseAuSeinMoins1h" /></span>
+                    <span class="flex items-center justify-between gap-2">Cordon : lame stérile <app-oui-non [(valeur)]="n.naissance.soinsCordon.lameSterile" /></span>
+                    <span class="flex items-center justify-between gap-2">Cordon : fil stérile <app-oui-non [(valeur)]="n.naissance.soinsCordon.filSterile" /></span>
+                  </div>
+                  <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Mensurations</p>
+                  <div class="grid grid-cols-3 gap-3">
+                    <div><label class="text-xs text-slate-500">Poids (g)</label><input type="number" class="input" [(ngModel)]="n.naissance.poidsG"></div>
+                    <div><label class="text-xs text-slate-500">Taille (cm)</label><input type="number" class="input" [(ngModel)]="n.naissance.tailleCm"></div>
+                    <div><label class="text-xs text-slate-500">PC (cm)</label><input type="number" class="input" [(ngModel)]="n.naissance.perimetreCranienCm"></div>
+                  </div>
+                  <div class="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300">Malformations <app-oui-non [(valeur)]="n.naissance.malformations.presentes" /></div>
+                  @if (n.naissance.malformations.presentes) { <input class="input" placeholder="Description" [(ngModel)]="n.naissance.malformations.description"> }
+                </div>
+
+                <div class="space-y-4">
+                  <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">APGAR (0 à 2 par critère)</p>
+                  <table class="w-full text-sm">
+                    <thead><tr class="text-xs text-slate-500"><th class="py-1 text-left font-medium">Critère</th>@for (m of [1, 5, 10]; track m) { <th class="py-1 font-medium">{{ m }} min</th> }</tr></thead>
+                    <tbody>
+                      @for (c of ref?.APGAR_CRITERES ?? []; track c.code) {
+                        <tr>
+                          <td class="py-1 pr-2 text-slate-700 dark:text-slate-300">{{ c.libelle }}</td>
+                          @for (m of [1, 5, 10]; track m) {
+                            <td class="px-1 py-1"><select class="input px-2 py-1.5 text-center" [(ngModel)]="$any(apgarDe(m))[c.code]"><option [ngValue]="null">—</option>@for (v of [0, 1, 2]; track v) { <option [ngValue]="v">{{ v }}</option> }</select></td>
+                          }
+                        </tr>
+                      }
+                      <tr class="font-semibold text-slate-900 dark:text-white"><td class="py-1">Total</td>@for (m of [1, 5, 10]; track m) { <td class="py-1 text-center tabular-nums">{{ apgarTotal(apgarDe(m)) ?? '—' }}/10</td> }</tr>
+                    </tbody>
+                  </table>
+                  <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Réanimation</p>
+                  <div class="grid gap-3 sm:grid-cols-2 text-sm text-slate-600 dark:text-slate-300">
+                    <span class="flex items-center justify-between gap-2">Réanimation <app-oui-non [(valeur)]="n.naissance.reanimation.faite" /></span>
+                    @if (n.naissance.reanimation.faite) {
+                      <span class="flex items-center justify-between gap-2">Stimulation <app-oui-non [(valeur)]="n.naissance.reanimation.stimulation" /></span>
+                      <span class="flex items-center justify-between gap-2">Aspiration <app-oui-non [(valeur)]="n.naissance.reanimation.aspiration" /></span>
+                      <span class="flex items-center justify-between gap-2">Ventilation <app-oui-non [(valeur)]="n.naissance.reanimation.ventilation" /></span>
+                    }
+                  </div>
+                  <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Traitement</p>
+                  <div class="grid gap-3 sm:grid-cols-2 text-sm text-slate-600 dark:text-slate-300">
+                    <span class="flex items-center justify-between gap-2">Vitamine K1 <app-oui-non [(valeur)]="n.naissance.traitement.vitamineK1" /></span>
+                    <span></span>
+                    <span class="flex items-center justify-between gap-2">Antibiotique <app-oui-non [(valeur)]="n.naissance.traitement.antibiotique" /></span>
+                    <input class="input" placeholder="Lequel, posologie" [(ngModel)]="n.naissance.traitement.antibiotiquePrecision" [disabled]="!n.naissance.traitement.antibiotique">
+                    <span class="flex items-center justify-between gap-2">ARV <app-oui-non [(valeur)]="n.naissance.traitement.arv" /></span>
+                    <input class="input" placeholder="Molécule, posologie" [(ngModel)]="n.naissance.traitement.arvPrecision" [disabled]="!n.naissance.traitement.arv">
+                  </div>
+                </div>
+              </div>
+              <div class="mt-6 flex items-center justify-between gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
+                <p class="text-xs text-slate-500"><i class="fa-solid fa-link mr-1"></i>Le bébé est rattaché au compte de sa mère : elle verra son carnet de vaccination et ses rendez-vous.</p>
+                <button class="btn-primary" (click)="enregistrerNouveauNe()" [disabled]="!n.sexe"><i class="fa-solid fa-baby"></i> Enregistrer la naissance</button>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- ========================= VI. POST-PARTUM & SORTIE ========================= -->
+      @case ('post-partum') {
+        @if (!d.accouchement) {
+          <p class="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-300"><i class="fa-solid fa-circle-info mr-1"></i> Enregistrez d’abord l’accouchement (module IV).</p>
+        } @else {
+          <div class="space-y-6">
+            <!-- Planning -->
+            <div class="card p-5 sm:p-6">
+              <h2 class="card-title mb-4"><i class="fa-solid fa-clock text-brand-600 dark:text-brand-400"></i> Planning de surveillance</h2>
+              <div class="flex flex-wrap gap-2">
+                @for (c of d.planningPostPartum ?? []; track c.code) {
+                  <button type="button" class="rounded-lg px-2.5 py-1.5 text-left text-xs" [class]="classePlanning(c.statut)" [title]="c.statut"
+                          (click)="c.statut !== 'Faite' && (formPP.creneau = c.code)">
+                    <span class="block font-semibold">{{ c.libelle }}</span><span class="block opacity-80">{{ dateHeure(c.prevuLe) }}</span>
+                  </button>
+                }
+              </div>
+            </div>
+
+            @if (!clos) {
+              @let pp = formPP;
+              <div class="card p-5 sm:p-6">
+                <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+                  <h2 class="card-title"><i class="fa-solid fa-heart-pulse text-rose-500"></i> Surveillance post-partum</h2>
+                  <div class="flex gap-2">
+                    <select class="input w-auto" [(ngModel)]="pp.creneau" aria-label="Créneau">
+                      @for (c of d.planningPostPartum ?? []; track c.code) { <option [value]="c.code" [disabled]="c.statut === 'Faite'">{{ c.libelle }}{{ c.statut === 'Faite' ? ' ✓' : '' }}</option> }
+                      <option value="Supplémentaire">Surveillance supplémentaire</option>
+                    </select>
+                    <input type="datetime-local" class="input w-auto" [(ngModel)]="pp.le" aria-label="Heure">
+                  </div>
+                </div>
+                <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Mère</p>
+                <div class="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                  <div><label class="text-xs text-slate-500">TA syst.</label><input type="number" class="input" [(ngModel)]="pp.mere.taSystolique"></div>
+                  <div><label class="text-xs text-slate-500">TA diast.</label><input type="number" class="input" [(ngModel)]="pp.mere.taDiastolique"></div>
+                  <div><label class="text-xs text-slate-500">Pouls</label><input type="number" class="input" [(ngModel)]="pp.mere.pouls"></div>
+                  <div><label class="text-xs text-slate-500">T°</label><input type="number" step="0.1" class="input" [(ngModel)]="pp.mere.temperature"></div>
+                  <div><label class="text-xs text-slate-500">Respiration</label><input type="number" class="input" [(ngModel)]="pp.mere.respiration"></div>
+                  <div><label class="text-xs text-slate-500">Saignement</label><select class="input" [(ngModel)]="pp.mere.saignement"><option value="">—</option>@for (x of ref?.SAIGNEMENTS ?? []; track x) { <option>{{ x }}</option> }</select></div>
+                  <div><label class="text-xs text-slate-500">Conscience</label><input class="input" [(ngModel)]="pp.mere.conscience"></div>
+                  <div><p class="text-xs text-slate-500">Globe de sécurité</p><app-oui-non [(valeur)]="pp.mere.globeSecurite" /></div>
+                  <div><label class="text-xs text-slate-500">Vessie / diurèse</label><input class="input" [(ngModel)]="pp.mere.vessieDiurese"></div>
+                  <div><label class="text-xs text-slate-500">Allaitement</label><input class="input" [(ngModel)]="pp.mere.allaitement"></div>
+                  <div class="sm:col-span-2"><label class="text-xs text-slate-500">Réactions psychologiques</label><input class="input" [(ngModel)]="pp.mere.reactionsPsy"></div>
+                </div>
+                @for (nn of pp.nouveauNes; track nn.enfantId) {
+                  <p class="mb-2 mt-5 text-xs font-semibold uppercase tracking-wide text-slate-500">Nouveau-né · {{ prenomEnfant(nn.enfantId) }}</p>
+                  <div class="grid gap-3 sm:grid-cols-4">
+                    <div><label class="text-xs text-slate-500">Respiration</label><input type="number" class="input" [(ngModel)]="nn.respiration"></div>
+                    <div><label class="text-xs text-slate-500">Coloration</label><input class="input" [(ngModel)]="nn.coloration"></div>
+                    <div><label class="text-xs text-slate-500">T° axillaire</label><input type="number" step="0.1" class="input" [(ngModel)]="nn.temperatureAxillaire"></div>
+                    <div><label class="text-xs text-slate-500">Signes de danger</label><input class="input" [(ngModel)]="nn.signesDanger"></div>
+                  </div>
+                }
+                <div class="mt-4"><label class="text-xs text-slate-500">Observations</label><input class="input" [(ngModel)]="pp.observations"></div>
+                <div class="mt-4 flex justify-end"><button class="btn-primary" (click)="enregistrerPostPartum()"><i class="fa-solid fa-plus"></i> Enregistrer</button></div>
+              </div>
+            }
+
+            @if (d.postPartum.surveillances.length) {
+              <div class="card overflow-hidden">
+                <div class="card-header"><h2 class="card-title"><i class="fa-solid fa-list text-brand-600 dark:text-brand-400"></i> Surveillances réalisées</h2></div>
+                <div class="overflow-x-auto">
+                  <table class="min-w-full divide-y divide-slate-100 text-xs dark:divide-slate-800">
+                    <thead class="bg-slate-50/70 dark:bg-slate-800/50"><tr><th class="table-th">Créneau</th><th class="table-th">Mère : TA · pouls · T° · respi</th><th class="table-th">Saign. · globe</th><th class="table-th">Conscience · vessie · allaitement · psy</th><th class="table-th">Nouveau-nés</th><th class="table-th">Par</th></tr></thead>
+                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                      @for (x of d.postPartum.surveillances; track x.id) {
+                        <tr>
+                          <td class="whitespace-nowrap px-3 py-2"><p class="font-medium">{{ libelleCreneau(x.creneau) }}</p><p class="text-slate-500">{{ dateHeure(x.le) }}</p></td>
+                          <td class="whitespace-nowrap px-3 py-2">{{ x.mere.taSystolique ?? '—' }}/{{ x.mere.taDiastolique ?? '—' }} · {{ x.mere.pouls ?? '—' }} · {{ x.mere.temperature ?? '—' }} · {{ x.mere.respiration ?? '—' }}</td>
+                          <td class="px-3 py-2">{{ x.mere.saignement || '—' }} · {{ x.mere.globeSecurite === true ? 'formé' : x.mere.globeSecurite === false ? 'non formé' : '—' }}</td>
+                          <td class="px-3 py-2">{{ [x.mere.conscience, x.mere.vessieDiurese, x.mere.allaitement, x.mere.reactionsPsy].join(' · ') }}</td>
+                          <td class="px-3 py-2">@for (nn of x.nouveauNes; track nn.enfantId) { <p>{{ prenomEnfant(nn.enfantId) }} : R {{ nn.respiration ?? '—' }}, {{ nn.coloration || '—' }}, {{ nn.temperatureAxillaire ?? '—' }} °C{{ nn.signesDanger ? ', ⚠ ' + nn.signesDanger : '' }}</p> }</td>
+                          <td class="whitespace-nowrap px-3 py-2 text-slate-500">{{ x.auteur.nom }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            }
+
+            <!-- Traitements -->
+            <div class="card p-5 sm:p-6">
+              <h2 class="card-title mb-4"><i class="fa-solid fa-pills text-brand-600 dark:text-brand-400"></i> Traitements prévus / administrés</h2>
+              <ul class="mb-4 divide-y divide-slate-100 dark:divide-slate-800">
+                @for (t of d.postPartum.traitements; track t.id) {
+                  <li class="flex flex-wrap items-center gap-3 py-2.5 text-sm">
+                    <span class="badge bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">{{ t.pour }}{{ t.enfantId ? ' · ' + prenomEnfant(t.enfantId) : '' }}</span>
+                    <span class="flex-1 text-slate-800 dark:text-slate-200"><strong>{{ t.produit }}</strong> {{ t.dose }} {{ t.voie }} {{ t.frequence }} {{ t.duree }}</span>
+                    @if (t.statut === 'Administré') {
+                      <span class="badge bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300"><i class="fa-solid fa-check"></i> {{ dateHeure(t.administreLe) }}</span>
+                    } @else {
+                      <button type="button" class="btn-secondary px-3 py-1 text-xs" (click)="administrer(t.id)">Marquer administré</button>
+                    }
+                  </li>
+                } @empty { <li class="py-2 text-sm text-slate-500">Aucun traitement.</li> }
+              </ul>
+              @if (!clos) {
+                <div class="grid gap-3 sm:grid-cols-4 lg:grid-cols-8">
+                  <select class="input lg:col-span-1" [(ngModel)]="formTrait.pour" aria-label="Pour">@for (x of ref?.POUR_TRAITEMENT ?? []; track x) { <option>{{ x }}</option> }</select>
+                  @if (formTrait.pour === 'Nouveau-né') {
+                    <select class="input" [(ngModel)]="formTrait.enfantId" aria-label="Nouveau-né"><option value="">Bébé…</option>@for (n of d.nouveauNes; track n.id) { <option [value]="n.id">{{ n.prenom || 'Bébé ' + n.rang }}</option> }</select>
+                  }
+                  <input class="input lg:col-span-2" placeholder="Produit" [(ngModel)]="formTrait.produit">
+                  <input class="input" placeholder="Dose" [(ngModel)]="formTrait.dose">
+                  <input class="input" placeholder="Voie" [(ngModel)]="formTrait.voie">
+                  <input class="input" placeholder="Fréquence / durée" [(ngModel)]="formTrait.frequence">
+                  <select class="input" [(ngModel)]="formTrait.statut" aria-label="Statut">@for (x of ref?.STATUTS_TRAITEMENT ?? []; track x) { <option>{{ x }}</option> }</select>
+                  <button type="button" class="btn-primary" (click)="enregistrerTraitement()" [disabled]="!formTrait.produit"><i class="fa-solid fa-plus"></i></button>
+                </div>
+              }
+            </div>
+
+            <!-- Sortie -->
+            @let so = formSortie;
+            <div class="grid gap-6 lg:grid-cols-2">
+              <div class="card p-5 sm:p-6">
+                <h2 class="section-titre"><i class="fa-solid fa-door-open"></i> Examen de sortie</h2>
+                <div class="grid gap-4 sm:grid-cols-2">
+                  <div><label class="label">Date de sortie</label><input type="date" class="input" [(ngModel)]="so.date"></div>
+                  <div><label class="label">RDV CPoN</label><input type="datetime-local" class="input" [(ngModel)]="so.rdvCpon"></div>
+                  <div class="sm:col-span-2"><label class="label">Observations</label><textarea rows="3" class="input" [(ngModel)]="so.observations"></textarea></div>
+                  <div class="sm:col-span-2"><label class="label">Conseils donnés</label><textarea rows="3" class="input" [(ngModel)]="so.conseils"></textarea></div>
+                </div>
+                @if (d.postPartum.sortie; as s) {
+                  <p class="mt-3 text-xs text-slate-500">Examen fait par {{ s.examinePar.nom }} le {{ dateHeure(s.le) }}{{ s.rdvCpon ? ' · CPoN ajoutée à l’agenda de la mère' : '' }}.</p>
+                }
+              </div>
+              <div class="card p-5 sm:p-6">
+                <h2 class="section-titre"><i class="fa-solid fa-shield-heart"></i> Mesures préventives <span class="text-xs font-normal">(obligatoires pour clore)</span></h2>
+                <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Mère</p>
+                <div class="grid gap-2 sm:grid-cols-2">
+                  @for (m of ref?.MESURES_SORTIE_MERE ?? []; track m.code) {
+                    <span class="flex items-center justify-between gap-2 text-sm text-slate-700 dark:text-slate-300" [class.text-rose-600]="so.mesures.mere[m.code] == null">{{ m.libelle }} <app-oui-non [(valeur)]="so.mesures.mere[m.code]" /></span>
+                  }
+                </div>
+                <p class="mb-2 mt-4 text-xs font-semibold uppercase tracking-wide text-slate-500">Nouveau-né</p>
+                <div class="grid gap-2 sm:grid-cols-2">
+                  @for (m of ref?.MESURES_SORTIE_NOUVEAU_NE ?? []; track m.code) {
+                    <span class="flex items-center justify-between gap-2 text-sm text-slate-700 dark:text-slate-300">{{ m.libelle }} <app-oui-non [(valeur)]="so.mesures.nouveauNe[m.code]" /></span>
+                  }
+                </div>
+                <p class="mt-3 text-xs text-slate-500"><i class="fa-solid fa-syringe mr-1"></i>« BCG / VPO » coché oui : BCG et VPO 0 sont reportés au carnet de vaccination à la clôture.</p>
+              </div>
+            </div>
+
+            @if (!clos) {
+              <div class="card flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
+                <div class="flex-1">
+                  @if (d.manquantsCloture.length) {
+                    <p class="text-sm font-semibold text-slate-900 dark:text-white">À compléter avant la clôture :</p>
+                    <ul class="mt-1 list-inside list-disc text-sm text-rose-700 dark:text-rose-300">@for (m of d.manquantsCloture; track m) { <li>{{ m }}</li> }</ul>
+                  } @else {
+                    <p class="text-sm text-accent-700 dark:text-accent-300"><i class="fa-solid fa-circle-check mr-1"></i> Le dossier est complet : il peut être clôturé.</p>
+                  }
+                </div>
+                <div class="flex gap-2">
+                  <button class="btn-secondary" (click)="enregistrerSortie()"><i class="fa-solid fa-floppy-disk"></i> Enregistrer la sortie</button>
+                  <button class="btn-primary" (click)="cloturer()" [disabled]="d.manquantsCloture.length > 0"><i class="fa-solid fa-lock"></i> Clôturer le dossier</button>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      }
+    }
+    </fieldset>
+  }
+</div>
+
+<!-- Suppression définitive du dossier d'accouchement (médecins) -->
+@if (suppressionOuverte && d) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm" (click)="suppressionOuverte = false">
+    <div class="w-full max-w-lg rounded-2xl bg-white shadow-2xl dark:bg-slate-900" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="titre-suppression">
+      <div class="flex items-center gap-3 border-b border-slate-100 px-6 py-4 dark:border-slate-800">
+        <span class="flex h-10 w-10 items-center justify-center rounded-full bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400"><i class="fa-solid fa-triangle-exclamation"></i></span>
+        <h2 id="titre-suppression" class="text-lg font-semibold text-slate-900 dark:text-white">Supprimer définitivement le dossier ?</h2>
+      </div>
+      <div class="space-y-4 p-6 text-sm text-slate-600 dark:text-slate-300">
+        <p>Cette action est <strong>irréversible</strong>. Seront supprimés :</p>
+        <ul class="list-inside list-disc space-y-1">
+          <li>tout le dossier {{ d.numero }} : admission, examen, partogramme et alertes, accouchement, post-partum et sortie ;</li>
+          @if (d.nouveauNes.length) {
+            <li class="font-semibold text-rose-700 dark:text-rose-300">{{ d.nouveauNes.length }} dossier(s) de nouveau-né : {{ prenomsNouveauNes }} — carnet de vaccination, croissance et rendez-vous (aussi retirés de l’espace de la maman) ;</li>
+          }
+          @if (d.postPartum.sortie?.rdvCpon) { <li>le rendez-vous de consultation postnatale (CPoN) ;</li> }
+        </ul>
+        @if (d.accouchement) { <p>La grossesse sera rouverte et la patiente repassera en « Suivi prénatal ».</p> }
+        <p class="text-xs text-slate-500">La suppression est inscrite au journal d’audit avec votre nom.</p>
+        <div>
+          <label class="label" for="conf-suppr">Pour confirmer, saisissez le numéro du dossier : <span class="font-mono">{{ d.numero }}</span></label>
+          <input id="conf-suppr" class="input font-mono uppercase" autocomplete="off" [(ngModel)]="saisieSuppression" [placeholder]="d.numero">
+        </div>
+        @if (erreurSuppression) {
+          <p class="flex items-start gap-2 rounded-xl bg-rose-50 px-3 py-2.5 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300" role="alert"><i class="fa-solid fa-circle-exclamation mt-0.5"></i> {{ erreurSuppression }}</p>
+        }
+      </div>
+      <div class="flex justify-end gap-2 border-t border-slate-100 px-6 py-4 dark:border-slate-800">
+        <button class="btn-secondary" (click)="suppressionOuverte = false">Annuler</button>
+        <button class="btn bg-rose-600 text-white hover:bg-rose-700" (click)="supprimer()" [disabled]="envoi || saisieSuppression.trim().toUpperCase() !== d.numero">
+          <i class="fa-solid" [class]="envoi ? 'fa-spinner fa-spin' : 'fa-trash-can'"></i> Supprimer définitivement
+        </button>
+      </div>
+    </div>
+  </div>
+}

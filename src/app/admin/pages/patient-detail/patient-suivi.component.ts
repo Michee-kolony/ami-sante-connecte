@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 import { AvatarComponent } from '../../components/avatar.component';
 import { agLisible, dateHeureChiffres, jourChiffres } from '../../data/format';
 import { PatientesService, StatutRdv, SuiviPatiente } from '../../data/patientes.service';
-import { messageErreur } from '../../data/session.service';
+import { SessionService, messageErreur } from '../../data/session.service';
 
 const ACTIFS: StatutRdv[] = ['Planifié', 'Confirmé', 'Reporté'];
 
@@ -153,6 +153,33 @@ const ACTIFS: StatutRdv[] = ['Planifié', 'Confirmé', 'Reporté'];
       </div>
     </div>
 
+    <!-- Sages-femmes : admission en salle de travail -->
+    @if (session.estMaternite() && suivi.grossesse) {
+      <a [routerLink]="['/admin/accouchements']" [queryParams]="{ patiente: suivi.patiente.numero }" class="card flex items-center gap-3 p-4 text-sm font-semibold text-brand-800 hover:ring-2 hover:ring-brand-200 dark:text-brand-200 dark:hover:ring-brand-500/30">
+        <i class="fa-solid fa-bed-pulse"></i> <span class="flex-1">Admettre en salle de travail / ouvrir le dossier d’accouchement</span> <i class="fa-solid fa-chevron-right text-xs"></i>
+      </a>
+    }
+
+    <!-- Enfants (carnet de vaccination ouvert à tout le personnel) -->
+    @if (suivi.enfants.length) {
+      <div class="card overflow-hidden">
+        <div class="card-header"><h2 class="card-title"><i class="fa-solid fa-baby text-pink-500"></i> Enfants ({{ suivi.enfants.length }})</h2></div>
+        <ul class="divide-y divide-slate-100 dark:divide-slate-800">
+          @for (e of suivi.enfants; track e.id) {
+            <li><a [routerLink]="['/admin/enfants', e.numero]" class="flex items-center gap-3 px-5 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/40">
+              <div class="flex-1">
+                <p class="font-medium text-slate-900 dark:text-white">{{ e.prenom || 'Bébé ' + e.rang }} {{ e.nom }} · {{ e.age?.libelle }}</p>
+                @if (e.vaccination; as v) {
+                  <p class="text-xs text-slate-500">{{ v.vaccinsFaits }}/{{ v.vaccinsTotal }} vaccins{{ v.enRetard ? ' · ' + v.enRetard + ' en retard' : '' }}{{ v.prochaineSeance ? ' · prochaine séance le ' + v.prochaineSeance.date : '' }}</p>
+                }
+              </div>
+              <span class="btn-secondary px-3 py-1.5 text-xs">Carnet <i class="fa-solid fa-chevron-right text-[10px]"></i></span>
+            </a></li>
+          }
+        </ul>
+      </div>
+    }
+
     <!-- Tous les rendez-vous -->
     <div class="card overflow-hidden">
       <div class="card-header"><h2 class="card-title"><i class="fa-solid fa-calendar-days text-brand-600 dark:text-brand-400"></i> Rendez-vous ({{ suivi.rendezVous.length }})</h2></div>
@@ -195,6 +222,7 @@ const ACTIFS: StatutRdv[] = ['Planifié', 'Confirmé', 'Reporté'];
   `,
 })
 export class PatientSuiviComponent implements OnChanges {
+  session = inject(SessionService);
   @Input() id = '';
   private service = inject(PatientesService);
   ag = agLisible;

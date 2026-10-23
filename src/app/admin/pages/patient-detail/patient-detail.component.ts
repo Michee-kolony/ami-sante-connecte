@@ -192,6 +192,11 @@ export class PatientDetailComponent implements OnChanges, OnDestroy {
   }
 
   // --- Lecture du dossier -------------------------------------------------------
+  /** Dossier d'accouchement encore ouvert (pas de seconde admission). */
+  get accouchementEnCours(): boolean {
+    return !!this.dossier?.accouchements?.some(a => a.statut !== 'Clôturé');
+  }
+
   get grossesse(): Grossesse | null {
     return this.dossier?.grossesses.find(g => g.statut === 'En cours') ?? null;
   }

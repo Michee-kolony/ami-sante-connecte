@@ -25,6 +25,9 @@ import { SoignantDetailComponent } from './pages/soignant-detail/soignant-detail
 import { ConsultationComponent } from './pages/consultation/consultation.component';
 import { DiscussionsComponent } from './pages/discussions/discussions.component';
 import { ArticlesComponent } from './pages/articles/articles.component';
+import { SalleTravailComponent } from './pages/salle-travail/salle-travail.component';
+import { AccouchementComponent } from './pages/accouchement/accouchement.component';
+import { EnfantDetailComponent } from './pages/enfant-detail/enfant-detail.component';
 
 /** Pages réservées au superadmin. ⚠️ Côté client seulement : le serveur doit refuser aussi. */
 const superAdminGuard = () => UTILISATEUR.superAdmin || inject(Router).parseUrl('/admin/tableau-de-bord');
@@ -34,6 +37,9 @@ const connecteGuard = () => inject(SessionService).connecte() || inject(Router).
 
 /** Dossier médical (enregistrement, consultations) : médecins seulement. ⚠️ Le serveur refuse aussi. */
 const medecinGuard = () => inject(SessionService).estMedecin() || inject(Router).parseUrl('/admin/patientes');
+
+/** Salle de travail et dossier d'accouchement : médecins et sages-femmes. ⚠️ Le serveur refuse aussi. */
+const materniteGuard = () => inject(SessionService).estMaternite() || inject(Router).parseUrl('/admin/patientes');
 
 /** Espace réservé au personnel et aux administrateurs — monté sous /admin. */
 export const ADMIN_ROUTES: Routes = [
@@ -60,7 +66,11 @@ export const ADMIN_ROUTES: Routes = [
       // Articles de conseils : médecins seulement (le serveur refuse aussi les infirmier·ères).
       { path: 'conseils', component: ArticlesComponent, canActivate: [connecteGuard, medecinGuard], title: 'Conseils aux mamans · AMI Santé Connect' },
       { path: 'messages', component: MessagesComponent, title: 'Messages · AMI Santé Connect' },
-      { path: 'enfants', component: EnfantsComponent, title: 'Enfants vaccinés · AMI Santé Connect' },
+      // Accouchement (modules I à VI) et suivi de l'enfant (carnet PEV) : serveur.
+      { path: 'accouchements', component: SalleTravailComponent, canActivate: [connecteGuard, materniteGuard], title: 'Salle de travail · AMI Santé Connect' },
+      { path: 'accouchements/:id', component: AccouchementComponent, canActivate: [connecteGuard, materniteGuard], title: 'Dossier d’accouchement · AMI Santé Connect' },
+      { path: 'enfants', component: EnfantsComponent, canActivate: [connecteGuard], title: 'Enfants et vaccination · AMI Santé Connect' },
+      { path: 'enfants/:id', component: EnfantDetailComponent, canActivate: [connecteGuard], title: 'Carnet de l’enfant · AMI Santé Connect' },
       { path: 'agents', component: AgentsComponent, title: 'Agents de vaccination · AMI Santé Connect' },
       { path: 'doublons', component: DuplicatesComponent, title: 'Doublons · AMI Santé Connect' },
       { path: 'synchronisation', component: SyncComponent, title: 'Synchronisation · AMI Santé Connect' },

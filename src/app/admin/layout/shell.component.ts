@@ -6,6 +6,7 @@ import { MessagesService } from '../data/messages.service';
 import { SessionService } from '../data/session.service';
 import { PresenceService } from '../data/presence.service';
 import { DiscussionsService } from '../data/discussions.service';
+import { AlertesMaterniteService } from '../data/accouchements.service';
 import { NotificationsMessagesComponent } from '../components/notifications-messages.component';
 import { AvatarComponent } from '../components/avatar.component';
 import { ConversationsFlottantesComponent } from '../components/conversations-flottantes.component';
@@ -18,6 +19,8 @@ interface NavItem {
   badge?: number;
   /** Accès au dossier médical (réservé aux médecins). */
   clinique?: boolean;
+  /** Salle de travail (médecins et sages-femmes). */
+  maternite?: boolean;
 }
 
 @Component({
@@ -56,6 +59,7 @@ export class ShellComponent {
     if (item.path === '/admin/messages') return this.messages.totalNonLus();
     if (item.path === '/admin/discussions') return this.discussions.totalNonLus() || undefined;
     if (item.path === '/admin/urgences') return this.urgences.nouvelles();
+    if (item.path === '/admin/accouchements') return this.alertesMaternite.actives().length || undefined;
     return item.badge;
   }
 
@@ -64,6 +68,8 @@ export class ShellComponent {
   private presence = inject(PresenceService);
   /** Discussions entre soignants : compteur de messages non lus dans le menu, en temps réel. */
   private discussions = inject(DiscussionsService);
+  /** Alertes du partogramme : badge du menu, bandeau et alarme sonore en direct (zone rouge). */
+  alertesMaternite = inject(AlertesMaterniteService);
 
   /** Établissement choisi à la connexion, sinon la structure fictive de la maquette. */
   get structure() {
@@ -87,7 +93,8 @@ export class ShellComponent {
 
   /** Enregistrement (dossier médical) : masqué aux infirmier·ères et sages-femmes — le serveur refuse aussi. Patientes et rendez-vous : vue de suivi. */
   get nav(): NavItem[] {
-    return this.session.estInfirmier() ? this.navTous.filter(i => !i.clinique) : this.navTous;
+    const maternite = this.session.estMaternite();
+    return this.navTous.filter(i => (!i.clinique || !this.session.estInfirmier()) && (!i.maternite || maternite));
   }
 
   private navTous: NavItem[] = [
@@ -95,12 +102,13 @@ export class ShellComponent {
     { label: 'Tableau de bord', icon: 'fa-gauge-high', path: '/admin/tableau-de-bord' },
     { label: 'Patientes', icon: 'fa-person-pregnant', path: '/admin/patientes' },
     { label: 'Enregistrement CPN', icon: 'fa-file-circle-plus', path: '/admin/patientes/nouvelle', clinique: true },
+    { label: 'Salle de travail', icon: 'fa-bed-pulse', path: '/admin/accouchements', maternite: true },
     { label: 'Rendez-vous', icon: 'fa-calendar-check', path: '/admin/rendez-vous' },
     { label: 'Discussions', icon: 'fa-comment-medical', path: '/admin/discussions' },
     { label: 'Conseils aux mamans', icon: 'fa-newspaper', path: '/admin/conseils', clinique: true },
     { label: 'Messages', icon: 'fa-comments', path: '/admin/messages' },
     { label: 'Doublons', icon: 'fa-clone', path: '/admin/doublons', badge: 2 },
-    { label: 'Enfants vaccinés', icon: 'fa-baby', path: '/admin/enfants' },
+    { label: 'Enfants & vaccination', icon: 'fa-baby', path: '/admin/enfants' },
     { label: 'Agents de vaccination', icon: 'fa-user-nurse', path: '/admin/agents' },
   ];
 

@@ -1,77 +1,98 @@
-import { Component, computed, signal } from '@angular/core';
-import { formatDate } from '../../data/mock-data';
-import {
-  ageLisible, CALENDRIER, CONTACTS, couverture, dosesDuMois, Enfant, ENFANTS, etatContact, etatDose,
-  EtatDose, prochaineDose, StatutVaccinal, statutVaccinal,
-} from '../../data/vaccination';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { EnfantsService, ResumeEnfant } from '../../data/enfants.service';
+import { dateHeureChiffres, jourChiffres, aujourdhui } from '../../data/format';
+import { messageErreur } from '../../data/session.service';
 
+type Filtre = 'Tous' | 'À jour' | 'En retard' | 'Complets';
+
+/**
+ * Enfants suivis (nés dans la plateforme) : carnet vaccinal du PEV RDC calculé par le serveur,
+ * prochaine séance et retards. Ouvert à tout le personnel soignant.
+ */
 @Component({
   selector: 'app-enfants',
   standalone: true,
+  imports: [RouterLink],
   templateUrl: './enfants.component.html',
 })
-export class EnfantsComponent {
-  fmt = formatDate;
-  contacts = CONTACTS;
-  calendrier = CALENDRIER;
-  age = ageLisible;
-  statut = statutVaccinal;
-  prochaine = prochaineDose;
-  etatContact = etatContact;
-  etatDose = etatDose;
+export class EnfantsComponent implements OnInit {
+  private service = inject(EnfantsService);
+  jour = jourChiffres;
+  dateHeure = dateHeureChiffres;
 
-  statuts: ('Tous' | StatutVaccinal)[] = ['Tous', 'À jour', 'En retard', 'Complet'];
+  filtres: Filtre[] = ['Tous', 'À jour', 'En retard', 'Complets'];
+  filtre = signal<Filtre>('Tous');
   recherche = signal('');
-  filtreStatut = signal<'Tous' | StatutVaccinal>('Tous');
-  ouvert = signal<string | null>(null);
+  enfants = signal<ResumeEnfant[]>([]);
+  chargement = signal(true);
+  erreur = signal('');
+  private minuterie?: ReturnType<typeof setTimeout>;
 
-  filtres = computed(() => {
-    const q = this.recherche().trim().toLowerCase();
-    return ENFANTS.filter(e => {
-      const ok = this.filtreStatut() === 'Tous' || statutVaccinal(e) === this.filtreStatut();
-      const texte = `${e.prenom} ${e.nom} ${e.id} ${e.tuteur} ${e.telephone}`.toLowerCase();
-      return ok && (!q || texte.includes(q));
-    });
+  private correspond(e: ResumeEnfant, f: Filtre): boolean {
+    const v = e.vaccination;
+    if (f === 'Tous') return true;
+    if (!v) return false;
+    if (f === 'En retard') return v.enRetard > 0;
+    if (f === 'Complets') return v.completementVaccine;
+    return v.enRetard === 0;
+  }
+
+  affiches = computed(() => this.enfants().filter(e => this.correspond(e, this.filtre())));
+
+  stats = computed(() => {
+    const l = this.enfants().filter(e => e.vaccination);
+    const jour = aujourdhui();
+    return {
+      total: this.enfants().length,
+      complets: l.filter(e => e.vaccination!.completementVaccine).length,
+      retard: l.filter(e => e.vaccination!.enRetard > 0).length,
+      aujourdhui: l.filter(e => e.vaccination!.prochaineSeance?.date === jour).length,
+    };
   });
 
-  stats = {
-    total: ENFANTS.length,
-    complets: ENFANTS.filter(e => statutVaccinal(e) === 'Complet').length,
-    retard: ENFANTS.filter(e => statutVaccinal(e) === 'En retard').length,
-    dosesMois: dosesDuMois(ENFANTS),
-    penta3: couverture(ENFANTS, 'PENTA3'),
-  };
-
-  compte(s: 'Tous' | StatutVaccinal): number {
-    return s === 'Tous' ? ENFANTS.length : ENFANTS.filter(e => statutVaccinal(e) === s).length;
+  compte(f: Filtre): number {
+    return this.enfants().filter(e => this.correspond(e, f)).length;
   }
 
-  basculer(e: Enfant): void {
-    this.ouvert.update(id => (id === e.id ? null : e.id));
+  async ngOnInit(): Promise<void> {
+    await this.charger();
   }
 
-  dosesDuContact(contact: string) {
-    return CALENDRIER.filter(d => d.contact === contact);
+  async charger(): Promise<void> {
+    this.chargement.set(true);
+    this.erreur.set('');
+    try {
+      this.enfants.set(await this.service.rechercher({ q: this.recherche() }));
+    } catch (err) {
+      this.erreur.set(messageErreur(err));
+    } finally {
+      this.chargement.set(false);
+    }
   }
 
-  pastille(etat: EtatDose): string {
-    return {
-      'recue': 'bg-accent-500 text-white ring-accent-500',
-      'due': 'bg-amber-50 text-amber-600 ring-amber-400 dark:bg-amber-500/10 dark:text-amber-300',
-      'retard': 'bg-rose-500 text-white ring-rose-500',
-      'a-venir': 'bg-white text-slate-300 ring-slate-200 dark:bg-slate-900 dark:text-slate-600 dark:ring-slate-700',
-    }[etat];
+  /** Recherche côté serveur, déclenchée après une courte pause de frappe. */
+  chercher(q: string): void {
+    this.recherche.set(q);
+    clearTimeout(this.minuterie);
+    this.minuterie = setTimeout(() => this.charger(), 350);
   }
 
-  icone(etat: EtatDose): string {
-    return { 'recue': 'fa-check', 'due': 'fa-clock', 'retard': 'fa-exclamation', 'a-venir': 'fa-minus' }[etat];
+  progression(e: ResumeEnfant): number {
+    const v = e.vaccination;
+    return v && v.vaccinsTotal ? Math.round((v.vaccinsFaits / v.vaccinsTotal) * 100) : 0;
   }
 
-  badgeStatut(s: StatutVaccinal): string {
-    return {
-      'Complet': 'bg-accent-50 text-accent-700 ring-1 ring-accent-200 dark:bg-accent-500/10 dark:text-accent-300 dark:ring-accent-500/30',
-      'À jour': 'bg-brand-50 text-brand-700 ring-1 ring-brand-200 dark:bg-brand-500/10 dark:text-brand-300 dark:ring-brand-500/30',
-      'En retard': 'bg-rose-50 text-rose-700 ring-1 ring-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/30',
-    }[s];
+  libelles(e: ResumeEnfant): string {
+    return e.vaccination?.prochaineSeance?.doses.map(x => x.libelle).join(', ') ?? '';
+  }
+
+  statut(e: ResumeEnfant): { libelle: string; classe: string } {
+    const v = e.vaccination;
+    if (e.etatNaissance === 'Mort-né') return { libelle: 'Mort-né', classe: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400' };
+    if (e.statut !== 'Suivi') return { libelle: e.statut, classe: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400' };
+    if (v?.completementVaccine) return { libelle: 'Complet', classe: 'bg-accent-50 text-accent-700 ring-1 ring-accent-200 dark:bg-accent-500/10 dark:text-accent-300 dark:ring-accent-500/30' };
+    if (v && v.enRetard > 0) return { libelle: `${v.enRetard} en retard`, classe: 'bg-rose-50 text-rose-700 ring-1 ring-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/30' };
+    return { libelle: 'À jour', classe: 'bg-brand-50 text-brand-700 ring-1 ring-brand-200 dark:bg-brand-500/10 dark:text-brand-300 dark:ring-brand-500/30' };
   }
 }

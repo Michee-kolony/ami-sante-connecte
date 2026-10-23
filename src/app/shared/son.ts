@@ -45,6 +45,22 @@ function jouer(ctx: AudioContext): void {
 }
 
 export function carillon(): void {
+  lire(jouer);
+}
+
+/** Alarme clinique (partogramme) : trois bips aigus répétés deux fois, nettement distincts du carillon. */
+function jouerAlarme(ctx: AudioContext): void {
+  const t = ctx.currentTime + 0.02;
+  for (let serie = 0; serie < 2; serie++) {
+    for (let i = 0; i < 3; i++) note(ctx, 1046.5, t + serie * 0.9 + i * 0.18, 0.14, 0.2); // Do 6
+  }
+}
+
+export function alarme(): void {
+  lire(jouerAlarme);
+}
+
+function lire(jouer: (ctx: AudioContext) => void): void {
   const ctx = obtenirContexte();
   if (!ctx) return;
   if (ctx.state === 'running') {
