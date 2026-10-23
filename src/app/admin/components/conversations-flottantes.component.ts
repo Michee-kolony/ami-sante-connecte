@@ -22,7 +22,7 @@ type Onglet = 'collegues' | 'patientes';
       <!-- Clic à l'extérieur : fermeture -->
       <div class="fixed inset-0 z-[55]" (click)="ouvert.set(false)"></div>
 
-      <section class="fixed bottom-24 right-4 z-[56] flex h-[min(34rem,calc(100vh-8rem))] w-[calc(100%-2rem)] max-w-sm animate-[entree-bulle_.25s_ease-out] flex-col overflow-hidden rounded-2xl border border-white/60 bg-white/95 shadow-2xl ring-1 ring-slate-900/5 backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/95 dark:ring-white/10 sm:bottom-28 sm:right-6"
+      <section class="fixed bottom-40 right-4 z-[56] flex h-[min(34rem,calc(100vh-8rem))] w-[calc(100%-2rem)] max-w-sm animate-[entree-bulle_.25s_ease-out] flex-col overflow-hidden rounded-2xl border border-white/60 bg-white/95 shadow-2xl ring-1 ring-slate-900/5 backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/95 dark:ring-white/10 sm:right-6 lg:bottom-28"
                role="dialog" aria-label="Conversations">
         <header class="flex items-center justify-between border-b border-slate-200/70 px-4 py-3 dark:border-white/10">
           <h2 class="text-sm font-semibold text-slate-900 dark:text-white">Conversations</h2>
@@ -112,7 +112,7 @@ type Onglet = 'collegues' | 'patientes';
     <!-- Bouton rond flottant -->
     <button type="button" (click)="ouvert.set(!ouvert())" [attr.aria-expanded]="ouvert()"
             [attr.aria-label]="ouvert() ? 'Fermer les conversations' : 'Ouvrir les conversations'" [title]="'Conversations'"
-            class="fixed bottom-5 right-4 z-[56] flex h-14 w-14 items-center justify-center rounded-full bg-brand-600 text-xl text-white shadow-lg shadow-brand-900/30 ring-4 ring-white/70 transition duration-200 hover:-translate-y-0.5 hover:bg-brand-700 focus:outline-none focus-visible:ring-brand-300 dark:bg-brand-500 dark:ring-slate-900/70 dark:hover:bg-brand-400 sm:bottom-8 sm:right-6">
+            class="fixed bottom-24 right-4 z-[56] flex h-14 w-14 items-center justify-center rounded-full bg-brand-600 text-xl text-white shadow-lg shadow-brand-900/30 ring-4 ring-white/70 transition duration-200 hover:-translate-y-0.5 hover:bg-brand-700 focus:outline-none focus-visible:ring-brand-300 dark:bg-brand-500 dark:ring-slate-900/70 dark:hover:bg-brand-400 sm:right-6 lg:bottom-8">
       <i class="fa-solid transition-transform duration-200" [class]="ouvert() ? 'fa-xmark rotate-90' : 'fa-comments'"></i>
       @if (!ouvert() && totalNonLus()) {
         <span class="absolute -right-1 -top-1 flex h-6 min-w-6 items-center justify-center rounded-full bg-rose-500 px-1.5 text-[11px] font-semibold ring-2 ring-white dark:ring-slate-900">{{ totalNonLus() }}</span>

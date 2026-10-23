@@ -26,7 +26,7 @@ const MAX_BULLES = 3;
   selector: 'app-notifications-messages',
   standalone: true,
   imports: [AvatarComponent],
-  host: { class: 'pointer-events-none fixed bottom-24 right-4 z-[60] flex w-[calc(100%-2rem)] max-w-sm flex-col items-end gap-3 sm:bottom-28 sm:right-6' },
+  host: { class: 'pointer-events-none fixed bottom-40 right-4 z-[60] flex w-[calc(100%-2rem)] max-w-sm flex-col items-end gap-3 sm:right-6 lg:bottom-28' },
   template: `
     @for (b of bulles; track b.cle) {
       @let s = b.discussion.interlocuteur;

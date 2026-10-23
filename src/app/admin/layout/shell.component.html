@@ -104,7 +104,7 @@
   </aside>
 
   <!-- Contenu -->
-  <div class="flex min-w-0 flex-1 flex-col">
+  <div class="flex min-w-0 flex-1 flex-col pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-0">
     <header class="sticky top-0 z-20 border-b border-white/60 bg-white/55 backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/50">
       <div class="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8">
         <button class="btn-ghost -ml-2 px-3 lg:hidden" (click)="menuOpen = true" aria-label="Ouvrir le menu">
@@ -129,7 +129,7 @@
         </a>
 
         <div class="ml-auto flex items-center gap-2 sm:gap-3">
-          <app-theme-toggle class="hidden sm:block" />
+          <app-theme-toggle />
           <a routerLink="/admin/synchronisation"
              class="hidden items-center gap-2 whitespace-nowrap rounded-full border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-800 dark:text-amber-300 sm:inline-flex" [title]="pending + ' ' + 'opérations à synchroniser'">
             <span class="relative flex h-2 w-2">
@@ -141,7 +141,7 @@
           <span class="hidden items-center gap-1.5 whitespace-nowrap rounded-full bg-accent-50 dark:bg-accent-500/10 px-3 py-1.5 text-xs font-medium text-accent-700 dark:text-accent-300 ring-1 ring-accent-200 dark:ring-accent-500/30 sm:inline-flex" title="En ligne">
             <i class="fa-solid fa-wifi"></i><span class="hidden xl:inline">En ligne</span>
           </span>
-          <button class="relative rounded-full p-2.5 text-slate-500 dark:text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Notifications">
+          <button class="relative hidden rounded-full p-2.5 sm:block text-slate-500 dark:text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Notifications">
             <i class="fa-regular fa-bell"></i>
             <span class="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900"></span>
           </button>
@@ -183,4 +183,25 @@
       </div>
     </footer>
   </div>
+
+  <!-- Barre d'onglets mobile : accès direct aux modules principaux (masquée quand la barre latérale est visible) -->
+  <nav class="fixed inset-x-0 bottom-0 z-20 border-t border-white/60 bg-white/80 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/80 lg:hidden"
+       aria-label="Navigation principale">
+    <div class="mx-auto flex h-14 max-w-md items-stretch">
+      @for (item of tabs; track item.path) {
+        <a [routerLink]="item.path" routerLinkActive="tab-actif" #rla="routerLinkActive"
+           [attr.aria-current]="rla.isActive ? 'page' : null"
+           class="group relative flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium text-slate-500 transition hover:text-brand-700 dark:text-slate-400 dark:hover:text-brand-300 [&.tab-actif]:text-brand-700 dark:[&.tab-actif]:text-brand-300">
+          <span class="absolute inset-x-6 top-0 h-0.5 rounded-full bg-brand-600 opacity-0 transition group-[.tab-actif]:opacity-100 dark:bg-brand-400"></span>
+          <span class="relative">
+            <i class="fa-solid {{ item.icon }} text-base"></i>
+            @if (badge(item)) {
+              <span class="absolute -right-3 -top-1.5 min-w-[1.125rem] rounded-full bg-rose-500 px-1 text-center text-[10px] font-semibold leading-[1.125rem] text-white ring-2 ring-white dark:ring-slate-900">{{ badge(item) }}</span>
+            }
+          </span>
+          <span class="truncate">{{ item.label }}</span>
+        </a>
+      }
+    </div>
+  </nav>
 </div>

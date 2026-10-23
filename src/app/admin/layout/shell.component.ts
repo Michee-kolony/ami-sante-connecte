@@ -112,6 +112,19 @@ export class ShellComponent {
     { label: 'Agents de vaccination', icon: 'fa-user-nurse', path: '/admin/agents' },
   ];
 
+  /** Barre d'onglets en bas de l'écran (mobile et tablette, quand la barre latérale est masquée). */
+  get tabs(): NavItem[] {
+    const maternite = this.session.estMaternite();
+    return this.tabsTous.filter(i => !i.maternite || maternite);
+  }
+
+  private tabsTous: NavItem[] = [
+    { label: 'Tableau de bord', icon: 'fa-gauge-high', path: '/admin/tableau-de-bord' },
+    { label: 'CPN', icon: 'fa-person-pregnant', path: '/admin/patientes' },
+    { label: 'Rendez-vous', icon: 'fa-calendar-check', path: '/admin/rendez-vous' },
+    { label: 'Accouchement', icon: 'fa-bed-pulse', path: '/admin/accouchements', maternite: true },
+  ];
+
   navSecours: NavItem[] = [
     { label: 'Urgences', icon: 'fa-tower-broadcast', path: '/admin/urgences' },
     { label: 'Ambulances', icon: 'fa-truck-medical', path: '/admin/ambulances' },
