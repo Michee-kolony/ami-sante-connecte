@@ -33,6 +33,7 @@ export interface RdvMaman {
 }
 
 export interface EnfantMaman {
+  photoUrl: string | null;
   id: string;
   numero: string;
   nom: string;
@@ -55,7 +56,7 @@ export interface AccueilMaman {
   patiente: ProfilMaman;
   grossesse: { numero: number; agJours: number | null; dpa: string | null } | null;
   prochainsRendezVous: RdvMaman[];
-  enfants: { id: string; prenom: string; nom: string; sexe: SexeEnfant; dateNaissance: string; age: AgeEnfant | null; statut: string; etatNaissance: string; vaccination: (ResumeCarnet & { prochaineSeance: SeanceVaccination | null }) | null }[];
+  enfants: { id: string; photoUrl: string | null; prenom: string; nom: string; sexe: SexeEnfant; dateNaissance: string; age: AgeEnfant | null; statut: string; etatNaissance: string; vaccination: (ResumeCarnet & { prochaineSeance: SeanceVaccination | null }) | null }[];
 }
 
 export interface AccouchementMaman {

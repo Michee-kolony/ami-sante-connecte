@@ -21,6 +21,7 @@
           <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
             {{ d.admission.age != null ? d.admission.age + ' ans · ' : '' }}G{{ d.admission.gestite ?? '?' }} P{{ d.admission.parite ?? '?' }}
             · Admise le {{ dateHeure(d.admission.admiseLe) }}{{ d.admission.dpa ? ' · DPA ' + jour(d.admission.dpa) : '' }}
+            @if (d.rappelPrenatal?.grossesse?.ag; as ag) { · <span class="font-medium text-slate-700 dark:text-slate-200">{{ ag.semaines }} SA {{ ag.jours }} j à l’admission</span> }
             @if (d.patiente) { · <a [routerLink]="['/admin/patientes', d.patiente.numero]" class="font-medium text-brand-700 hover:underline dark:text-brand-300">Dossier {{ d.patiente.numero }}</a> }
           </p>
         </div>
@@ -40,6 +41,93 @@
         <p class="mt-4 rounded-xl bg-slate-50 px-4 py-2.5 text-sm text-slate-600 dark:bg-slate-800/50 dark:text-slate-300"><i class="fa-solid fa-lock mr-1"></i> Dossier clôturé par {{ d.cloture?.par?.nom }} le {{ dateHeure(d.cloture?.le) }} : consultation seule.</p>
       }
     </div>
+
+    <!-- Suivi prénatal : points d'attention et synthèse -->
+    @if (d.rappelPrenatal; as r) {
+      <div class="card p-5 sm:p-6">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h2 class="flex items-center gap-2 font-semibold text-slate-900 dark:text-white">
+            <i class="fa-solid fa-triangle-exclamation text-amber-500"></i> Points d’attention
+            <span class="text-xs font-normal text-slate-500">· repris du suivi prénatal ({{ r.nombreCpn }} CPN)</span>
+          </h2>
+          <button type="button" class="btn-ghost px-2.5 py-1.5 text-xs" (click)="syntheseOuverte = !syntheseOuverte" [attr.aria-expanded]="syntheseOuverte">
+            <i class="fa-solid" [class.fa-chevron-up]="syntheseOuverte" [class.fa-chevron-down]="!syntheseOuverte"></i> {{ syntheseOuverte ? 'Masquer' : 'Voir' }} la synthèse
+          </button>
+        </div>
+        <div class="mt-3 flex flex-wrap gap-2">
+          @for (p of r.points; track p.texte) {
+            <span class="badge" [class]="p.niveau === 'Critique' ? 'bg-rose-600 text-white' : 'bg-amber-100 text-amber-900 dark:bg-amber-500/15 dark:text-amber-300'">
+              <i class="fa-solid" [class.fa-circle-exclamation]="p.niveau === 'Critique'" [class.fa-triangle-exclamation]="p.niveau !== 'Critique'"></i> {{ p.texte }}
+            </span>
+          } @empty {
+            <span class="badge bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300"><i class="fa-solid fa-circle-check"></i> Aucun point d’attention relevé au suivi prénatal</span>
+          }
+        </div>
+
+        @if (syntheseOuverte) {
+          <div class="mt-5 grid gap-4 border-t border-slate-100 pt-5 text-sm dark:border-slate-800 md:grid-cols-2 xl:grid-cols-4">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Grossesse</p>
+              @if (r.grossesse; as g) {
+                <ul class="mt-2 space-y-1 text-slate-700 dark:text-slate-300">
+                  @if (g.datation; as dt) {
+                    <li>Datation : {{ dt.methode }}</li>
+                    @if (dt.ddr) { <li>DDR : {{ jour(dt.ddr) }}</li> }
+                    <li>DPA : <strong>{{ jour(dt.dpa) }}</strong></li>
+                  } @else { <li class="text-slate-500">Grossesse non datée</li> }
+                  @if (g.ag) { <li>Terme à l’admission : <strong>{{ g.ag.semaines }} SA {{ g.ag.jours }} j</strong></li> }
+                  @if (g.multiple) { <li>Grossesse multiple</li> }
+                </ul>
+              } @else { <p class="mt-2 text-slate-500">Arrivée sans suivi prénatal dans la plateforme.</p> }
+              @if (r.medicaments) { <p class="mt-2 text-slate-700 dark:text-slate-300"><span class="text-slate-500">Traitements en cours :</span> {{ r.medicaments }}</p> }
+            </div>
+
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Dernière CPN</p>
+              @if (r.derniereCpn; as c) {
+                <ul class="mt-2 space-y-1 text-slate-700 dark:text-slate-300">
+                  <li>Le {{ jour(c.date) }}{{ c.agJours != null ? ' · ' + sa(c.agJours) : '' }}</li>
+                  @if (c.poidsKg != null) { <li>Poids : {{ c.poidsKg }} kg</li> }
+                  @if (c.taSystolique != null) { <li>TA : {{ c.taSystolique }}/{{ c.taDiastolique ?? '?' }} mmHg</li> }
+                  @if (c.hauteurUterineCm != null) { <li>HU : {{ c.hauteurUterineCm }} cm</li> }
+                  @if (c.bcf != null) { <li>BCF : {{ c.bcf }} bpm</li> }
+                  @if (c.presentation) { <li>Présentation : {{ c.presentation }}</li> }
+                  @if (c.signes.length) { <li class="text-amber-700 dark:text-amber-300">Signes : {{ c.signes.join(', ') }}</li> }
+                </ul>
+              } @else { <p class="mt-2 text-slate-500">Aucune CPN finalisée.</p> }
+            </div>
+
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Dernière échographie</p>
+              @if (r.echographie; as ec) {
+                <ul class="mt-2 space-y-1 text-slate-700 dark:text-slate-300">
+                  <li>Le {{ jour(ec.date) }}{{ ec.agSemaines != null ? ' · ' + ec.agSemaines + ' SA ' + (ec.agJours ?? 0) + ' j' : '' }}</li>
+                  @if (ec.nombreFoetus > 1) { <li><strong>{{ ec.nombreFoetus }} fœtus</strong></li> }
+                  @if (ec.presentation) { <li>Présentation : {{ ec.presentation }}</li> }
+                  @if (ec.poidsEstimeG != null) { <li>Poids fœtal estimé : {{ ec.poidsEstimeG }} g</li> }
+                  @if (ec.placenta) { <li>Placenta : {{ ec.placenta }}</li> }
+                  @if (ec.liquide) { <li>Liquide : {{ ec.liquide }}</li> }
+                  @if (ec.conclusion) { <li class="text-slate-500">{{ ec.conclusion }}</li> }
+                </ul>
+              } @else { <p class="mt-2 text-slate-500">Aucune échographie enregistrée.</p> }
+            </div>
+
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Laboratoire et préventions</p>
+              <ul class="mt-2 space-y-1 text-slate-700 dark:text-slate-300">
+                @for (l of r.laboratoire; track l.libelle) { <li>{{ l.libelle }} : <strong>{{ l.valeur }}</strong> <span class="text-xs text-slate-500">({{ jour(l.le) }})</span></li> }
+                @empty { <li class="text-slate-500">Aucun résultat de laboratoire.</li> }
+              </ul>
+              @if (r.preventions.length) {
+                <div class="mt-2 flex flex-wrap gap-1">
+                  @for (p of r.preventions; track p) { <span class="badge bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">{{ p }}</span> }
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
 
     @if (erreur) {
       <p class="flex items-start gap-2 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300" role="alert"><i class="fa-solid fa-circle-exclamation mt-0.5"></i> {{ erreur }}</p>
@@ -66,6 +154,13 @@
       <!-- ============================== I. ADMISSION ============================== -->
       @case ('admission') {
         @let a = formAdmission;
+        <p class="mb-4 flex items-start gap-2 rounded-xl bg-brand-50 px-4 py-3 text-sm text-brand-800 dark:bg-brand-500/10 dark:text-brand-200">
+          <i class="fa-solid fa-wand-magic-sparkles mt-0.5"></i>
+          <span>
+            Identité, groupe sanguin, gestité/parité, DDR/DPA, statut VIH et antécédents sont repris du dossier CPN : vérifiez-les et complétez le reste.
+            @if (completesAdmission && !clos) { <strong>{{ completesAdmission }} champ(s) viennent d’être complétés : enregistrez l’admission pour les conserver.</strong> }
+          </span>
+        </p>
         <div class="grid gap-6 lg:grid-cols-2">
           <div class="card p-5 sm:p-6">
             <h2 class="section-titre"><i class="fa-solid fa-id-card"></i> A. Identité</h2>
@@ -155,6 +250,18 @@
       <!-- ============================ II. EXAMEN CLINIQUE ============================ -->
       @case ('examen') {
         @let e = formExamen;
+        @if (completesExamen && !clos) {
+          <p class="mb-4 flex items-start gap-2 rounded-xl bg-brand-50 px-4 py-3 text-sm text-brand-800 dark:bg-brand-500/10 dark:text-brand-200">
+            <i class="fa-solid fa-wand-magic-sparkles mt-0.5"></i>
+            <span>Taille et résultats de laboratoire déjà connus repris du suivi prénatal (datés de la CPN). Les constantes du jour restent à mesurer.</span>
+          </p>
+        }
+        @if (!d.examenClinique && d.rappelPrenatal?.derniereCpn; as c) {
+          <p class="mb-4 text-xs text-slate-500 dark:text-slate-400">
+            <i class="fa-solid fa-clock-rotate-left mr-1"></i> Repère, dernière CPN du {{ jour(c.date) }} :
+            {{ c.poidsKg != null ? c.poidsKg + ' kg · ' : '' }}{{ c.taSystolique != null ? 'TA ' + c.taSystolique + '/' + (c.taDiastolique ?? '?') + ' · ' : '' }}{{ c.hauteurUterineCm != null ? 'HU ' + c.hauteurUterineCm + ' cm · ' : '' }}{{ c.presentation ? 'présentation ' + c.presentation.toLowerCase() : '' }}
+          </p>
+        }
         <div class="grid gap-6 lg:grid-cols-2">
           <div class="card p-5 sm:p-6">
             <h2 class="section-titre"><i class="fa-solid fa-user-doctor"></i> Examen physique</h2>
@@ -418,10 +525,15 @@
             <div class="grid gap-4 md:grid-cols-2">
               @for (n of d.nouveauNes; track n.id) {
                 <a [routerLink]="['/admin/enfants', n.numero]" class="card flex items-center gap-4 p-4 transition hover:ring-2 hover:ring-brand-200 dark:hover:ring-brand-500/30">
-                  <span class="flex h-12 w-12 flex-none items-center justify-center rounded-full text-lg text-white" [class]="n.sexe === 'Féminin' ? 'bg-pink-500' : n.sexe === 'Masculin' ? 'bg-brand-600' : 'bg-slate-500'"><i class="fa-solid fa-baby"></i></span>
+                  @if (n.photoUrl) {
+                    <img [src]="n.photoUrl" [alt]="'Photo de ' + (n.prenom || 'bébé ' + n.rang)" class="h-16 w-16 flex-none rounded-2xl object-cover shadow ring-2" [class]="n.sexe === 'Féminin' ? 'ring-pink-300' : 'ring-brand-300'">
+                  } @else {
+                    <span class="flex h-16 w-16 flex-none items-center justify-center rounded-2xl text-xl text-white" [class]="n.sexe === 'Féminin' ? 'bg-pink-500' : n.sexe === 'Masculin' ? 'bg-brand-600' : 'bg-slate-500'"><i class="fa-solid fa-baby"></i></span>
+                  }
                   <div class="min-w-0 flex-1">
                     <p class="font-semibold text-slate-900 dark:text-white">{{ n.prenom || 'Bébé ' + n.rang }} {{ n.nom }} <span class="font-mono text-xs font-normal text-slate-500">{{ n.numero }}</span></p>
                     <p class="text-xs text-slate-500">{{ n.sexe }} · né(e) le {{ dateHeure(n.neLe) }} · {{ n.etatNaissance }}</p>
+                    @if (!n.photoUrl && n.etatNaissance === 'Vivant') { <p class="mt-1 text-xs text-amber-700 dark:text-amber-300"><i class="fa-solid fa-camera mr-1"></i>Photo à ajouter depuis son dossier</p> }
                     @if (n.vaccination?.prochaineSeance; as ps) { <p class="mt-1 text-xs text-brand-700 dark:text-brand-300"><i class="fa-solid fa-syringe mr-1"></i>Prochaine séance {{ jour(ps.date) }} : {{ ps.doses.length }} dose(s)</p> }
                   </div>
                   <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
@@ -441,6 +553,15 @@
                 <div><label class="label">Sexe <span class="req">*</span></label><select class="input" [(ngModel)]="n.sexe"><option value="">—</option>@for (x of ref?.SEXES ?? []; track x) { <option>{{ x }}</option> }</select></div>
                 <div><label class="label">Né(e) le</label><input type="datetime-local" class="input" [(ngModel)]="n.neLe"></div>
                 <div><label class="label">État</label><select class="input" [(ngModel)]="n.etatNaissance">@for (x of ref?.ETATS_NAISSANCE ?? []; track x) { <option>{{ x }}</option> }</select></div>
+              </div>
+
+              <!-- Photo d'identification : évite les confusions entre bébés (jumeaux, naissances simultanées) -->
+              <div class="mt-6 rounded-xl border border-slate-100 p-4 dark:border-slate-800">
+                <p class="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-200">
+                  <i class="fa-solid fa-camera mr-1"></i> Photo du nouveau-né @if (n.etatNaissance === 'Vivant') { <span class="req">*</span> } @else { <span class="text-xs font-normal text-slate-500">(facultative)</span> }
+                </p>
+                <app-prise-photo [(fichier)]="photoNN" libelle="Photo du nouveau-né" icone="fa-baby" [requise]="n.etatNaissance === 'Vivant'"
+                                 aide="Visage du bébé bien visible, si possible avec son bracelet d’identification. JPG, PNG ou WebP." />
               </div>
 
               <div class="mt-6 grid gap-6 lg:grid-cols-2">
@@ -502,7 +623,10 @@
               </div>
               <div class="mt-6 flex items-center justify-between gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
                 <p class="text-xs text-slate-500"><i class="fa-solid fa-link mr-1"></i>Le bébé est rattaché au compte de sa mère : elle verra son carnet de vaccination et ses rendez-vous.</p>
-                <button class="btn-primary" (click)="enregistrerNouveauNe()" [disabled]="!n.sexe"><i class="fa-solid fa-baby"></i> Enregistrer la naissance</button>
+                <div class="flex flex-col items-end gap-1">
+                  <button class="btn-primary" (click)="enregistrerNouveauNe()" [disabled]="!n.sexe || (n.etatNaissance === 'Vivant' && !photoNN)"><i class="fa-solid fa-baby"></i> Enregistrer la naissance</button>
+                  @if (n.etatNaissance === 'Vivant' && !photoNN) { <span class="text-xs text-rose-600 dark:text-rose-400">Prenez la photo du bébé pour enregistrer.</span> }
+                </div>
               </div>
             </div>
           }

@@ -139,13 +139,32 @@
                 }
                 <div class="space-y-2">
                   <div class="flex flex-wrap gap-2">
-                    <label class="btn-primary cursor-pointer py-2 text-xs"><i class="fa-solid fa-camera"></i> Prendre une photo<input type="file" accept="image/*" capture="user" class="sr-only" (change)="choisirPhoto($event)"></label>
+                    <button type="button" class="btn-primary py-2 text-xs" (click)="ouvrirCamera(repliCamera)"><i class="fa-solid fa-camera"></i> Prendre une photo</button>
+                    <input #repliCamera type="file" accept="image/*" capture="environment" class="sr-only" tabindex="-1" aria-hidden="true" (change)="choisirPhoto($event)">
                     <label class="btn-secondary cursor-pointer py-2 text-xs"><i class="fa-solid fa-image"></i> Choisir un fichier<input type="file" accept="image/jpeg,image/png,image/webp" class="sr-only" (change)="choisirPhoto($event)"></label>
                     @if (photoFichier) { <button type="button" class="btn-ghost py-2 text-xs text-rose-600" (click)="retirerPhoto()"><i class="fa-solid fa-trash"></i> Retirer</button> }
                   </div>
                   <p class="text-xs" [class]="photoErreur ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500 dark:text-slate-400'">{{ photoErreur || 'JPG, PNG ou WebP, 2 Mo max. Visage bien éclairé, de face.' }}</p>
                 </div>
               </div>
+
+              <!-- Appareil photo en direct -->
+              @if (camera) {
+                <div class="fixed inset-0 z-[70] flex flex-col bg-black" role="dialog" aria-modal="true" aria-label="Appareil photo">
+                  <video #video [srcObject]="camera" autoplay playsinline muted
+                         class="min-h-0 flex-1 object-contain" [class.-scale-x-100]="cameraFace === 'user'"></video>
+                  @if (cameraErreur) { <p class="bg-rose-600 px-4 py-2 text-center text-xs text-white">{{ cameraErreur }}</p> }
+                  <div class="flex items-center justify-around px-6 py-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+                    <button type="button" class="flex h-12 w-12 items-center justify-center rounded-full bg-white/15 text-lg text-white transition hover:bg-white/25" (click)="fermerCamera()" aria-label="Annuler">
+                      <i class="fa-solid fa-xmark"></i>
+                    </button>
+                    <button type="button" class="h-16 w-16 rounded-full bg-white ring-4 ring-white/40 ring-offset-2 ring-offset-black transition active:scale-95" (click)="capturer(video)" aria-label="Prendre la photo"></button>
+                    <button type="button" class="flex h-12 w-12 items-center justify-center rounded-full bg-white/15 text-lg text-white transition hover:bg-white/25" (click)="changerCamera(repliCamera)" aria-label="Changer de caméra">
+                      <i class="fa-solid fa-camera-rotate"></i>
+                    </button>
+                  </div>
+                </div>
+              }
             </div>
 
             <div>

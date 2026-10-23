@@ -247,8 +247,34 @@ export interface DossierAccouchement {
   patiente: { id: string; numero: string; nom: string; postnom: string; prenom: string; photoUrl: string | null } | null;
   nouveauNes: ResumeEnfant[];
   manquantsCloture: string[];
+  /** Synthèse du suivi prénatal (grossesse, dernière CPN, échographie, points d'attention). */
+  rappelPrenatal?: RappelPrenatal;
+  /** Valeurs du suivi prénatal proposées pour les champs vides (dossier ouvert seulement). */
+  preRemplissage?: { admission: Partial<Admission>; examen: Partial<ExamenClinique> | null } | null;
   creePar: Auteur;
   createdAt: string;
+}
+
+export interface RappelPrenatal {
+  grossesse: {
+    numero: number; multiple: boolean | null; facteursRisque: string[];
+    datation: { methode: string; ddr: string | null; dpa: string } | null;
+    ag: { semaines: number; jours: number } | null;
+  } | null;
+  nombreCpn: number;
+  derniereCpn: {
+    date: string; agJours: number | null; poidsKg: number | null; taSystolique: number | null; taDiastolique: number | null;
+    hauteurUterineCm: number | null; bcf: number | null; presentation: string; signes: string[];
+  } | null;
+  laboratoire: { libelle: string; valeur: string; le: string }[];
+  preventions: string[];
+  echographie: {
+    date: string; agSemaines: number | null; agJours: number | null; nombreFoetus: number; presentation: string;
+    poidsEstimeG: number | null; placenta: string; liquide: string; conclusion: string;
+  } | null;
+  allergies: string;
+  medicaments: string;
+  points: { niveau: 'Critique' | 'Avertissement'; texte: string }[];
 }
 
 export interface ResumeAccouchement {
@@ -346,12 +372,16 @@ export class AccouchementsService {
     return firstValueFrom(this.http.post<Alerte>(`${this.url}/${encodeURIComponent(id)}/alertes/${alerteId}/acquitter`, {}));
   }
 
-  accoucher(id: string, donnees: Partial<DonneesAccouchement> & { nouveauNes?: SaisieNouveauNe[] }): Promise<DossierAccouchement> {
+  accoucher(id: string, donnees: Partial<DonneesAccouchement>): Promise<DossierAccouchement> {
     return firstValueFrom(this.http.put<DossierAccouchement>(`${this.url}/${encodeURIComponent(id)}/accouchement`, donnees));
   }
 
-  ajouterNouveauNe(id: string, saisie: SaisieNouveauNe): Promise<unknown> {
-    return firstValueFrom(this.http.post(`${this.url}/${encodeURIComponent(id)}/nouveau-nes`, saisie));
+  /** Formulaire multipart : données en JSON (« donnees ») et photo du bébé (obligatoire s'il est né vivant). */
+  ajouterNouveauNe(id: string, saisie: SaisieNouveauNe, photo: File | null): Promise<unknown> {
+    const corps = new FormData();
+    corps.append('donnees', JSON.stringify(saisie));
+    if (photo) corps.append('photo', photo);
+    return firstValueFrom(this.http.post(`${this.url}/${encodeURIComponent(id)}/nouveau-nes`, corps));
   }
 
   surveillerPostPartum(id: string, corps: { creneau: string; le?: string; mere: Partial<MereSurveillancePP>; nouveauNes: NouveauNeSurveillancePP[]; observations: string }): Promise<DossierAccouchement> {

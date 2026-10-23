@@ -417,7 +417,8 @@
                 }
                 @for (e of dossier.enfants; track e.id) {
                   <li><a [routerLink]="['/admin/enfants', e.numero]" class="flex items-center justify-between gap-2 rounded-lg bg-pink-50/60 px-3 py-2 hover:bg-pink-50 dark:bg-pink-500/5 dark:hover:bg-pink-500/10">
-                    <span><span class="font-medium text-slate-900 dark:text-white">{{ e.prenom || 'Bébé ' + e.rang }} · {{ e.age?.libelle }}</span>
+                    @if (e.photoUrl) { <img [src]="e.photoUrl" alt="" class="h-9 w-9 flex-none rounded-full object-cover ring-2 ring-pink-200 dark:ring-pink-500/30"> }
+                    <span class="flex-1"><span class="font-medium text-slate-900 dark:text-white">{{ e.prenom || 'Bébé ' + e.rang }} · {{ e.age?.libelle }}</span>
                       <span class="block text-xs text-slate-500">
                         @if (e.vaccination; as v) { {{ v.vaccinsFaits }}/{{ v.vaccinsTotal }} vaccins{{ v.enRetard ? ' · ' + v.enRetard + ' en retard' : '' }}{{ v.prochaineSeance ? ' · prochaine séance ' + jour(v.prochaineSeance.date) : '' }} } @else { {{ e.etatNaissance }} }
                       </span></span>

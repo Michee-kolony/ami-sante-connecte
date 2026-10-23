@@ -9,6 +9,7 @@ import {
 import { aujourdhui, dateHeureChiffres, jourChiffres, versSaisieLocale } from '../../data/format';
 import type { RendezVous, StatutRdv } from '../../data/patientes.service';
 import { SessionService, messageErreur } from '../../data/session.service';
+import { enJpeg } from '../../components/prise-photo.component';
 import { ThemeService } from '../../../shared/theme.service';
 
 Chart.register(LineController, LineElement, PointElement, LinearScale, Tooltip);
@@ -107,6 +108,25 @@ export class EnfantDetailComponent implements OnChanges, OnDestroy {
     this.formNaissance = JSON.parse(JSON.stringify(e.naissance));
     // Nouvelle visite : la courbe de poids suit.
     this.redessiner();
+  }
+
+  /** Photo d'identification : ajout ou remplacement (médecins et sages-femmes). */
+  async changerPhoto(evt: Event): Promise<void> {
+    const champ = evt.target as HTMLInputElement;
+    const fichier = champ.files?.[0];
+    champ.value = '';
+    if (!fichier || !this.e) return;
+    if (!/^image\/(jpeg|png|webp)$/.test(fichier.type)) {
+      this.erreur = 'Format accepté : JPG, PNG ou WebP.';
+      return;
+    }
+    const photo = await enJpeg(fichier).catch(() => fichier);
+    if (photo.size > 2 * 1024 * 1024) {
+      this.erreur = 'La photo doit faire 2 Mo au maximum.';
+      return;
+    }
+    const id = this.e.id;
+    await this.action(() => this.service.changerPhoto(id, photo), 'Photo enregistrée.');
   }
 
   private async action(f: () => Promise<DossierEnfant>, message: string): Promise<boolean> {

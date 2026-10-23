@@ -4,6 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import { OuiNonComponent } from '../../components/oui-non.component';
 import { AvatarComponent } from '../../components/avatar.component';
 import { PartogrammeComponent } from '../../components/partogramme.component';
+import { PrisePhotoComponent } from '../../components/prise-photo.component';
 import {
   AccouchementsService, Admission, Alerte, AlertesMaterniteService, DonneesAccouchement, DossierAccouchement, ExamenClinique,
   MereSurveillancePP, MesuresSortie, NouveauNeSurveillancePP, SaisieNouveauNe, SaisieSurveillance, classeZone,
@@ -19,6 +20,23 @@ const cloner = <T>(v: T): T => JSON.parse(JSON.stringify(v));
 /** datetime-local (heure du poste) → ISO ; vide → null. */
 const iso = (v: string | null | undefined): string | null => (v ? new Date(v).toISOString() : null);
 const local = (v: string | null | undefined): string => versSaisieLocale(v ?? null);
+const vide = (v: unknown): boolean => v == null || v === '' || (Array.isArray(v) && !v.length);
+
+/** Complète les champs vides de `cible` avec les valeurs de `source` ; renvoie le nombre de champs complétés. */
+function completer(cible: Record<string, any>, source: Record<string, any> | null | undefined): number {
+  let n = 0;
+  for (const [k, v] of Object.entries(source ?? {})) {
+    if (vide(v)) continue;
+    if (typeof v === 'object' && !Array.isArray(v)) {
+      if (cible[k] == null || typeof cible[k] !== 'object') cible[k] = {};
+      n += completer(cible[k], v);
+    } else if (vide(cible[k])) {
+      cible[k] = cloner(v);
+      n++;
+    }
+  }
+  return n;
+}
 
 function examenVide(): ExamenClinique {
   return {
@@ -62,7 +80,7 @@ function mereVide(): MereSurveillancePP {
 @Component({
   selector: 'app-accouchement',
   standalone: true,
-  imports: [FormsModule, RouterLink, OuiNonComponent, PartogrammeComponent, AvatarComponent],
+  imports: [FormsModule, RouterLink, OuiNonComponent, PartogrammeComponent, AvatarComponent, PrisePhotoComponent],
   templateUrl: './accouchement.component.html',
 })
 export class AccouchementComponent implements OnChanges {
@@ -96,14 +114,26 @@ export class AccouchementComponent implements OnChanges {
   /** Alertes renvoyées par la dernière saisie (bandeau). */
   nouvellesAlertes: Alerte[] = [];
 
+  /** Champs complétés depuis le suivi prénatal, non encore enregistrés. */
+  completesAdmission = 0;
+  completesExamen = 0;
+  syntheseOuverte = true;
+
   formAdmission!: Admission & { debutTravailLocal: string };
   formExamen!: ExamenClinique;
   formSurv: SaisieSurveillance = surveillanceVide();
   formAcc!: DonneesAccouchement;
   formNN!: SaisieNouveauNe;
+  /** Photo du nouveau-né en cours d'enregistrement (obligatoire s'il est né vivant). */
+  photoNN: File | null = null;
   formPP!: { creneau: string; le: string; mere: MereSurveillancePP; nouveauNes: NouveauNeSurveillancePP[]; observations: string };
   formTrait = { pour: 'Mère', enfantId: '', produit: '', dose: '', voie: '', frequence: '', duree: '', statut: 'Prévu' };
   formSortie!: { date: string; rdvCpon: string; observations: string; conseils: string; mesures: MesuresSortie };
+
+  /** Âge gestationnel en jours → « 38 SA 2 j ». */
+  sa(jours: number): string {
+    return `${Math.floor(jours / 7)} SA ${jours % 7} j`;
+  }
 
   get ref() {
     return this.service.referentiel();
@@ -123,7 +153,10 @@ export class AccouchementComponent implements OnChanges {
     this.erreur = '';
     try {
       this.appliquer(await this.service.obtenir(this.id));
-      if (premier && this.d) this.onglet = this.d.accouchement ? (this.d.nouveauNes.length ? 'post-partum' : 'nouveau-nes') : 'travail';
+      if (premier && this.d) {
+        this.onglet = this.d.accouchement ? (this.d.nouveauNes.length ? 'post-partum' : 'nouveau-nes') : 'travail';
+        this.syntheseOuverte = !this.d.accouchement;
+      }
     } catch (err) {
       this.erreur = messageErreur(err);
     } finally {
@@ -134,10 +167,13 @@ export class AccouchementComponent implements OnChanges {
   /** Dossier reçu du serveur : les formulaires repartent de ses valeurs. */
   private appliquer(d: DossierAccouchement): void {
     this.d = d;
+    // Champs encore vides : complétés depuis le suivi prénatal (à vérifier puis enregistrer).
     const a = cloner(d.admission);
     if (!a.antecedents.gynecoObstetricaux.cesariennes) a.antecedents.gynecoObstetricaux.cesariennes = [];
+    this.completesAdmission = completer(a, d.preRemplissage?.admission);
     this.formAdmission = { ...a, debutTravailLocal: local(a.debutTravail) };
     const e = d.examenClinique ? cloner(d.examenClinique) : examenVide();
+    this.completesExamen = d.examenClinique ? 0 : completer(e, d.preRemplissage?.examen);
     e.obstetrical.pocheEaux.rompueLe = local(e.obstetrical.pocheEaux.rompueLe);
     e.examineLe = local(e.examineLe ?? new Date().toISOString());
     this.formExamen = e;
@@ -286,7 +322,8 @@ export class AccouchementComponent implements OnChanges {
     this.envoi = true;
     this.erreur = '';
     try {
-      await this.service.ajouterNouveauNe(this.id, n);
+      await this.service.ajouterNouveauNe(this.id, n, this.photoNN);
+      this.photoNN = null;
       this.appliquer(await this.service.obtenir(this.id));
       this.notifier('Nouveau-né enregistré : son carnet de vaccination est ouvert et sa première séance programmée.');
     } catch (err) {

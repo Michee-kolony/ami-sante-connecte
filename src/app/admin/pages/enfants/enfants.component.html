@@ -68,7 +68,11 @@
               <tr class="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
                 <td class="table-td">
                   <div class="flex items-center gap-3">
-                    <span class="flex h-9 w-9 flex-none items-center justify-center rounded-full text-sm text-white" [class]="e.sexe === 'Féminin' ? 'bg-pink-500' : e.sexe === 'Masculin' ? 'bg-brand-600' : 'bg-slate-500'"><i class="fa-solid fa-baby"></i></span>
+                    @if (e.photoUrl) {
+                      <img [src]="e.photoUrl" alt="" class="h-10 w-10 flex-none rounded-full object-cover ring-2" [class]="e.sexe === 'Féminin' ? 'ring-pink-200 dark:ring-pink-500/30' : 'ring-brand-200 dark:ring-brand-500/30'">
+                    } @else {
+                      <span class="flex h-10 w-10 flex-none items-center justify-center rounded-full text-sm text-white" [class]="e.sexe === 'Féminin' ? 'bg-pink-500' : e.sexe === 'Masculin' ? 'bg-brand-600' : 'bg-slate-500'"><i class="fa-solid fa-baby"></i></span>
+                    }
                     <div>
                       <p class="font-medium text-slate-900 dark:text-white">{{ e.prenom || 'Bébé ' + e.rang }} {{ e.nom }}</p>
                       <p class="font-mono text-xs text-slate-500">{{ e.numero }} · né(e) le {{ jour(e.dateNaissance) }}</p>

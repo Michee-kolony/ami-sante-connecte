@@ -400,6 +400,7 @@ export class PatientNewComponent implements OnDestroy {
   ngOnDestroy(): void {
     clearTimeout(this.minuteurDoublons);
     this.retirerPhoto();
+    this.fermerCamera();
     document.body.style.overflow = '';
   }
 
@@ -478,7 +479,10 @@ export class PatientNewComponent implements OnDestroy {
     const fichier = input.files?.[0];
     input.value = '';
     this.photoErreur = '';
-    if (!fichier) return;
+    if (fichier) await this.appliquerPhoto(fichier);
+  }
+
+  private async appliquerPhoto(fichier: File): Promise<void> {
     if (!/^image\/(jpeg|png|webp)$/.test(fichier.type)) {
       this.photoErreur = 'Format accepté : JPG, PNG ou WebP.';
       return;
@@ -498,6 +502,63 @@ export class PatientNewComponent implements OnDestroy {
     if (this.photoApercu) URL.revokeObjectURL(this.photoApercu);
     this.photoFichier = null;
     this.photoApercu = null;
+  }
+
+  // --- Appareil photo (aperçu en direct dans la page) --------------------------
+  camera: MediaStream | null = null;
+  cameraFace: 'environment' | 'user' = 'environment';
+  cameraErreur = '';
+
+  /**
+   * Ouvre l'appareil photo de l'appareil. Sans accès possible (HTTP, navigateur ancien),
+   * on se rabat sur le champ fichier, qui ouvre l'appareil photo natif sur mobile.
+   */
+  async ouvrirCamera(repli: HTMLInputElement): Promise<void> {
+    this.photoErreur = '';
+    this.cameraErreur = '';
+    if (!navigator.mediaDevices?.getUserMedia) {
+      repli.click();
+      return;
+    }
+    try {
+      this.fermerCamera();
+      this.camera = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: this.cameraFace, width: { ideal: 1280 }, height: { ideal: 1280 } },
+        audio: false,
+      });
+    } catch (e) {
+      const nom = (e as DOMException)?.name;
+      this.photoErreur = nom === 'NotAllowedError'
+        ? 'Accès à l’appareil photo refusé. Autorisez-le dans les réglages du navigateur, ou choisissez un fichier.'
+        : 'Appareil photo introuvable ou indisponible. Choisissez un fichier.';
+    }
+  }
+
+  /** Bascule entre la caméra arrière et la caméra avant (selfie). */
+  async changerCamera(repli: HTMLInputElement): Promise<void> {
+    this.cameraFace = this.cameraFace === 'environment' ? 'user' : 'environment';
+    await this.ouvrirCamera(repli);
+  }
+
+  /** Capture l'image affichée, puis la traite comme un fichier choisi (JPEG, 2 Mo max). */
+  async capturer(video: HTMLVideoElement): Promise<void> {
+    if (!video.videoWidth) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d')!.drawImage(video, 0, 0);
+    const blob = await new Promise<Blob | null>(ok => canvas.toBlob(ok, 'image/jpeg', 0.92));
+    if (!blob) {
+      this.cameraErreur = 'Capture impossible, réessayez.';
+      return;
+    }
+    this.fermerCamera();
+    await this.appliquerPhoto(new File([blob], `photo-${Date.now()}.jpg`, { type: 'image/jpeg' }));
+  }
+
+  fermerCamera(): void {
+    this.camera?.getTracks().forEach(t => t.stop());
+    this.camera = null;
   }
 
   // --- Datation (aperçu ; le serveur recalcule et fait foi) -----------------

@@ -13,7 +13,19 @@
     <!-- En-tête -->
     <div class="card p-5 sm:p-6">
       <div class="flex flex-col gap-5 lg:flex-row lg:items-center">
-        <span class="flex h-16 w-16 flex-none items-center justify-center rounded-full text-2xl text-white" [class]="e.sexe === 'Féminin' ? 'bg-pink-500' : e.sexe === 'Masculin' ? 'bg-brand-600' : 'bg-slate-500'"><i class="fa-solid fa-baby"></i></span>
+        <div class="flex flex-none flex-col items-center gap-2">
+          @if (e.photoUrl) {
+            <img [src]="e.photoUrl" [alt]="'Photo de ' + (e.prenom || 'bébé ' + e.rang)" class="h-24 w-24 rounded-2xl object-cover shadow ring-4" [class]="e.sexe === 'Féminin' ? 'ring-pink-200 dark:ring-pink-500/30' : 'ring-brand-200 dark:ring-brand-500/30'">
+          } @else {
+            <span class="flex h-24 w-24 items-center justify-center rounded-2xl text-3xl text-white" [class]="e.sexe === 'Féminin' ? 'bg-pink-500' : e.sexe === 'Masculin' ? 'bg-brand-600' : 'bg-slate-500'"><i class="fa-solid fa-baby"></i></span>
+          }
+          @if (session.estMaternite()) {
+            <label class="btn-ghost cursor-pointer px-2 py-1 text-xs" [class.pointer-events-none]="envoi">
+              <i class="fa-solid fa-camera"></i> {{ e.photoUrl ? 'Changer la photo' : 'Ajouter la photo' }}
+              <input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" class="sr-only" (change)="changerPhoto($event)">
+            </label>
+          }
+        </div>
         <div class="flex-1">
           <p class="font-mono text-xs text-slate-500">{{ e.numero }}</p>
           <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ e.prenom || 'Bébé ' + e.rang }} {{ e.nom }} {{ e.postnom }}</h1>

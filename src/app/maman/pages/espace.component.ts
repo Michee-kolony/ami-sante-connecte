@@ -51,7 +51,11 @@ type Onglet = 'accueil' | 'enfants' | 'rendez-vous' | 'accouchements';
               @if (e.vaccination; as v) {
                 <button type="button" class="card w-full p-5 text-left" (click)="ouvrirEnfant(e.id)">
                   <div class="flex items-center gap-3">
-                    <span class="flex h-12 w-12 items-center justify-center rounded-full text-xl text-white" [class]="e.sexe === 'Féminin' ? 'bg-pink-500' : 'bg-brand-600'"><i class="fa-solid fa-baby"></i></span>
+                    @if (e.photoUrl) {
+                      <img [src]="e.photoUrl" [alt]="'Photo de ' + (e.prenom || 'mon bébé')" class="h-14 w-14 rounded-full object-cover ring-2 ring-pink-200 dark:ring-pink-500/30">
+                    } @else {
+                      <span class="flex h-12 w-12 items-center justify-center rounded-full text-xl text-white" [class]="e.sexe === 'Féminin' ? 'bg-pink-500' : 'bg-brand-600'"><i class="fa-solid fa-baby"></i></span>
+                    }
                     <div class="flex-1">
                       <p class="font-semibold text-slate-900 dark:text-white">{{ e.prenom || 'Mon bébé' }}</p>
                       <p class="text-xs text-slate-500">{{ e.age?.libelle }} · {{ v.vaccinsFaits }}/{{ v.vaccinsTotal }} vaccins reçus</p>

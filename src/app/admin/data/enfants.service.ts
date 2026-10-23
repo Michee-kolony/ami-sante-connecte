@@ -67,6 +67,8 @@ export interface ResumeEnfant {
   age: AgeEnfant | null;
   mereId: string;
   accouchementId: string | null;
+  /** Photo d'identification prise à la naissance (lien signé temporaire). */
+  photoUrl: string | null;
   vaccination: (ResumeCarnet & { prochaineSeance: SeanceVaccination | null }) | null;
   mere?: { id: string; numero: string; nom: string; prenom: string } | null;
 }
@@ -232,6 +234,13 @@ export class EnfantsService {
 
   obtenir(id: string): Promise<DossierEnfant> {
     return firstValueFrom(this.http.get<DossierEnfant>(`${this.url}/${encodeURIComponent(id)}`));
+  }
+
+  /** Ajout ou remplacement de la photo (médecins et sages-femmes). */
+  changerPhoto(id: string, photo: File): Promise<DossierEnfant> {
+    const corps = new FormData();
+    corps.append('photo', photo);
+    return firstValueFrom(this.http.put<DossierEnfant>(`${this.url}/${encodeURIComponent(id)}/photo`, corps));
   }
 
   modifier(id: string, corps: Partial<{ nom: string; postnom: string; prenom: string; sexe: SexeEnfant; statut: StatutEnfant; neLe: string; etatNaissance: string; naissance: Naissance }>): Promise<DossierEnfant> {
