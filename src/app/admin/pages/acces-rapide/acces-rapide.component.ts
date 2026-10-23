@@ -64,6 +64,11 @@ export class AccesRapideComponent {
         titre: 'Enregistrement CPN', description: 'Nouvelle patiente, grossesse et datation', icone: 'fa-file-circle-plus',
         lien: '/admin/patientes/nouvelle', couleur: 'from-brand-600 to-brand-800',
       }] : []),
+      // Salle de travail : médecins et sages-femmes (le serveur refuse aussi les autres rôles).
+      ...(this.session.estMaternite() ? [{
+        titre: 'Accouchement', description: 'Admission en salle de travail, partogramme, naissance et sortie', icone: 'fa-bed-pulse',
+        lien: '/admin/accouchements', couleur: 'from-pink-500 to-rose-700',
+      }] : []),
       ...(gestion ? [{
         titre: 'Ajout soignant', description: 'Créer le compte d’un médecin, d’un infirmier ou d’une sage-femme', icone: 'fa-user-doctor',
         lien: '/admin/soignants', queryParams: { ajout: '1' }, couleur: 'from-emerald-500 to-teal-700',
