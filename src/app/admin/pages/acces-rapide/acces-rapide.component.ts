@@ -27,18 +27,19 @@ interface Raccourci {
         <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Bonjour {{ nom() }}, que souhaitez-vous faire ?</p>
       </div>
 
-      <div class="grid gap-4 sm:grid-cols-2">
+      <!-- Mobile : deux cartes par ligne, icône au-dessus du texte. -->
+      <div class="grid grid-cols-2 gap-3 sm:gap-4">
         @for (r of raccourcis(); track r.lien) {
           <a [routerLink]="r.lien" [queryParams]="r.queryParams"
-             class="group flex items-center gap-5 rounded-2xl bg-gradient-to-br p-6 text-white shadow-md transition hover:-translate-y-0.5 hover:shadow-xl {{ r.couleur }}">
-            <div class="flex h-16 w-16 flex-none items-center justify-center rounded-2xl bg-white/20 text-2xl">
+             class="group flex flex-col items-start gap-3 rounded-2xl bg-gradient-to-br p-4 text-white shadow-md transition hover:-translate-y-0.5 hover:shadow-xl sm:flex-row sm:items-center sm:gap-5 sm:p-6 {{ r.couleur }}">
+            <div class="flex h-12 w-12 flex-none items-center justify-center rounded-xl bg-white/20 text-xl sm:h-16 sm:w-16 sm:rounded-2xl sm:text-2xl">
               <i class="fa-solid {{ r.icone }}"></i>
             </div>
-            <div class="flex-1">
-              <p class="text-lg font-semibold">{{ r.titre }}</p>
-              <p class="mt-0.5 text-sm text-white/80">{{ r.description }}</p>
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-semibold leading-snug sm:text-lg">{{ r.titre }}</p>
+              <p class="mt-0.5 text-xs text-white/80 sm:text-sm">{{ r.description }}</p>
             </div>
-            <i class="fa-solid fa-arrow-right text-white/70 transition group-hover:translate-x-1 group-hover:text-white"></i>
+            <i class="fa-solid fa-arrow-right hidden text-white/70 transition group-hover:translate-x-1 group-hover:text-white sm:inline"></i>
           </a>
         }
       </div>
@@ -60,6 +61,10 @@ export class AccesRapideComponent {
     const medecin = this.session.estMedecin();
     const gestion = UTILISATEUR.superAdmin && this.session.peutGererSoignants();
     return [
+      {
+        titre: 'Urgences', description: 'Patientes en détresse, localisées par GPS', icone: 'fa-truck-medical',
+        lien: '/admin/urgences', couleur: 'from-red-500 to-red-800',
+      },
       ...(medecin ? [{
         titre: 'Enregistrement CPN', description: 'Nouvelle patiente, grossesse et datation', icone: 'fa-file-circle-plus',
         lien: '/admin/patientes/nouvelle', couleur: 'from-brand-600 to-brand-800',
@@ -69,6 +74,10 @@ export class AccesRapideComponent {
         titre: 'Accouchement', description: 'Admission en salle de travail, partogramme, naissance et sortie', icone: 'fa-bed-pulse',
         lien: '/admin/accouchements', couleur: 'from-pink-500 to-rose-700',
       }] : []),
+      {
+        titre: 'Enfants vaccinés', description: 'Carnets de vaccination, doses à jour et en retard', icone: 'fa-syringe',
+        lien: '/admin/enfants', couleur: 'from-indigo-500 to-blue-700',
+      },
       ...(gestion ? [{
         titre: 'Ajout soignant', description: 'Créer le compte d’un médecin, d’un infirmier ou d’une sage-femme', icone: 'fa-user-doctor',
         lien: '/admin/soignants', queryParams: { ajout: '1' }, couleur: 'from-emerald-500 to-teal-700',
