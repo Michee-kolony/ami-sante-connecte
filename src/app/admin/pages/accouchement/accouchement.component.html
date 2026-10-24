@@ -382,6 +382,7 @@
                 <div><label class="label">BCF</label><input type="number" class="input" [class.!border-rose-500]="bcfHorsNorme" [(ngModel)]="s.bcf">
                   @if (bcfHorsNorme) { <p class="mt-1 text-xs font-medium text-rose-600">Hors 120–160</p> }</div>
                 <div><label class="label">Dilatation (cm)</label><input type="number" min="0" max="10" class="input" [(ngModel)]="s.dilatationCm"></div>
+                <div><label class="label">Effacement du col (%)</label><input type="number" min="0" max="100" step="10" class="input" [(ngModel)]="s.effacementPct"></div>
                 <div><label class="label">Contractions /10 min</label><input type="number" class="input" [(ngModel)]="s.contractions10min"></div>
                 <div><label class="label">Durée (s)</label><input type="number" class="input" [(ngModel)]="s.dureeContractionsSec"></div>
                 <div><label class="label">{{ phaseSaisie === 'Active' ? 'Pertes de sang' : 'Saignement' }}</label><select class="input" [(ngModel)]="s.saignement"><option value="">—</option>@for (x of ref?.SAIGNEMENTS ?? []; track x) { <option>{{ x }}</option> }</select></div>
@@ -428,7 +429,7 @@
                 <thead class="bg-slate-50/70 dark:bg-slate-800/50">
                   <tr>
                     <th class="table-th">Heure</th><th class="table-th">Temps depuis (h)<br><span class="font-normal normal-case">arrivée / rupture / début</span></th>
-                    <th class="table-th">Phase</th><th class="table-th">Dil.</th><th class="table-th">BCF</th><th class="table-th">CU /10′ · s</th>
+                    <th class="table-th">Phase</th><th class="table-th">Dil.</th><th class="table-th">Eff. col</th><th class="table-th">BCF</th><th class="table-th">CU /10′ · s</th>
                     <th class="table-th">Sang</th><th class="table-th">T° · Pouls · TA</th><th class="table-th">Diurèse</th>
                     <th class="table-th">Membr. · LA · Eng.</th><th class="table-th">Ocyto.</th><th class="table-th">Notes</th><th class="table-th">Par</th>
                   </tr>
@@ -440,6 +441,7 @@
                       <td class="whitespace-nowrap px-3 py-2 tabular-nums">{{ x.tempsDepuis?.arriveeH ?? '—' }} / {{ x.tempsDepuis?.ruptureH ?? '—' }} / {{ x.tempsDepuis?.debutTravailH ?? '—' }}</td>
                       <td class="px-3 py-2">{{ x.phase }}</td>
                       <td class="px-3 py-2 font-semibold">{{ x.dilatationCm ?? '—' }}</td>
+                      <td class="px-3 py-2">{{ x.effacementPct != null ? x.effacementPct + ' %' : '—' }}</td>
                       <td class="px-3 py-2 font-semibold" [class.text-rose-600]="x.bcf != null && (x.bcf < 120 || x.bcf > 160)">{{ x.bcf ?? '—' }}</td>
                       <td class="px-3 py-2">{{ x.contractions10min ?? '—' }} · {{ x.dureeContractionsSec ?? '—' }}</td>
                       <td class="px-3 py-2">{{ x.saignement || '—' }}</td>
@@ -451,7 +453,7 @@
                       <td class="whitespace-nowrap px-3 py-2 text-slate-500">{{ x.auteur.nom }}</td>
                     </tr>
                   } @empty {
-                    <tr><td colspan="13" class="px-5 py-8 text-center text-sm text-slate-500">Aucune surveillance saisie.</td></tr>
+                    <tr><td colspan="14" class="px-5 py-8 text-center text-sm text-slate-500">Aucune surveillance saisie.</td></tr>
                   }
                 </tbody>
               </table>

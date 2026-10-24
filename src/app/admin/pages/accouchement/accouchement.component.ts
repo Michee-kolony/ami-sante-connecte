@@ -53,7 +53,7 @@ function examenVide(): ExamenClinique {
 function surveillanceVide(): SaisieSurveillance {
   return {
     le: '', saignement: '', contractions10min: null, dureeContractionsSec: null, bcf: null, temperature: null, pouls: null,
-    taSystolique: null, taDiastolique: null, diurese: '', dilatationCm: null, affection: '', traitements: '', membranes: '',
+    taSystolique: null, taDiastolique: null, diurese: '', dilatationCm: null, effacementPct: null, affection: '', traitements: '', membranes: '',
     liquideAmniotique: '', ocytocine: { uParMl: null, gouttesMin: null }, medicamentsIV: '', engagement: '', incident: '',
   };
 }

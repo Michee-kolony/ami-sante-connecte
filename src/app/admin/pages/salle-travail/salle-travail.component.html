@@ -112,7 +112,7 @@
                 <td class="table-td whitespace-nowrap text-xs">
                   @if (d.derniereSurveillance; as s) {
                     <p>{{ dateHeure(s.le) }}</p>
-                    <p class="text-slate-500">{{ s.dilatationCm != null ? s.dilatationCm + ' cm' : '—' }} · BCF {{ s.bcf ?? '—' }}</p>
+                    <p class="text-slate-500">{{ s.dilatationCm != null ? s.dilatationCm + ' cm' : '—' }}{{ s.effacementPct != null ? ' · effacé ' + s.effacementPct + ' %' : '' }} · BCF {{ s.bcf ?? '—' }}</p>
                   } @else { <span class="text-slate-400">Aucune</span> }
                 </td>
                 <td class="table-td">@if (d.zoneActuelle) { <span class="badge {{ zone(d.zoneActuelle) }}">{{ d.zoneActuelle }}</span> } @else { <span class="text-xs text-slate-400">—</span> }</td>

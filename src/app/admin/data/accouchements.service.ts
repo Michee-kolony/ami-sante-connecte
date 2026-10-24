@@ -112,6 +112,8 @@ export interface SaisieSurveillance {
   taDiastolique: number | null;
   diurese: string;
   dilatationCm: number | null;
+  /** Effacement du col (%). */
+  effacementPct: number | null;
   affection: string;
   traitements: string;
   membranes: string;
@@ -158,6 +160,7 @@ export interface Partogramme {
     points: { id: string; le: string; heures: number; cm: number; zone: Zone }[];
     zoneActuelle: Zone | null;
   };
+  effacement: { echelle: [number, number]; points: { id: string; le: string; phase: string; pct: number; heures: number | null }[] };
 }
 
 /** Module 4 — accouchement et délivrance. */
@@ -286,7 +289,7 @@ export interface ResumeAccouchement {
   patiente: { id: string; numero: string; nom: string; postnom: string; prenom: string; photoUrl: string | null } | null;
   admiseLe: string;
   phase: 'Latence' | 'Active';
-  derniereSurveillance: { le: string; dilatationCm: number | null; bcf: number | null } | null;
+  derniereSurveillance: { le: string; dilatationCm: number | null; effacementPct: number | null; bcf: number | null } | null;
   zoneActuelle: Zone | null;
   alertesActives: number;
   alertesCritiques: number;

@@ -45,8 +45,8 @@ const zonesPlugin: Plugin<'line'> = {
 };
 
 /**
- * Partogramme de la phase active : graphe des BCF (100–180 bpm, lignes d'alerte 120 et 160) et
- * graphe de la dilatation (4–10 cm) avec ses zones. Abscisse : heures depuis le début de la phase
+ * Partogramme de la phase active : graphe des BCF (100–180 bpm, lignes d'alerte 120 et 160),
+ * graphe de la dilatation (4–10 cm) avec ses zones et graphe de l'effacement du col (0–100 %). Abscisse : heures depuis le début de la phase
  * active (ou depuis l'admission tant que la phase active n'a pas commencé).
  */
 @Component({
@@ -84,6 +84,21 @@ const zonesPlugin: Plugin<'line'> = {
       <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm bg-rose-600/70"></span>Rouge : au-delà de la ligne d’action</span>
     </div>
   </div>
+
+  <div class="card xl:col-span-2">
+    <div class="card-header">
+      <h3 class="card-title"><i class="fa-solid fa-circle-half-stroke text-accent-600 dark:text-accent-400"></i> Graphe 3 · Effacement du col</h3>
+      @if (p.effacement.points.at(-1); as e) {
+        <span class="text-xs text-slate-500 dark:text-slate-400">Dernier : {{ e.pct }} %</span>
+      } @else {
+        <span class="text-xs text-slate-500 dark:text-slate-400">0 % (col long) → 100 % (col effacé)</span>
+      }
+    </div>
+    <div class="relative h-56 p-4">
+      @if (!p.effacement.points.length) { <p class="flex h-full items-center justify-center text-sm text-slate-500 dark:text-slate-400">Aucun effacement saisi.</p> }
+      <canvas #effacement [class.hidden]="!p.effacement.points.length" role="img" [attr.aria-label]="'Courbe de l’effacement du col : ' + p.effacement.points.length + ' mesures'"></canvas>
+    </div>
+  </div>
 </div>
   `,
 })
@@ -93,6 +108,7 @@ export class PartogrammeComponent implements AfterViewInit, OnChanges, OnDestroy
   @Input() admiseLe = '';
   @ViewChild('bcf') canvasBcf?: ElementRef<HTMLCanvasElement>;
   @ViewChild('dilatation') canvasDil?: ElementRef<HTMLCanvasElement>;
+  @ViewChild('effacement') canvasEff?: ElementRef<HTMLCanvasElement>;
 
   private theme = inject(ThemeService);
   private graphes: Chart<'line'>[] = [];
@@ -196,6 +212,30 @@ export class PartogrammeComponent implements AfterViewInit, OnChanges, OnDestroy
           },
         },
         plugins: [zonesPlugin],
+      }));
+    }
+
+    if (this.canvasEff && this.p.effacement.points.length) {
+      const points = this.p.effacement.points.map(e => ({ x: heures(e.le), y: e.pct, le: e.le }));
+      const xMin = Math.min(0, Math.floor(Math.min(...points.map(q => q.x))));
+      const xMax = Math.max(12, Math.ceil(Math.max(...points.map(q => q.x))) + 1);
+      const couleur = sombre ? '#4ade80' : '#24894a';
+      this.graphes.push(new Chart(this.canvasEff.nativeElement, {
+        type: 'line',
+        data: {
+          datasets: [{
+            label: 'Effacement', data: points as never, borderColor: couleur, backgroundColor: couleur, borderWidth: 2, tension: 0.2,
+            pointRadius: 4, pointBackgroundColor: couleur,
+          }],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, animation: false, parsing: false,
+          scales: {
+            x: axeX(xMin, xMax),
+            y: { min: this.p.effacement.echelle[0], max: this.p.effacement.echelle[1], ticks: { color: texte, stepSize: 20, callback: v => `${v} %` }, grid: { color: grille }, title: { display: true, text: '%', color: texte } },
+          },
+          plugins: { legend: { display: false }, tooltip: { ...infobulle, callbacks: { ...infobulle.callbacks, label: i => ` Effacé à ${(i.raw as { y: number }).y} %` } } },
+        },
       }));
     }
   }
