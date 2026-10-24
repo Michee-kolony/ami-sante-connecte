@@ -51,8 +51,8 @@ const FAQ: Faq[] = [
   },
   {
     question: 'Quels vaccins pour mon bébé ?',
-    reponse: 'Votre bébé reçoit des vaccins à la naissance, à 6, 10 et 14 semaines, puis à 9 mois (dont la rougeole et la fièvre jaune). Gardez bien son carnet : l’agent de vaccination vous indiquera la prochaine date.',
-    motsCles: ['vaccin', 'vaccination', 'bebe', 'enfant', 'rougeole', 'carnet', 'polio'],
+    reponse: 'Votre bébé reçoit des vaccins à la naissance, à 6, 10 et 14 semaines, contre le paludisme à 6, 7 et 8 mois, puis à 9 mois (rougeole-rubéole et fièvre jaune) et à 15 mois. La vaccination est gratuite : gardez bien son carnet, l’agent de vaccination vous indiquera la prochaine date.',
+    motsCles: ['vaccin', 'vaccination', 'bebe', 'enfant', 'rougeole', 'carnet', 'polio', 'paludisme', 'malaria'],
   },
   {
     question: 'Vais-je recevoir des rappels de rendez-vous ?',

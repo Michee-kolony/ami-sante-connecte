@@ -220,8 +220,8 @@ export const LINGALA: Record<string, string> = {
   'Allez immédiatement à l’hôpital en cas de saignement, de fortes douleurs au ventre, de fièvre, de maux de tête violents ou de vision trouble, de convulsions, de perte de liquide, ou si le bébé ne bouge plus.':
     'Kende noki na lopitalo soki makila ebimi, soki libumu ezali kopota makasi, soki ozali na fièvre, soki motó ezali kopota makasi to miso ezali komona malamu te, soki ozali kobeta ndeke (convulsions), soki mai ebimi, to soki mwana azali lisusu koningana te.',
   'Quels vaccins pour mon bébé ?': 'Mangwele nini mpo na mwana na ngai ?',
-  'Votre bébé reçoit des vaccins à la naissance, à 6, 10 et 14 semaines, puis à 9 mois (dont la rougeole et la fièvre jaune). Gardez bien son carnet : l’agent de vaccination vous indiquera la prochaine date.':
-    'Mwana na yo azwaka mangwele na mbotama, na mposo 6, 10 mpe 14, sima na sanza 9 (elongo na rougeole mpe fièvre jaune). Batelá buku na ye malamu : mosáli ya mangwele akoyebisa yo mokolo oyo ekolanda.',
+  'Votre bébé reçoit des vaccins à la naissance, à 6, 10 et 14 semaines, contre le paludisme à 6, 7 et 8 mois, puis à 9 mois (rougeole-rubéole et fièvre jaune) et à 15 mois. La vaccination est gratuite : gardez bien son carnet, l’agent de vaccination vous indiquera la prochaine date.':
+    'Mwana na yo azwaka mangwele na mbotama, na mposo 6, 10 mpe 14, mangwele ya malaria na sanza 6, 7 mpe 8, sima na sanza 9 (rougeole-rubéole mpe fièvre jaune) mpe na sanza 15. Mangwele ezali ofele : batelá buku na ye malamu, mosáli ya mangwele akoyebisa yo mokolo oyo ekolanda.',
   'Vais-je recevoir des rappels de rendez-vous ?': 'Nakozwa bokundoli ya ba rendez-vous ?',
   'Oui, si vous l’acceptez. Les rappels sont envoyés par SMS, appel ou WhatsApp selon votre choix, avec un message discret qui ne contient aucune information médicale.':
     'Ee, soki ondimi. Ba bokundoli etindamaka na SMS, appel to WhatsApp ndenge oponi, na sango ya sekele oyo ezali na sango ya maladi te.',

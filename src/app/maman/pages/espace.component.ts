@@ -130,6 +130,12 @@ type Onglet = 'accueil' | 'enfants' | 'rendez-vous' | 'accouchements';
                     </ul>
                   </div>
                 }
+                <!-- Consignes de l'affiche du PEV RDC -->
+                <ul class="space-y-1 bg-accent-50 px-5 py-3 text-xs font-medium text-accent-700 dark:bg-accent-500/10 dark:text-accent-300">
+                  <li><i class="fa-solid fa-check mr-2"></i>La vaccination est gratuite</li>
+                  <li><i class="fa-solid fa-check mr-2"></i>Respectez les dates recommandées</li>
+                  <li><i class="fa-solid fa-check mr-2"></i>Gardez le carnet de vaccination de votre enfant</li>
+                </ul>
               </div>
             }
 
