@@ -10,6 +10,7 @@ import { NotificationsMessagesComponent } from '../components/notifications-mess
 import { AvatarComponent } from '../components/avatar.component';
 import { ConversationsFlottantesComponent } from '../components/conversations-flottantes.component';
 import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
+import { RappelsRdvComponent } from '../components/rappels-rdv.component';
 
 interface NavItem {
   label: string;
@@ -25,7 +26,7 @@ interface NavItem {
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ThemeToggleComponent, NotificationsMessagesComponent, AvatarComponent, ConversationsFlottantesComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ThemeToggleComponent, NotificationsMessagesComponent, AvatarComponent, ConversationsFlottantesComponent, RappelsRdvComponent],
   templateUrl: './shell.component.html',
 })
 export class ShellComponent {
