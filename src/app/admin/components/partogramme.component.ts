@@ -9,6 +9,8 @@ Chart.register(LineController, LineElement, PointElement, LinearScale, Tooltip);
 const HEURE = 3_600_000;
 /** Largeur fixe de la colonne des libellés : les graphes empilés partagent les mêmes colonnes d'heures. */
 const MARGE_GAUCHE = 96;
+/** Marge droite commune (place de la dernière étiquette « 12 h ») : les colonnes restent alignées. */
+const MARGE_DROITE = 16;
 /** Hauteur d'une ligne de cases sous un graphe (Engagement, Incident, Heure réelle). */
 const LIGNE = 26;
 /** Fond des zones, comme sur la feuille papier : vert, jaune, orangé (composantes RVB). */
@@ -21,14 +23,13 @@ interface Teintes { texte: string; fine: string; forte: string; trait: string }
 interface LigneCases { titre: string; pas: number; cases: { h: number; texte: string; couleur?: string }[] }
 
 /**
- * Zones verte / jaune / rouge du graphe de dilatation, dessinées sous les courbes à partir du
- * début de la phase active : à gauche de la ligne d'alerte, entre les deux lignes, à droite de la
+ * Zones verte / jaune / rouge du graphe de dilatation, dessinées sous les courbes même sans
+ * saisie, comme sur la feuille papier : à gauche de la ligne d'alerte, entre les deux lignes, à droite de la
  * ligne d'action.
  */
 const zonesPlugin: Plugin<'line'> = {
   id: 'zonesPartogramme',
-  beforeDatasetsDraw(chart, _args, options: { actif?: boolean; sombre?: boolean }) {
-    if (!options?.actif) return;
+  beforeDatasetsDraw(chart, _args, options: { sombre?: boolean }) {
     const { ctx, chartArea: a, scales: { x, y } } = chart;
     const px = (h: number) => x.getPixelForValue(h);
     const py = (cm: number) => y.getPixelForValue(cm);
@@ -62,6 +63,25 @@ const zonesPlugin: Plugin<'line'> = {
     ctx.restore();
   },
 };
+
+/**
+ * Partogramme complété des valeurs par défaut : un dossier incomplet (cache hors ligne, dossier
+ * ancien) affiche quand même le quadrillage vide au lieu d'interrompre le dessin.
+ */
+function completer(p: Partial<Partogramme> | null | undefined): Partogramme {
+  return {
+    ...p,
+    debutPhaseActive: p?.debutPhaseActive ?? null,
+    bcf: { min: 120, max: 160, echelle: [100, 180], ...p?.bcf, points: p?.bcf?.points ?? [] },
+    effacement: { echelle: [0, 100], ...p?.effacement, points: p?.effacement?.points ?? [] },
+    dilatation: {
+      echelle: [4, 10], zoneActuelle: null, ...p?.dilatation,
+      lignes: { alerte: p?.dilatation?.lignes?.alerte ?? [], action: p?.dilatation?.lignes?.action ?? [] },
+      points: p?.dilatation?.points ?? [],
+    },
+    reperes: p?.reperes ?? [],
+  } as Partogramme;
+}
 
 /** Lignes de cases sous un graphe (Engagement, Incident, Heure réelle), alignées sur les colonnes d'heures. */
 const casesPlugin: Plugin<'line'> = {
@@ -127,7 +147,6 @@ const casesPlugin: Plugin<'line'> = {
       <div class="min-w-[720px] px-4 pb-4 pt-4">
         <div class="relative h-[330px]">
           <canvas #bcf role="img" [attr.aria-label]="'Courbe des BCF : ' + p.bcf.points.length + ' mesures, avec engagement et incidents'"></canvas>
-          @if (!p.bcf.points.length) { <p class="pointer-events-none absolute left-1/2 top-24 -translate-x-1/2 rounded-full bg-white/90 px-3 py-1 text-xs text-slate-500 shadow-sm dark:bg-slate-900/90 dark:text-slate-400">Aucun BCF saisi.</p> }
         </div>
         <p class="mt-1 text-xs text-slate-500 dark:text-slate-400" [style.padding-left.px]="margeGauche">
           <strong class="text-slate-700 dark:text-slate-300">M</strong> = Mobile ou haute ·
@@ -146,7 +165,6 @@ const casesPlugin: Plugin<'line'> = {
 
         <div class="relative mt-6 h-[360px]">
           <canvas #dilatation role="img" aria-label="Courbe de dilatation du col sur les zones verte, jaune et rouge, avec l’heure réelle"></canvas>
-          @if (!p.debutPhaseActive) { <p class="pointer-events-none absolute left-1/2 top-28 -translate-x-1/2 rounded-full bg-white/90 px-3 py-1 text-center text-xs text-slate-500 shadow-sm dark:bg-slate-900/90 dark:text-slate-400">Le graphe démarre à la première dilatation ≥ 4 cm.</p> }
         </div>
       </div>
     </div>
@@ -210,6 +228,7 @@ export class PartogrammeComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   ngOnChanges(): void {
+    this.p = completer(this.p);
     if (this.vue) this.dessiner();
   }
 
@@ -218,7 +237,9 @@ export class PartogrammeComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private origine(): number {
-    return new Date(this.p.debutPhaseActive ?? this.admiseLe).getTime();
+    // Sans début de phase active ni heure d'admission valide, le graphe part de l'heure pleine actuelle.
+    const t = new Date(this.p.debutPhaseActive ?? this.admiseLe).getTime();
+    return Number.isNaN(t) ? Math.floor(Date.now() / HEURE) * HEURE : t;
   }
 
   private dessiner(): void {
@@ -237,7 +258,7 @@ export class PartogrammeComponent implements AfterViewInit, OnChanges, OnDestroy
       ...this.p.effacement.points.map(e => heures(e.le)),
       ...this.p.reperes.map(r => heures(r.le)),
       ...this.p.dilatation.points.map(d => d.heures),
-    ];
+    ].filter(Number.isFinite);
     const xMin = Math.min(0, Math.floor(Math.min(0, ...toutes)));
     const xMax = Math.max(12, Math.ceil(Math.max(0, ...toutes)) + 1);
 
@@ -286,7 +307,7 @@ export class PartogrammeComponent implements AfterViewInit, OnChanges, OnDestroy
         },
         options: {
           responsive: true, maintainAspectRatio: false, animation: false, parsing: false,
-          layout: { padding: { bottom: 2 * LIGNE + 6 } },
+          layout: { padding: { bottom: 2 * LIGNE + 6, right: MARGE_DROITE } },
           scales: {
             x: axeX(false),
             y: axeY(this.p.bcf.echelle[0], this.p.bcf.echelle[1], 5, v => (v % 10 === 0 ? String(v) : ''), 'BCF'),
@@ -311,7 +332,8 @@ export class PartogrammeComponent implements AfterViewInit, OnChanges, OnDestroy
         titre: 'Heure réelle', pas: 1,
         cases: Array.from({ length: xMax - xMin }, (_, i) => ({ h: xMin + i, texte: heureFr(new Date(origine + (xMin + i) * HEURE)) })),
       };
-      const actif = !!this.p.debutPhaseActive;
+      // Zones et lignes toujours visibles, même sans saisie, comme sur la feuille papier.
+      const { alerte, action } = this.p.dilatation.lignes;
       this.graphes.push(new Chart(this.canvasDil.nativeElement, {
         type: 'line',
         data: {
@@ -320,15 +342,13 @@ export class PartogrammeComponent implements AfterViewInit, OnChanges, OnDestroy
               label: 'Dilatation', data: points as never, borderColor: t.trait, borderWidth: 2,
               pointRadius: 7, pointHoverRadius: 8, pointStyle: 'crossRot', pointBorderWidth: 3, pointBorderColor: t.trait,
             },
-            ...(actif ? [
-              { label: 'Ligne d’alerte', ...ligne(this.p.dilatation.lignes.alerte) },
-              { label: 'Ligne d’action', ...ligne(this.p.dilatation.lignes.action) },
-            ] : []),
+            { label: 'Ligne d’alerte', ...ligne(alerte.length ? alerte : [{ heures: 0, cm: 4 }, { heures: 6, cm: 10 }]) },
+            { label: 'Ligne d’action', ...ligne(action.length ? action : [{ heures: 4, cm: 4 }, { heures: 10, cm: 10 }]) },
           ],
         },
         options: {
           responsive: true, maintainAspectRatio: false, animation: false, parsing: false,
-          layout: { padding: { bottom: LIGNE + 6 } },
+          layout: { padding: { bottom: LIGNE + 6, right: MARGE_DROITE } },
           scales: {
             x: axeX(true),
             y: axeY(4, 10, 0.5, v => (Number.isInteger(v) ? `${v} cm` : ''), 'DILATATION'),
@@ -336,7 +356,7 @@ export class PartogrammeComponent implements AfterViewInit, OnChanges, OnDestroy
           plugins: {
             legend: { display: false },
             tooltip: { ...infobulle, filter: i => i.datasetIndex === 0, callbacks: { ...infobulle.callbacks, label: i => ` ${(i.raw as { y: number; zone: Zone }).y} cm · zone ${(i.raw as { zone: Zone }).zone.toLowerCase()}` } },
-            ...({ zonesPartogramme: { actif, sombre }, casesPartogramme: { lignes: [heureReelle], teintes: t } } as object),
+            ...({ zonesPartogramme: { sombre }, casesPartogramme: { lignes: [heureReelle], teintes: t } } as object),
           },
         },
         plugins: [zonesPlugin, casesPlugin],

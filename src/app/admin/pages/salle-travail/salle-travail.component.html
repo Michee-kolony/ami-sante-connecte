@@ -142,15 +142,64 @@
         <button class="btn-ghost px-2" (click)="admissionOuverte = false" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="space-y-5 p-6">
-        @if (!choisie) {
+        @if (sansDossier) {
+          <!-- Femme venue directement accoucher, sans CPN ni dossier dans la plateforme -->
+          <div class="flex items-start gap-3 rounded-xl bg-amber-50 p-4 text-sm text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">
+            <i class="fa-solid fa-person-pregnant mt-0.5"></i>
+            <p class="flex-1">Venue directement pour accoucher, sans CPN. Son dossier est créé avec l’identité minimale ; photo, groupe sanguin et antécédents se complètent ensuite dans l’admission et son dossier.</p>
+            <button type="button" class="btn-ghost self-start px-2 text-xs" (click)="sansDossier = false; doublons = []">Rechercher</button>
+          </div>
+          <div class="grid gap-4 sm:grid-cols-3">
+            <div><label class="label" for="n-nom">Nom <span class="text-rose-600">*</span></label><input id="n-nom" class="input" [(ngModel)]="nouvelle.nom" autocomplete="off"></div>
+            <div><label class="label" for="n-postnom">Postnom</label><input id="n-postnom" class="input" [(ngModel)]="nouvelle.postnom" autocomplete="off"></div>
+            <div><label class="label" for="n-prenom">Prénom</label><input id="n-prenom" class="input" [(ngModel)]="nouvelle.prenom" autocomplete="off"></div>
+          </div>
+          <div class="grid gap-4 sm:grid-cols-3">
+            <div><label class="label" for="n-age">Âge (ans) <span class="text-rose-600">*</span></label><input id="n-age" type="number" min="8" max="70" class="input" [(ngModel)]="nouvelle.ageDeclare"></div>
+            <div><label class="label" for="n-ddn">ou date de naissance</label><input id="n-ddn" type="date" class="input" [(ngModel)]="nouvelle.dateNaissance"></div>
+            <div><label class="label" for="n-tel">Téléphone</label><input id="n-tel" type="tel" class="input" [(ngModel)]="nouvelle.telephone" placeholder="+243…"></div>
+          </div>
+          <div class="grid gap-4 sm:grid-cols-3">
+            <div><label class="label" for="n-commune">Commune</label><input id="n-commune" class="input" [(ngModel)]="nouvelle.adresse.commune"></div>
+            <div><label class="label" for="n-quartier">Quartier</label><input id="n-quartier" class="input" [(ngModel)]="nouvelle.adresse.quartier"></div>
+            <div><label class="label" for="n-avenue">Avenue / n°</label><input id="n-avenue" class="input" [(ngModel)]="nouvelle.adresse.avenue"></div>
+          </div>
+          <fieldset class="grid gap-4 sm:grid-cols-3">
+            <legend class="label">Personne à prévenir</legend>
+            <input class="input" aria-label="Nom de la personne à prévenir" placeholder="Nom" [(ngModel)]="nouvelle.contactUrgence.nom">
+            <input class="input" aria-label="Lien avec la patiente" placeholder="Lien (mari, mère…)" [(ngModel)]="nouvelle.contactUrgence.lien">
+            <input class="input" type="tel" aria-label="Téléphone de la personne à prévenir" placeholder="Téléphone" [(ngModel)]="nouvelle.contactUrgence.telephone">
+          </fieldset>
+          @if (doublons.length) {
+            <div class="space-y-2 rounded-xl border border-amber-300 p-4 dark:border-amber-500/40" role="alert">
+              <p class="text-sm font-medium text-amber-800 dark:text-amber-200"><i class="fa-solid fa-user-group mr-1"></i>Cette femme a peut-être déjà un dossier :</p>
+              <ul class="divide-y divide-slate-100 dark:divide-slate-800">
+                @for (d of doublons; track d.id) {
+                  <li class="flex items-center gap-3 py-2 text-sm">
+                    <span class="flex-1"><span class="font-medium text-slate-900 dark:text-white">{{ d.prenom }} {{ d.nom }} {{ d.postnom }}</span>
+                      <span class="block text-xs text-slate-500">{{ d.numero }} · {{ d.age != null ? d.age + ' ans' : 'Âge inconnu' }}{{ d.telephoneMasque ? ' · ' + d.telephoneMasque : '' }}{{ d.commune ? ' · ' + d.commune : '' }}</span></span>
+                    <button type="button" class="btn-secondary px-3 py-1.5 text-xs" (click)="choisirDoublon(d)">C’est elle</button>
+                  </li>
+                }
+              </ul>
+              <button type="button" class="btn-ghost px-0 text-xs" [disabled]="envoi" (click)="admettre(true)">Ce n’est pas elle : créer un nouveau dossier et admettre</button>
+            </div>
+          }
+        } @else if (!choisie) {
           <form (ngSubmit)="chercher()">
             <label class="label" for="rech">Patiente enregistrée</label>
             <div class="flex gap-2">
               <input id="rech" name="rech" class="input" placeholder="Nom, identifiant AC-PAT ou téléphone" [(ngModel)]="recherche" autocomplete="off">
               <button class="btn-secondary" [disabled]="rechercheEnCours || recherche.trim().length < 2"><i class="fa-solid" [class]="rechercheEnCours ? 'fa-spinner fa-spin' : 'fa-magnifying-glass'"></i></button>
             </div>
-            <p class="hint">Une patiente arrivée sans dossier est d’abord enregistrée (Enregistrement CPN) ; sa grossesse est ouverte à l’admission si besoin.</p>
+            <p class="hint">Recherchez d’abord la patiente : si elle a déjà un dossier, sa grossesse est ouverte à l’admission si besoin.</p>
           </form>
+          <button type="button" class="flex w-full items-center gap-3 rounded-xl border border-dashed border-brand-300 px-4 py-3 text-left text-sm hover:bg-brand-50 dark:border-brand-500/40 dark:hover:bg-brand-500/10" (click)="ouvrirSansDossier()">
+            <i class="fa-solid fa-user-plus text-brand-600 dark:text-brand-400"></i>
+            <span class="flex-1"><span class="block font-medium text-slate-900 dark:text-white">Pas de dossier : venue directement pour accoucher</span>
+              <span class="block text-xs text-slate-500">Sans CPN dans la plateforme : créer son dossier en même temps que l’admission.</span></span>
+            <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
+          </button>
           <ul class="divide-y divide-slate-100 rounded-xl border border-slate-100 dark:divide-slate-800 dark:border-slate-800">
             @for (p of resultats; track p.id) {
               <li><button type="button" class="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50" (click)="choisir(p)">
@@ -177,6 +226,8 @@
             <button class="btn-ghost self-start px-2 text-xs" (click)="choisie = null">Changer</button>
           </div>
           <p class="text-xs text-slate-500 dark:text-slate-400"><i class="fa-solid fa-circle-info mr-1"></i>Identité, groupe sanguin, antécédents, DDR et DPA sont repris du dossier ; vous les complétez ensuite dans l’admission.</p>
+        }
+        @if (choisie || sansDossier) {
           <div><label class="label" for="motif">Motif de consultation</label><input id="motif" class="input" [(ngModel)]="form.motif" placeholder="Contractions utérines douloureuses…"></div>
           <div class="grid gap-4 sm:grid-cols-2">
             <div><label class="label" for="adm">Heure d’admission</label><input id="adm" type="datetime-local" class="input" [(ngModel)]="form.admiseLe"></div>
@@ -195,7 +246,7 @@
       </div>
       <div class="flex justify-end gap-2 border-t border-slate-100 px-6 py-4 dark:border-slate-800">
         <button class="btn-secondary" (click)="admissionOuverte = false">Annuler</button>
-        <button class="btn-primary" (click)="admettre()" [disabled]="!choisie || envoi"><i class="fa-solid" [class]="envoi ? 'fa-spinner fa-spin' : 'fa-bed-pulse'"></i> Admettre</button>
+        <button class="btn-primary" (click)="admettre()" [disabled]="!peutAdmettre || envoi"><i class="fa-solid" [class]="envoi ? 'fa-spinner fa-spin' : 'fa-bed-pulse'"></i> Admettre</button>
       </div>
     </div>
   </div>

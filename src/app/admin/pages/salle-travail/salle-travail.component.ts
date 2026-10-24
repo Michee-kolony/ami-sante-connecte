@@ -2,12 +2,18 @@ import { Component, Input, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AvatarComponent } from '../../components/avatar.component';
-import { AccouchementsService, AlerteSalle, AlertesMaterniteService, ResumeAccouchement, classeZone } from '../../data/accouchements.service';
-import { PatientesService, ResumePatiente } from '../../data/patientes.service';
+import { AccouchementsService, AlerteSalle, AlertesMaterniteService, NouvellePatienteAdmission, ResumeAccouchement, classeZone } from '../../data/accouchements.service';
+import { Doublon, PatientesService, ResumePatiente, doublonsDe } from '../../data/patientes.service';
 import { dateHeureChiffres, versSaisieLocale } from '../../data/format';
 import { messageErreur } from '../../data/session.service';
 
 type Filtre = 'En cours' | 'Clôturé' | 'Tous';
+
+const nouvelleVide = (): NouvellePatienteAdmission => ({
+  nom: '', postnom: '', prenom: '', dateNaissance: '', ageDeclare: null, telephone: '',
+  adresse: { commune: '', quartier: '', avenue: '' },
+  contactUrgence: { nom: '', lien: '', telephone: '' },
+});
 
 /**
  * Salle de travail : dossiers d'accouchement ouverts (phase, zone du partogramme, alertes),
@@ -42,6 +48,11 @@ export class SalleTravailComponent implements OnInit {
   resultats: ResumePatiente[] = [];
   rechercheEnCours = false;
   choisie: ResumePatiente | null = null;
+  /** Femme venue directement accoucher, sans dossier dans la plateforme (pas de CPN). */
+  sansDossier = false;
+  nouvelle: NouvellePatienteAdmission = nouvelleVide();
+  /** Dossiers possiblement identiques signalés par le serveur avant de créer la nouvelle patiente. */
+  doublons: Doublon[] = [];
   form = { motif: '', admiseLe: '', debutTravail: '', provenance: '' };
   envoi = false;
   erreurAdmission = '';
@@ -108,7 +119,10 @@ export class SalleTravailComponent implements OnInit {
     this.erreurAdmission = '';
     this.choisie = null;
     this.resultats = [];
-    this.form = { motif: '', admiseLe: versSaisieLocale(new Date()), debutTravail: '', provenance: '' };
+    this.sansDossier = false;
+    this.nouvelle = nouvelleVide();
+    this.doublons = [];
+    this.form ={ motif: '', admiseLe: versSaisieLocale(new Date()), debutTravail: '', provenance: '' };
   }
 
   async chercher(): Promise<void> {
@@ -127,20 +141,49 @@ export class SalleTravailComponent implements OnInit {
     this.choisie = p;
   }
 
-  async admettre(): Promise<void> {
-    if (!this.choisie) return;
+  /** Bascule vers la fiche d'identité rapide, en reprenant le nom tapé dans la recherche. */
+  ouvrirSansDossier(): void {
+    this.sansDossier = true;
+    this.doublons = [];
+    this.erreurAdmission = '';
+    if (!this.nouvelle.nom && this.recherche.trim() && !/^AC-PAT-|^\+?\d/.test(this.recherche.trim())) {
+      const [nom, ...reste] = this.recherche.trim().split(/\s+/);
+      this.nouvelle.nom = nom;
+      this.nouvelle.prenom = reste.join(' ');
+    }
+  }
+
+  /** Doublon reconnu : c'est la même femme, on l'admet avec son dossier existant. */
+  choisirDoublon(d: Doublon): void {
+    this.choisie = { ...d, photoUrl: null, grossesse: null } as unknown as ResumePatiente;
+    this.sansDossier = false;
+    this.doublons = [];
+  }
+
+  get peutAdmettre(): boolean {
+    if (this.sansDossier) return !!this.nouvelle.nom.trim() && (!!this.nouvelle.dateNaissance || this.nouvelle.ageDeclare != null);
+    return !!this.choisie;
+  }
+
+  async admettre(confirmerMalgreDoublons = false): Promise<void> {
+    if (!this.peutAdmettre) return;
     this.envoi = true;
     this.erreurAdmission = '';
+    const admission = {
+      motif: this.form.motif,
+      admiseLe: this.form.admiseLe ? new Date(this.form.admiseLe).toISOString() : undefined,
+      debutTravail: this.form.debutTravail ? new Date(this.form.debutTravail).toISOString() : null,
+      provenance: this.form.provenance,
+    } as never;
     try {
-      const d = await this.service.admettre(this.choisie.id, {
-        motif: this.form.motif,
-        admiseLe: this.form.admiseLe ? new Date(this.form.admiseLe).toISOString() : undefined,
-        debutTravail: this.form.debutTravail ? new Date(this.form.debutTravail).toISOString() : null,
-        provenance: this.form.provenance,
-      } as never);
+      const d = this.sansDossier
+        ? await this.service.admettreSansDossier(this.nouvelle, admission, confirmerMalgreDoublons)
+        : await this.service.admettre(this.choisie!.id, admission);
       this.router.navigate(['/admin/accouchements', d.numero]);
     } catch (err) {
-      this.erreurAdmission = messageErreur(err);
+      const doublons = this.sansDossier ? doublonsDe(err) : null;
+      if (doublons) this.doublons = doublons;
+      else this.erreurAdmission = messageErreur(err);
     } finally {
       this.envoi = false;
     }

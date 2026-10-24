@@ -151,6 +151,14 @@ export interface AlerteSalle extends Alerte {
   patiente: { id: string; numero: string; nom: string; prenom: string } | null;
 }
 
+/** Identité minimale d'une femme admise directement en salle de travail, sans dossier CPN. */
+export interface NouvellePatienteAdmission {
+  nom: string; postnom: string; prenom: string;
+  dateNaissance: string; ageDeclare: number | null; telephone: string;
+  adresse: { commune: string; quartier: string; avenue: string };
+  contactUrgence: { nom: string; lien: string; telephone: string };
+}
+
 export interface Partogramme {
   debutPhaseActive: string | null;
   bcf: { min: number; max: number; echelle: [number, number]; points: { id: string; le: string; phase: string; bcf: number; anormal: boolean; heures: number | null }[] };
@@ -355,6 +363,14 @@ export class AccouchementsService {
 
   admettre(patienteId: string, admission: Partial<Admission>): Promise<DossierAccouchement> {
     return firstValueFrom(this.http.post<DossierAccouchement>(this.url, { patienteId, admission }));
+  }
+
+  /**
+   * Admission directe d'une femme venue accoucher sans dossier (pas de CPN) : son dossier patiente
+   * minimal est créé avec le dossier d'accouchement. 409 avec `doublons` si elle semble déjà enregistrée.
+   */
+  admettreSansDossier(nouvellePatiente: NouvellePatienteAdmission, admission: Partial<Admission>, confirmerMalgreDoublons = false): Promise<DossierAccouchement> {
+    return firstValueFrom(this.http.post<DossierAccouchement>(this.url, { nouvellePatiente, admission, confirmerMalgreDoublons }));
   }
 
   obtenir(id: string): Promise<DossierAccouchement> {
