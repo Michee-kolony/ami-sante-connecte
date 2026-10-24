@@ -497,6 +497,15 @@ export function doublonsDe(err: unknown): Doublon[] | null {
  * Dossier prénatal stocké par backend-ami-connecte. Toutes ces routes sont réservées aux
  * médecins : le serveur refuse (403) et journalise tout autre rôle.
  */
+/** Résultat du bouton « Envoyer les rappels » de l’agenda. */
+export interface BilanRappels {
+  rendezVous: number;
+  patientes: number;
+  /** Patientes dont au moins un téléphone a reçu la notification. */
+  notifiees: number;
+  horizonJours: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class PatientesService {
   private http = inject(HttpClient);
@@ -598,6 +607,11 @@ export class PatientesService {
   }
 
   // --- Rendez-vous ---------------------------------------------------------------------
+  /** Notification du prochain rendez-vous à chaque patiente qui en a un dans les 30 jours (médecins). */
+  envoyerRappelsRendezVous(): Promise<BilanRappels> {
+    return firstValueFrom(this.http.post<BilanRappels>(`${API_URL}/rendez-vous/rappels`, {}));
+  }
+
   agenda(du: Date, au: Date): Promise<RendezVousAgenda[]> {
     return firstValueFrom(this.http.get<RendezVousAgenda[]>(`${API_URL}/rendez-vous`, { params: { du: du.toISOString(), au: au.toISOString() } }));
   }

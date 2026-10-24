@@ -1,8 +1,8 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { aujourdhui, dateHeureFr, heureFr, jourLocal } from '../../data/format';
-import { PatientesService, RendezVousAgenda, StatutRdv } from '../../data/patientes.service';
-import { messageErreur } from '../../data/session.service';
+import { BilanRappels, PatientesService, RendezVousAgenda, StatutRdv } from '../../data/patientes.service';
+import { SessionService, messageErreur } from '../../data/session.service';
 
 type Filtre = 'À venir' | 'Aujourd’hui' | 'Absences' | 'Tous';
 const ACTIFS: StatutRdv[] = ['Planifié', 'Confirmé', 'Reporté'];
@@ -14,10 +14,46 @@ const ACTIFS: StatutRdv[] = ['Planifié', 'Confirmé', 'Reporté'];
   imports: [RouterLink],
   template: `
 <div class="mx-auto max-w-7xl space-y-6">
-  <div>
-    <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Rendez-vous & rappels</h1>
-    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Agenda des consultations prénatales. Rappels envoyés avec un texte discret, sans détail médical. Les reports et annulations se font depuis le dossier, avec motif.</p>
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Rendez-vous & rappels</h1>
+      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Agenda des consultations prénatales. Rappels envoyés avec un texte discret, sans détail médical. Les reports et annulations se font depuis le dossier, avec motif.</p>
+    </div>
+    @if (session.estMedecin()) {
+      <button class="btn-primary flex-none" (click)="confirmation.set(true); bilan.set(null); erreurRappels.set('')" [disabled]="envoi()">
+        @if (envoi()) { <i class="fa-solid fa-spinner fa-spin"></i> Envoi en cours… } @else { <i class="fa-solid fa-bell"></i> Envoyer les rappels }
+      </button>
+    }
   </div>
+
+  @if (confirmation()) {
+    <div class="flex flex-col gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-900 sm:flex-row sm:items-center dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-100" role="alertdialog" aria-label="Confirmer l’envoi des rappels">
+      <i class="fa-solid fa-paper-plane"></i>
+      <p class="flex-1">Chaque patiente ayant un rendez-vous dans les 30 prochains jours recevra sur son téléphone une notification avec la date de son prochain rendez-vous (le sien ou celui de son enfant). Envoyer maintenant ?</p>
+      <div class="flex gap-2">
+        <button class="btn-secondary px-3 py-1.5 text-xs" (click)="confirmation.set(false)">Annuler</button>
+        <button class="btn-primary px-3 py-1.5 text-xs" (click)="envoyerRappels()"><i class="fa-solid fa-check"></i> Envoyer</button>
+      </div>
+    </div>
+  }
+  @if (bilan(); as b) {
+    <div class="flex items-start gap-3 rounded-xl border border-accent-200 bg-accent-50 px-4 py-3 text-sm text-accent-800 dark:border-accent-500/30 dark:bg-accent-500/10 dark:text-accent-200" role="status">
+      <i class="fa-solid fa-circle-check mt-0.5"></i>
+      <span>
+        @if (b.patientes) {
+          Rappels envoyés : {{ b.notifiees }} patiente{{ b.notifiees > 1 ? 's' : '' }} sur {{ b.patientes }} ({{ b.rendezVous }} rendez-vous dans les {{ b.horizonJours }} jours).
+          @if (b.patientes > b.notifiees) { Les autres n’ont pas encore installé l’application ou n’ont pas autorisé les notifications. }
+        } @else {
+          Aucune patiente n’a de rendez-vous dans les {{ b.horizonJours }} prochains jours : aucun rappel envoyé.
+        }
+      </span>
+    </div>
+  }
+  @if (erreurRappels()) {
+    <div class="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200" role="alert">
+      <i class="fa-solid fa-circle-exclamation mt-0.5"></i><span>{{ erreurRappels() }}</span>
+    </div>
+  }
 
   <div class="grid gap-4 sm:grid-cols-4">
     @for (s of stats(); track s.label) {
@@ -100,6 +136,7 @@ const ACTIFS: StatutRdv[] = ['Planifié', 'Confirmé', 'Reporté'];
 })
 export class AppointmentsComponent {
   private service = inject(PatientesService);
+  session = inject(SessionService);
   dateHeure = dateHeureFr;
   heure = heureFr;
   jourLocal = jourLocal;
@@ -110,6 +147,21 @@ export class AppointmentsComponent {
   rdvs = signal<RendezVousAgenda[]>([]);
   chargement = signal(true);
   erreur = signal('');
+
+  // Bouton « Envoyer les rappels » (médecins) : confirmation, puis bilan de l'envoi.
+  confirmation = signal(false);
+  envoi = signal(false);
+  bilan = signal<BilanRappels | null>(null);
+  erreurRappels = signal('');
+
+  envoyerRappels() {
+    this.confirmation.set(false);
+    this.envoi.set(true);
+    this.service.envoyerRappelsRendezVous()
+      .then(b => this.bilan.set(b))
+      .catch(err => this.erreurRappels.set(messageErreur(err)))
+      .finally(() => this.envoi.set(false));
+  }
 
   constructor() {
     const du = new Date(Date.now() - 30 * 86400000);
