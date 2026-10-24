@@ -161,6 +161,8 @@ export interface Partogramme {
     zoneActuelle: Zone | null;
   };
   effacement: { echelle: [number, number]; points: { id: string; le: string; phase: string; pct: number; heures: number | null }[] };
+  /** Engagement de la présentation (M, A, F, E, D) et incidents, sous le graphe des BCF. */
+  reperes: { id: string; le: string; heures: number | null; engagement: string | null; incident: string | null }[];
 }
 
 /** Module 4 — accouchement et délivrance. */
