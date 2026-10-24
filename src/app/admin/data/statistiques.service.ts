@@ -40,11 +40,39 @@ export interface StatistiquesPatientes {
   }[];
 }
 
+/** Bébés pris en charge et vaccination (PEV), calculés par le serveur sur les dossiers des enfants. */
+export interface StatistiquesEnfants {
+  genereLe: string;
+  totaux: {
+    /** Tous les dossiers d'enfants (bébés pris en charge). */
+    enfants: number;
+    /** Nés vivants, ni décédés ni transférés. */
+    suivis: number;
+    filles: number;
+    garcons: number;
+    nesCeMois: number;
+    nesMoisPrecedent: number;
+    complets: number;
+    enRetard: number;
+    dosesCeMois: number;
+    seancesAujourdhui: number;
+  };
+  couverture: { code: string; libelle: string; age: string; eligibles: number; recus: number; pct: number }[];
+  aRattraper: {
+    id: string; numero: string; nom: string; prenom: string; sexe: 'Féminin' | 'Masculin' | 'Indéterminé';
+    age: string; doses: string[]; depuis: string; telephone: string;
+  }[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class StatistiquesService {
   private http = inject(HttpClient);
 
   patientes(): Promise<StatistiquesPatientes> {
     return firstValueFrom(this.http.get<StatistiquesPatientes>(`${API_URL}/statistiques/patientes`));
+  }
+
+  enfants(): Promise<StatistiquesEnfants> {
+    return firstValueFrom(this.http.get<StatistiquesEnfants>(`${API_URL}/statistiques/enfants`));
   }
 }
