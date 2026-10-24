@@ -10,7 +10,7 @@ import { messageErreur } from '../../data/session.service';
 type Filtre = 'En cours' | 'Clôturé' | 'Tous';
 
 const nouvelleVide = (): NouvellePatienteAdmission => ({
-  nom: '', postnom: '', prenom: '', dateNaissance: '', ageDeclare: null, telephone: '',
+  nom: '', postnom: '', prenom: '', dateNaissance: '', ageDeclare: null, telephone: '', email: '',
   adresse: { commune: '', quartier: '', avenue: '' },
   contactUrgence: { nom: '', lien: '', telephone: '' },
 });
@@ -51,6 +51,9 @@ export class SalleTravailComponent implements OnInit {
   /** Femme venue directement accoucher, sans dossier dans la plateforme (pas de CPN). */
   sansDossier = false;
   nouvelle: NouvellePatienteAdmission = nouvelleVide();
+  /** Compte de l'application patiente : mot de passe choisi par elle (même règle que le serveur). */
+  compte = { motDePasse: '', confirmation: '' };
+  afficherMdp = false;
   /** Dossiers possiblement identiques signalés par le serveur avant de créer la nouvelle patiente. */
   doublons: Doublon[] = [];
   form = { motif: '', admiseLe: '', debutTravail: '', provenance: '' };
@@ -121,6 +124,7 @@ export class SalleTravailComponent implements OnInit {
     this.resultats = [];
     this.sansDossier = false;
     this.nouvelle = nouvelleVide();
+    this.compte = { motDePasse: '', confirmation: '' };
     this.doublons = [];
     this.form ={ motif: '', admiseLe: versSaisieLocale(new Date()), debutTravail: '', provenance: '' };
   }
@@ -160,8 +164,25 @@ export class SalleTravailComponent implements OnInit {
     this.doublons = [];
   }
 
+  get emailInvalide(): boolean {
+    return !!this.nouvelle.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.nouvelle.email.trim());
+  }
+
+  get reglesMdp(): { label: string; ok: boolean }[] {
+    const m = this.compte.motDePasse;
+    return [
+      { label: '8 caractères au moins', ok: m.length >= 8 },
+      { label: 'Au moins une lettre', ok: /[A-Za-z]/.test(m) },
+      { label: 'Au moins un chiffre', ok: /\d/.test(m) },
+      { label: 'Confirmation identique', ok: !!m && m === this.compte.confirmation },
+    ];
+  }
+
   get peutAdmettre(): boolean {
-    if (this.sansDossier) return !!this.nouvelle.nom.trim() && (!!this.nouvelle.dateNaissance || this.nouvelle.ageDeclare != null);
+    if (this.sansDossier) {
+      return !!this.nouvelle.nom.trim() && (!!this.nouvelle.dateNaissance || this.nouvelle.ageDeclare != null)
+        && !!this.nouvelle.email.trim() && !this.emailInvalide && this.reglesMdp.every(r => r.ok);
+    }
     return !!this.choisie;
   }
 
@@ -177,7 +198,7 @@ export class SalleTravailComponent implements OnInit {
     } as never;
     try {
       const d = this.sansDossier
-        ? await this.service.admettreSansDossier(this.nouvelle, admission, confirmerMalgreDoublons)
+        ? await this.service.admettreSansDossier(this.nouvelle, this.compte.motDePasse, admission, confirmerMalgreDoublons)
         : await this.service.admettre(this.choisie!.id, admission);
       this.router.navigate(['/admin/accouchements', d.numero]);
     } catch (err) {

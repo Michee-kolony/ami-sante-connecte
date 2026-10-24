@@ -366,8 +366,6 @@
             </div>
           }
 
-          <app-partogramme [p]="d.partogramme" [admiseLe]="d.admission.admiseLe" />
-
           @if (!d.accouchement && !clos) {
             <!-- Saisie -->
             <div class="card p-5 sm:p-6">
@@ -419,11 +417,19 @@
                 <button type="button" class="btn-primary" (click)="enregistrerSurveillance()"><i class="fa-solid" [class]="envoi ? 'fa-spinner fa-spin' : 'fa-plus'"></i> Enregistrer la mesure</button>
               </div>
             </div>
+          } @else {
+            <!-- Saisie fermée : expliquer pourquoi au lieu d’un vide -->
+            <div class="card flex items-start gap-3 p-5 text-sm text-slate-600 dark:text-slate-300" role="status">
+              <i class="fa-solid fa-circle-info mt-0.5 text-brand-600 dark:text-brand-400"></i>
+              <p>@if (clos) { Dossier clôturé : plus aucune saisie possible. } @else { Accouchement enregistré : la surveillance du travail (partogramme) est terminée. Les contrôles de la mère se saisissent maintenant dans l’onglet <strong>VI · Post-partum &amp; sortie</strong>. }</p>
+            </div>
           }
+
+          <app-partogramme [p]="d.partogramme" [admiseLe]="d.admission.admiseLe" />
 
           <!-- Tableau -->
           <div class="card overflow-hidden">
-            <div class="card-header"><h2 class="card-title"><i class="fa-solid fa-table text-brand-600 dark:text-brand-400"></i> Tableau de surveillance ({{ d.surveillances.length }})</h2></div>
+            <div class="card-header"><h2 class="card-title"><i class="fa-solid fa-table text-brand-600 dark:text-brand-400"></i> Tableau de surveillance ({{ d.surveillances.length + (examenEntree ? 1 : 0) }})</h2></div>
             <div class="overflow-x-auto">
               <table class="min-w-full divide-y divide-slate-100 text-xs dark:divide-slate-800">
                 <thead class="bg-slate-50/70 dark:bg-slate-800/50">
@@ -452,7 +458,27 @@
                       <td class="min-w-40 px-3 py-2">{{ [x.affection, x.traitements, x.medicamentsIV, x.incident].join(' ').trim() || '—' }}</td>
                       <td class="whitespace-nowrap px-3 py-2 text-slate-500">{{ x.auteur.nom }}</td>
                     </tr>
-                  } @empty {
+                  }
+                  <!-- Examen clinique d'entrée (onglet II) : première mesure, la plus ancienne -->
+                  @if (examenEntree; as x) {
+                    <tr class="bg-brand-50/50 dark:bg-brand-500/5">
+                      <td class="whitespace-nowrap px-3 py-2">{{ dateHeure(x.e.examineLe) }}<span class="mt-0.5 block text-[10px] font-semibold uppercase text-brand-700 dark:text-brand-300">Examen d’entrée</span></td>
+                      <td class="whitespace-nowrap px-3 py-2 tabular-nums">{{ x.arriveeH }} / — / —</td>
+                      <td class="px-3 py-2">{{ x.phase }}</td>
+                      <td class="px-3 py-2 font-semibold">{{ x.tv?.dilatationCm ?? '—' }}</td>
+                      <td class="px-3 py-2">{{ x.tv?.effacementPct != null ? x.tv!.effacementPct + ' %' : '—' }}</td>
+                      <td class="px-3 py-2 font-semibold" [class.text-rose-600]="x.o.bcf != null && (x.o.bcf < 120 || x.o.bcf > 160)">{{ x.o.bcf ?? '—' }}</td>
+                      <td class="px-3 py-2">{{ x.o.contractions10min ?? '—' }} · —</td>
+                      <td class="px-3 py-2">—</td>
+                      <td class="whitespace-nowrap px-3 py-2">{{ x.e.physique.temperature ?? '—' }} · {{ x.e.physique.pouls ?? '—' }} · {{ x.e.physique.taSystolique ?? '—' }}/{{ x.e.physique.taDiastolique ?? '—' }}</td>
+                      <td class="px-3 py-2">—</td>
+                      <td class="px-3 py-2">{{ x.o.pocheEaux.etat || '—' }} · {{ x.o.pocheEaux.aspectLiquide || '—' }} · {{ x.o.engagement || '—' }}</td>
+                      <td class="px-3 py-2">—</td>
+                      <td class="min-w-40 px-3 py-2">{{ x.e.conclusion || '—' }}</td>
+                      <td class="whitespace-nowrap px-3 py-2 text-slate-500">{{ x.e.examinateur?.nom ?? '—' }}</td>
+                    </tr>
+                  }
+                  @if (!d.surveillances.length && !examenEntree) {
                     <tr><td colspan="14" class="px-5 py-8 text-center text-sm text-slate-500">Aucune surveillance saisie.</td></tr>
                   }
                 </tbody>

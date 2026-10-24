@@ -146,7 +146,7 @@
           <!-- Femme venue directement accoucher, sans CPN ni dossier dans la plateforme -->
           <div class="flex items-start gap-3 rounded-xl bg-amber-50 p-4 text-sm text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">
             <i class="fa-solid fa-person-pregnant mt-0.5"></i>
-            <p class="flex-1">Venue directement pour accoucher, sans CPN. Son dossier est créé avec l’identité minimale ; photo, groupe sanguin et antécédents se complètent ensuite dans l’admission et son dossier.</p>
+            <p class="flex-1">Venue directement pour accoucher, sans CPN. Son dossier et son compte de l’application patiente sont créés avec l’admission ; photo, groupe sanguin et antécédents se complètent ensuite dans l’admission et son dossier.</p>
             <button type="button" class="btn-ghost self-start px-2 text-xs" (click)="sansDossier = false; doublons = []">Rechercher</button>
           </div>
           <div class="grid gap-4 sm:grid-cols-3">
@@ -170,6 +170,32 @@
             <input class="input" aria-label="Lien avec la patiente" placeholder="Lien (mari, mère…)" [(ngModel)]="nouvelle.contactUrgence.lien">
             <input class="input" type="tel" aria-label="Téléphone de la personne à prévenir" placeholder="Téléphone" [(ngModel)]="nouvelle.contactUrgence.telephone">
           </fieldset>
+          <!-- Compte de l'application patiente : suivi de son bébé (carnet, vaccins, rendez-vous) -->
+          <div class="rounded-2xl bg-brand-50/60 p-4 ring-1 ring-brand-100 dark:bg-brand-500/5 dark:ring-brand-500/20">
+            <p class="flex items-center gap-2 text-sm font-semibold text-brand-900 dark:text-white"><i class="fa-solid fa-mobile-screen"></i> Compte de la patiente (application mobile)</p>
+            <p class="mt-1 text-xs text-slate-600 dark:text-slate-300">Pour suivre son bébé. La patiente saisit elle-même son e-mail et son mot de passe ; le mot de passe est chiffré et n’est jamais affiché ni envoyé.</p>
+            <div class="mt-3 grid gap-4 sm:grid-cols-2">
+              <div class="sm:col-span-2">
+                <label class="label" for="n-email">Adresse e-mail <span class="text-rose-600">*</span></label>
+                <input id="n-email" type="email" class="input" [class.border-rose-400]="emailInvalide" [(ngModel)]="nouvelle.email" placeholder="ex. grace.mbuyi@exemple.cd" autocomplete="off" inputmode="email">
+                @if (emailInvalide) { <p class="mt-1.5 text-xs text-rose-600 dark:text-rose-400">Adresse e-mail invalide.</p> }
+              </div>
+              <div>
+                <label class="label" for="n-mdp">Mot de passe <span class="text-rose-600">*</span></label>
+                <div class="relative">
+                  <input id="n-mdp" [type]="afficherMdp ? 'text' : 'password'" class="input pr-11" [(ngModel)]="compte.motDePasse" autocomplete="new-password">
+                  <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-slate-400 hover:text-slate-600" (click)="afficherMdp = !afficherMdp" [attr.aria-label]="afficherMdp ? 'Masquer' : 'Afficher'"><i class="fa-solid" [class]="afficherMdp ? 'fa-eye-slash' : 'fa-eye'"></i></button>
+                </div>
+              </div>
+              <div>
+                <label class="label" for="n-mdp2">Confirmer le mot de passe <span class="text-rose-600">*</span></label>
+                <input id="n-mdp2" [type]="afficherMdp ? 'text' : 'password'" class="input" [class.border-rose-400]="!!compte.confirmation && compte.confirmation !== compte.motDePasse" [(ngModel)]="compte.confirmation" autocomplete="new-password">
+              </div>
+              <ul class="space-y-1 text-xs sm:col-span-2">
+                @for (r of reglesMdp; track r.label) { <li [class]="r.ok ? 'text-accent-700 dark:text-accent-400' : 'text-slate-500 dark:text-slate-400'"><i class="fa-solid mr-1.5" [class]="r.ok ? 'fa-circle-check' : 'fa-circle'"></i>{{ r.label }}</li> }
+              </ul>
+            </div>
+          </div>
           @if (doublons.length) {
             <div class="space-y-2 rounded-xl border border-amber-300 p-4 dark:border-amber-500/40" role="alert">
               <p class="text-sm font-medium text-amber-800 dark:text-amber-200"><i class="fa-solid fa-user-group mr-1"></i>Cette femme a peut-être déjà un dossier :</p>

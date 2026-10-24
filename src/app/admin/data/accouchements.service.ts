@@ -155,6 +155,8 @@ export interface AlerteSalle extends Alerte {
 export interface NouvellePatienteAdmission {
   nom: string; postnom: string; prenom: string;
   dateNaissance: string; ageDeclare: number | null; telephone: string;
+  /** Identifiant de l'application patiente (suivi de son bébé). */
+  email: string;
   adresse: { commune: string; quartier: string; avenue: string };
   contactUrgence: { nom: string; lien: string; telephone: string };
 }
@@ -367,10 +369,11 @@ export class AccouchementsService {
 
   /**
    * Admission directe d'une femme venue accoucher sans dossier (pas de CPN) : son dossier patiente
-   * minimal est créé avec le dossier d'accouchement. 409 avec `doublons` si elle semble déjà enregistrée.
+   * minimal et son compte de l'application patiente sont créés avec le dossier d'accouchement.
+   * 409 avec `doublons` si elle semble déjà enregistrée.
    */
-  admettreSansDossier(nouvellePatiente: NouvellePatienteAdmission, admission: Partial<Admission>, confirmerMalgreDoublons = false): Promise<DossierAccouchement> {
-    return firstValueFrom(this.http.post<DossierAccouchement>(this.url, { nouvellePatiente, admission, confirmerMalgreDoublons }));
+  admettreSansDossier(nouvellePatiente: NouvellePatienteAdmission, motDePasse: string, admission: Partial<Admission>, confirmerMalgreDoublons = false): Promise<DossierAccouchement> {
+    return firstValueFrom(this.http.post<DossierAccouchement>(this.url, { nouvellePatiente, compte: { motDePasse }, admission, confirmerMalgreDoublons }));
   }
 
   obtenir(id: string): Promise<DossierAccouchement> {

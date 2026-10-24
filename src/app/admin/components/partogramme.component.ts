@@ -124,6 +124,53 @@ const casesPlugin: Plugin<'line'> = {
 };
 
 /**
+ * Mesures bien visibles sur le quadrillage : pastille claire sous chaque point de la courbe
+ * mesurée (premier jeu de données), puis valeur écrite à côté (« 140 », « 5 cm »).
+ */
+const valeursPlugin: Plugin<'line'> = {
+  id: 'valeursPartogramme',
+  beforeDatasetDraw(chart, args, options: { sombre?: boolean; halo?: number }) {
+    if (args.index !== 0 || !options?.halo) return;
+    const { ctx } = chart;
+    ctx.save();
+    ctx.fillStyle = options.sombre ? 'rgba(15,23,42,0.85)' : 'rgba(255,255,255,0.9)';
+    for (const p of chart.getDatasetMeta(0).data) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, options.halo, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+    ctx.restore();
+  },
+  afterDatasetsDraw(chart, _args, options: { sombre?: boolean; texte?: (y: number) => string; couleur?: (i: number) => string }) {
+    if (!options?.texte || !options.couleur) return;
+    const { ctx, chartArea: a } = chart;
+    const donnees = chart.data.datasets[0].data as { y: number }[];
+    ctx.save();
+    ctx.font = 'bold 12px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    chart.getDatasetMeta(0).data.forEach((p, i) => {
+      const texte = options.texte!(donnees[i].y);
+      const couleur = options.couleur!(i);
+      const l = ctx.measureText(texte).width + 10;
+      const h = 18;
+      // Au-dessus du point, ou en dessous s'il touche le haut du graphe.
+      const cy = p.y - 20 < a.top + h / 2 ? p.y + 20 : p.y - 20;
+      ctx.beginPath();
+      ctx.roundRect(p.x - l / 2, cy - h / 2, l, h, 5);
+      ctx.fillStyle = options.sombre ? '#0f172a' : '#ffffff';
+      ctx.fill();
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = couleur;
+      ctx.stroke();
+      ctx.fillStyle = couleur;
+      ctx.fillText(texte, p.x, cy + 0.5);
+    });
+    ctx.restore();
+  },
+};
+
+/**
  * Partogramme de la phase active, dessiné comme la feuille papier : graphe des BCF (100–180 bpm,
  * lignes épaisses à 120 et 160) suivi des lignes Engagement et Incident, puis graphe de la
  * dilatation (4–10 cm) sur les zones verte, jaune et rouge, suivi de l'heure réelle. Les graphes
@@ -169,7 +216,9 @@ const casesPlugin: Plugin<'line'> = {
       </div>
     </div>
     <div class="flex flex-wrap gap-4 border-t border-slate-100 px-5 py-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-      <span class="flex items-center gap-1.5"><i class="fa-solid fa-xmark font-bold text-slate-900 dark:text-slate-100"></i>Dilatation mesurée</span>
+      <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-[#0055a5] dark:bg-blue-400"></span>BCF mesuré</span>
+      <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-rose-600 dark:bg-rose-400"></span>BCF hors 120–160</span>
+      <span class="flex items-center gap-1.5"><i class="fa-solid fa-xmark font-bold text-indigo-800 dark:text-indigo-300"></i>Dilatation mesurée</span>
       <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm bg-green-300"></span>Verte : progression normale</span>
       <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm bg-yellow-300"></span>Jaune : au-delà de la ligne d’alerte</span>
       <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm bg-orange-400"></span>Rouge : au-delà de la ligne d’action</span>
@@ -284,7 +333,8 @@ export class PartogrammeComponent implements AfterViewInit, OnChanges, OnDestroy
 
     if (this.canvasBcf) {
       const points = this.p.bcf.points.map(b => ({ x: heures(b.le), y: b.bcf, le: b.le }));
-      const couleur = sombre ? '#4a8fd8' : '#0055a5';
+      const couleur = sombre ? '#60a5fa' : '#0055a5';
+      const rouge = sombre ? '#fb7185' : '#e11d48';
       const engagement: LigneCases = {
         titre: 'Engagement', pas: 0.5,
         cases: this.p.reperes.filter(r => r.engagement).map(r => ({ h: heures(r.le), texte: r.engagement! })),
@@ -298,8 +348,11 @@ export class PartogrammeComponent implements AfterViewInit, OnChanges, OnDestroy
         data: {
           datasets: [
             {
-              label: 'BCF', data: points as never, borderColor: couleur, borderWidth: 2, tension: 0.2,
-              pointRadius: 4, pointBackgroundColor: this.p.bcf.points.map(b => (b.anormal ? '#e11d48' : couleur)), pointBorderColor: this.p.bcf.points.map(b => (b.anormal ? '#e11d48' : couleur)),
+              // Segments droits (pas de lissage : aucune valeur inventée entre deux mesures) ; points au bord non coupés.
+              label: 'BCF', data: points as never, borderColor: couleur, borderWidth: 3, tension: 0, clip: false,
+              pointRadius: this.p.bcf.points.map(b => (b.anormal ? 7 : 6)), pointHoverRadius: 8,
+              pointBackgroundColor: this.p.bcf.points.map(b => (b.anormal ? rouge : couleur)),
+              pointBorderColor: sombre ? '#0f172a' : '#ffffff', pointBorderWidth: 2,
             },
             { label: `Limite ${this.p.bcf.min}`, ...horizontale(this.p.bcf.min) },
             { label: `Limite ${this.p.bcf.max}`, ...horizontale(this.p.bcf.max) },
@@ -316,15 +369,19 @@ export class PartogrammeComponent implements AfterViewInit, OnChanges, OnDestroy
             legend: { display: false },
             tooltip: { ...infobulle, filter: i => i.datasetIndex === 0, callbacks: { ...infobulle.callbacks, label: i => ` ${(i.raw as { y: number }).y} bpm` } },
             // Options des plugins du partogramme (non typées par Chart.js).
-            ...({ casesPartogramme: { lignes: [engagement, incident], teintes: t } } as object),
+            ...({
+              casesPartogramme: { lignes: [engagement, incident], teintes: t },
+              valeursPartogramme: { sombre, texte: (y: number) => String(y), couleur: (i: number) => (this.p.bcf.points[i]?.anormal ? rouge : couleur) },
+            } as object),
           },
         },
-        plugins: [casesPlugin],
+        plugins: [casesPlugin, valeursPlugin],
       }));
     }
 
     if (this.canvasDil) {
       const points = this.p.dilatation.points.map(d => ({ x: d.heures, y: d.cm, le: d.le, zone: d.zone }));
+      const couleurDil = sombre ? '#a5b4fc' : '#3730a3';
       const ligne = (l: { heures: number; cm: number }[]) => ({
         data: l.map(q => ({ x: q.heures, y: q.cm })), borderColor: t.trait, borderWidth: 3, pointRadius: 0, pointHitRadius: 0,
       });
@@ -339,8 +396,9 @@ export class PartogrammeComponent implements AfterViewInit, OnChanges, OnDestroy
         data: {
           datasets: [
             {
-              label: 'Dilatation', data: points as never, borderColor: t.trait, borderWidth: 2,
-              pointRadius: 7, pointHoverRadius: 8, pointStyle: 'crossRot', pointBorderWidth: 3, pointBorderColor: t.trait,
+              // Couleur propre, distincte des lignes d'alerte et d'action (noires) et des zones.
+              label: 'Dilatation', data: points as never, borderColor: couleurDil, borderWidth: 3, clip: false,
+              pointRadius: 9, pointHoverRadius: 10, pointStyle: 'crossRot', pointBorderWidth: 4, pointBorderColor: couleurDil,
             },
             { label: 'Ligne d’alerte', ...ligne(alerte.length ? alerte : [{ heures: 0, cm: 4 }, { heures: 6, cm: 10 }]) },
             { label: 'Ligne d’action', ...ligne(action.length ? action : [{ heures: 4, cm: 4 }, { heures: 10, cm: 10 }]) },
@@ -356,10 +414,13 @@ export class PartogrammeComponent implements AfterViewInit, OnChanges, OnDestroy
           plugins: {
             legend: { display: false },
             tooltip: { ...infobulle, filter: i => i.datasetIndex === 0, callbacks: { ...infobulle.callbacks, label: i => ` ${(i.raw as { y: number; zone: Zone }).y} cm · zone ${(i.raw as { zone: Zone }).zone.toLowerCase()}` } },
-            ...({ zonesPartogramme: { sombre }, casesPartogramme: { lignes: [heureReelle], teintes: t } } as object),
+            ...({
+              zonesPartogramme: { sombre }, casesPartogramme: { lignes: [heureReelle], teintes: t },
+              valeursPartogramme: { sombre, halo: 11, texte: (y: number) => `${y} cm`, couleur: () => couleurDil },
+            } as object),
           },
         },
-        plugins: [zonesPlugin, casesPlugin],
+        plugins: [zonesPlugin, casesPlugin, valeursPlugin],
       }));
     }
 

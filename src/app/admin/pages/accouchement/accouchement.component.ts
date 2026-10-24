@@ -239,9 +239,9 @@ export class AccouchementComponent implements OnChanges {
   }
 
   // --- III. Surveillance du travail ------------------------------------------------------
-  /** Phase de la prochaine saisie : active si déjà commencée ou si la dilatation atteint 4 cm. */
+  /** Phase de la prochaine saisie : active si déjà commencée (examen d'entrée compris) ou si la dilatation atteint 4 cm. */
   get phaseSaisie(): 'Latence' | 'Active' {
-    return this.d?.phaseActiveLe || (this.formSurv.dilatationCm ?? 0) >= 4 ? 'Active' : 'Latence';
+    return this.d?.phaseActiveLe || this.d?.partogramme?.debutPhaseActive || (this.formSurv.dilatationCm ?? 0) >= 4 ? 'Active' : 'Latence';
   }
 
   get bcfHorsNorme(): boolean {
@@ -289,6 +289,19 @@ export class AccouchementComponent implements OnChanges {
 
   surveillancesRecentes() {
     return [...(this.d?.surveillances ?? [])].reverse();
+  }
+
+  /**
+   * Examen clinique d'entrée, première ligne du tableau de surveillance (et premier point du
+   * partogramme) lorsqu'il comporte un BCF, une dilatation ou un effacement.
+   */
+  get examenEntree() {
+    const e = this.d?.examenClinique;
+    const o = e?.obstetrical;
+    const tv = o?.toucherVaginal;
+    if (!e?.examineLe || !o || (o.bcf == null && tv?.dilatationCm == null && tv?.effacementPct == null)) return null;
+    const arriveeH = Math.round(((new Date(e.examineLe).getTime() - new Date(this.d!.admission.admiseLe).getTime()) / 3_600_000) * 100) / 100;
+    return { e, o, tv, arriveeH, phase: (tv?.dilatationCm ?? 0) >= 4 ? 'Active' : 'Latence' };
   }
 
   // --- IV. Accouchement ------------------------------------------------------------------
