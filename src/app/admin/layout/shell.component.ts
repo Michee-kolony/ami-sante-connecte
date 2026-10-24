@@ -97,7 +97,7 @@ export class ShellComponent {
 
   private navTous: NavItem[] = [
     { label: 'Accès rapide', icon: 'fa-bolt', path: '/admin/acces-rapide' },
-    { label: 'Tableau de bord', icon: 'fa-gauge-high', path: '/admin/tableau-de-bord' },
+    { label: 'Tableau de bord', icon: 'fa-house', path: '/admin/tableau-de-bord' },
     { label: 'Patientes', icon: 'fa-person-pregnant', path: '/admin/patientes' },
     { label: 'Enregistrement CPN', icon: 'fa-file-circle-plus', path: '/admin/patientes/nouvelle', clinique: true },
     { label: 'Salle de travail', icon: 'fa-bed-pulse', path: '/admin/accouchements', maternite: true },
@@ -117,7 +117,7 @@ export class ShellComponent {
   }
 
   private tabsTous: NavItem[] = [
-    { label: 'Tableau de bord', icon: 'fa-gauge-high', path: '/admin/tableau-de-bord' },
+    { label: 'Tableau de bord', icon: 'fa-house', path: '/admin/tableau-de-bord' },
     { label: 'CPN', icon: 'fa-person-pregnant', path: '/admin/patientes' },
     { label: 'Rendez-vous', icon: 'fa-calendar-check', path: '/admin/rendez-vous' },
     { label: 'Accouchement', icon: 'fa-bed-pulse', path: '/admin/accouchements', maternite: true },
