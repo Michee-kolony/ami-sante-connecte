@@ -7,7 +7,7 @@ import { messageErreur } from '../../data/session.service';
 type Filtre = 'Tous' | 'À jour' | 'En retard' | 'Complets';
 
 /**
- * Enfants suivis (nés dans la plateforme) : carnet vaccinal du PEV RDC calculé par le serveur,
+ * Enfants suivis (nés dans la plateforme, ou ailleurs puis enregistrés pour leur vaccination) : carnet vaccinal du PEV RDC calculé par le serveur,
  * prochaine séance et retards. Ouvert à tout le personnel soignant.
  */
 @Component({

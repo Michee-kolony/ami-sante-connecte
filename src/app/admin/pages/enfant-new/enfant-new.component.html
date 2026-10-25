@@ -1,0 +1,216 @@
+<div class="mx-auto max-w-4xl space-y-6">
+  <nav class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+    <a routerLink="/admin/enfants" class="hover:text-brand-700 dark:hover:text-brand-300">Enfants</a>
+    <i class="fa-solid fa-chevron-right text-[9px]"></i>
+    <span class="text-slate-700 dark:text-slate-200">Enfant né hors plateforme</span>
+  </nav>
+
+  <div>
+    <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Enregistrer un enfant pour la vaccination</h1>
+    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Pour un enfant né ailleurs : sa mère n’a pas suivi ses CPN ni accouché dans la plateforme. Son carnet PEV est calculé dès l’enregistrement et sa prochaine séance est programmée.</p>
+  </div>
+
+  <!-- ============================== 1. MÈRE ============================== -->
+  <section class="card p-5 sm:p-6 space-y-5">
+    <h2 class="flex items-center gap-2 text-base font-semibold text-slate-900 dark:text-white"><span class="flex h-7 w-7 items-center justify-center rounded-full bg-brand-700 text-xs text-white">1</span> Mère</h2>
+
+    @if (choisie) {
+      <div class="flex items-center gap-4 rounded-xl bg-brand-50 p-4 dark:bg-brand-500/10">
+        <app-avatar [photo]="choisie.photoUrl ?? undefined" [prenom]="choisie.prenom || choisie.nom" [nomFamille]="choisie.nom"
+                    class="h-16 w-16 rounded-2xl text-xl shadow ring-4 ring-white dark:ring-slate-900" />
+        <div class="min-w-0 flex-1">
+          <p class="font-semibold text-slate-900 dark:text-white">{{ choisie.prenom }} {{ choisie.nom }} {{ choisie.postnom }}</p>
+          <p class="font-mono text-xs text-slate-500">{{ choisie.numero }}</p>
+          <p class="mt-1 text-xs text-slate-500">{{ choisie.age != null ? choisie.age + ' ans' : 'Âge inconnu' }}{{ choisie.telephoneMasque ? ' · ' + choisie.telephoneMasque : '' }}</p>
+        </div>
+        <button type="button" class="btn-ghost self-start px-2 text-xs" (click)="choisie = null">Changer</button>
+      </div>
+      <p class="text-xs text-slate-500 dark:text-slate-400"><i class="fa-solid fa-circle-info mr-1"></i>L’enfant est rattaché à son compte : elle suit ses vaccins et ses rendez-vous dans l’application patiente.</p>
+    } @else if (sansDossier) {
+      <div class="flex items-start gap-3 rounded-xl bg-amber-50 p-4 text-sm text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">
+        <i class="fa-solid fa-person-breastfeeding mt-0.5"></i>
+        <p class="flex-1">Mère sans dossier dans la plateforme. Son dossier et son compte de l’application patiente sont créés avec celui de l’enfant.</p>
+        <button type="button" class="btn-ghost self-start px-2 text-xs" (click)="sansDossier = false; doublons = []">Rechercher</button>
+      </div>
+      <div class="rounded-xl border border-slate-100 p-4 dark:border-slate-800">
+        <p class="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-200"><i class="fa-solid fa-camera mr-1"></i> Photo de la mère <span class="text-rose-600">*</span></p>
+        <app-prise-photo [(fichier)]="photoMere" libelle="Photo de la mère" [requise]="true" />
+      </div>
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div><label class="label" for="m-nom">Nom <span class="text-rose-600">*</span></label><input id="m-nom" class="input" [(ngModel)]="nouvelle.nom" autocomplete="off"></div>
+        <div><label class="label" for="m-postnom">Postnom</label><input id="m-postnom" class="input" [(ngModel)]="nouvelle.postnom" autocomplete="off"></div>
+        <div><label class="label" for="m-prenom">Prénom</label><input id="m-prenom" class="input" [(ngModel)]="nouvelle.prenom" autocomplete="off"></div>
+      </div>
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div><label class="label" for="m-age">Âge (ans) <span class="text-rose-600">*</span></label><input id="m-age" type="number" min="8" max="70" class="input" [(ngModel)]="nouvelle.ageDeclare"></div>
+        <div><label class="label" for="m-ddn">ou date de naissance</label><input id="m-ddn" type="date" class="input" [(ngModel)]="nouvelle.dateNaissance"></div>
+        <div><label class="label" for="m-tel">Téléphone</label><input id="m-tel" type="tel" class="input" [(ngModel)]="nouvelle.telephone" placeholder="+243…"></div>
+      </div>
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div><label class="label" for="m-commune">Commune</label><input id="m-commune" class="input" [(ngModel)]="nouvelle.adresse.commune"></div>
+        <div><label class="label" for="m-quartier">Quartier</label><input id="m-quartier" class="input" [(ngModel)]="nouvelle.adresse.quartier"></div>
+        <div><label class="label" for="m-avenue">Avenue / n°</label><input id="m-avenue" class="input" [(ngModel)]="nouvelle.adresse.avenue"></div>
+      </div>
+      <fieldset class="grid gap-4 sm:grid-cols-3">
+        <legend class="label">Personne à prévenir</legend>
+        <input class="input" aria-label="Nom de la personne à prévenir" placeholder="Nom" [(ngModel)]="nouvelle.contactUrgence.nom">
+        <input class="input" aria-label="Lien avec la mère" placeholder="Lien (mari, mère…)" [(ngModel)]="nouvelle.contactUrgence.lien">
+        <input class="input" type="tel" aria-label="Téléphone de la personne à prévenir" placeholder="Téléphone" [(ngModel)]="nouvelle.contactUrgence.telephone">
+      </fieldset>
+      <!-- Compte de l'application patiente : rappels de vaccination et carnet de l'enfant -->
+      <div class="rounded-2xl bg-brand-50/60 p-4 ring-1 ring-brand-100 dark:bg-brand-500/5 dark:ring-brand-500/20">
+        <p class="flex items-center gap-2 text-sm font-semibold text-brand-900 dark:text-white"><i class="fa-solid fa-mobile-screen"></i> Compte de la mère (application mobile)</p>
+        <p class="mt-1 text-xs text-slate-600 dark:text-slate-300">Pour suivre les vaccins de son enfant et recevoir les rappels. La mère saisit elle-même son e-mail et son mot de passe ; le mot de passe est chiffré et n’est jamais affiché ni envoyé.</p>
+        <div class="mt-3 grid gap-4 sm:grid-cols-2">
+          <div class="sm:col-span-2">
+            <label class="label" for="m-email">Adresse e-mail <span class="text-rose-600">*</span></label>
+            <input id="m-email" type="email" class="input" [class.border-rose-400]="emailInvalide" [(ngModel)]="nouvelle.email" autocomplete="off" inputmode="email">
+            @if (emailInvalide) { <p class="mt-1.5 text-xs text-rose-600 dark:text-rose-400">Adresse e-mail invalide.</p> }
+          </div>
+          <div>
+            <label class="label" for="m-mdp">Mot de passe <span class="text-rose-600">*</span></label>
+            <div class="relative">
+              <input id="m-mdp" [type]="afficherMdp ? 'text' : 'password'" class="input pr-11" [(ngModel)]="compte.motDePasse" autocomplete="new-password">
+              <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-slate-400 hover:text-slate-600" (click)="afficherMdp = !afficherMdp" [attr.aria-label]="afficherMdp ? 'Masquer' : 'Afficher'"><i class="fa-solid" [class]="afficherMdp ? 'fa-eye-slash' : 'fa-eye'"></i></button>
+            </div>
+          </div>
+          <div>
+            <label class="label" for="m-mdp2">Confirmer le mot de passe <span class="text-rose-600">*</span></label>
+            <input id="m-mdp2" [type]="afficherMdp ? 'text' : 'password'" class="input" [class.border-rose-400]="!!compte.confirmation && compte.confirmation !== compte.motDePasse" [(ngModel)]="compte.confirmation" autocomplete="new-password">
+          </div>
+          <ul class="space-y-1 text-xs sm:col-span-2">
+            @for (r of reglesMdp; track r.label) { <li [class]="r.ok ? 'text-accent-700 dark:text-accent-400' : 'text-slate-500 dark:text-slate-400'"><i class="fa-solid mr-1.5" [class]="r.ok ? 'fa-circle-check' : 'fa-circle'"></i>{{ r.label }}</li> }
+          </ul>
+        </div>
+      </div>
+      @if (doublons.length) {
+        <div class="space-y-2 rounded-xl border border-amber-300 p-4 dark:border-amber-500/40" role="alert">
+          <p class="text-sm font-medium text-amber-800 dark:text-amber-200"><i class="fa-solid fa-user-group mr-1"></i>Cette mère a peut-être déjà un dossier :</p>
+          <ul class="divide-y divide-slate-100 dark:divide-slate-800">
+            @for (d of doublons; track d.id) {
+              <li class="flex items-center gap-3 py-2 text-sm">
+                <span class="flex-1"><span class="font-medium text-slate-900 dark:text-white">{{ d.prenom }} {{ d.nom }} {{ d.postnom }}</span>
+                  <span class="block text-xs text-slate-500">{{ d.numero }} · {{ d.age != null ? d.age + ' ans' : 'Âge inconnu' }}{{ d.telephoneMasque ? ' · ' + d.telephoneMasque : '' }}{{ d.commune ? ' · ' + d.commune : '' }}</span></span>
+                <button type="button" class="btn-secondary px-3 py-1.5 text-xs" (click)="choisirDoublon(d)">C’est elle</button>
+              </li>
+            }
+          </ul>
+          <button type="button" class="btn-ghost px-0 text-xs" [disabled]="envoi" (click)="enregistrer(true)">Ce n’est pas elle : créer un nouveau dossier et enregistrer l’enfant</button>
+        </div>
+      }
+    } @else {
+      <form (ngSubmit)="chercher()">
+        <label class="label" for="rech">La mère a-t-elle déjà un dossier ?</label>
+        <div class="flex gap-2">
+          <input id="rech" name="rech" class="input" placeholder="Nom, identifiant AC-PAT ou téléphone" [(ngModel)]="recherche" autocomplete="off">
+          <button class="btn-secondary" [disabled]="rechercheEnCours || recherche.trim().length < 2" aria-label="Rechercher"><i class="fa-solid" [class]="rechercheEnCours ? 'fa-spinner fa-spin' : 'fa-magnifying-glass'"></i></button>
+        </div>
+        <p class="hint">Recherchez d’abord la mère (un autre enfant déjà suivi, une CPN commencée…), pour éviter un second dossier.</p>
+      </form>
+      <button type="button" class="flex w-full items-center gap-3 rounded-xl border border-dashed border-brand-300 px-4 py-3 text-left text-sm hover:bg-brand-50 dark:border-brand-500/40 dark:hover:bg-brand-500/10" (click)="ouvrirSansDossier()">
+        <i class="fa-solid fa-user-plus text-brand-600 dark:text-brand-400"></i>
+        <span class="flex-1"><span class="block font-medium text-slate-900 dark:text-white">La mère n’a pas de dossier</span>
+          <span class="block text-xs text-slate-500">Ni CPN ni accouchement dans la plateforme : créer son dossier avec celui de l’enfant.</span></span>
+        <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
+      </button>
+      <ul class="divide-y divide-slate-100 rounded-xl border border-slate-100 dark:divide-slate-800 dark:border-slate-800">
+        @for (p of resultats; track p.id) {
+          <li><button type="button" class="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50" (click)="choisir(p)">
+            <app-avatar [photo]="p.photoUrl ?? undefined" [prenom]="p.prenom || p.nom" [nomFamille]="p.nom" class="h-11 w-11 rounded-full text-sm ring-2 ring-white dark:ring-slate-900" />
+            <span class="flex-1"><span class="block font-medium text-slate-900 dark:text-white">{{ p.prenom }} {{ p.nom }} {{ p.postnom }}</span>
+              <span class="block text-xs text-slate-500">{{ p.numero }} · {{ p.age != null ? p.age + ' ans' : 'Âge inconnu' }}</span></span>
+            <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
+          </button></li>
+        } @empty {
+          @if (recherche && !rechercheEnCours) { <li class="px-4 py-3 text-sm text-slate-500">Aucun résultat (lancez la recherche).</li> }
+        }
+      </ul>
+    }
+  </section>
+
+  <!-- ============================== 2. ENFANT ============================== -->
+  <section class="card p-5 sm:p-6 space-y-5">
+    <h2 class="flex items-center gap-2 text-base font-semibold text-slate-900 dark:text-white"><span class="flex h-7 w-7 items-center justify-center rounded-full bg-brand-700 text-xs text-white">2</span> Enfant</h2>
+    <div class="rounded-xl border border-slate-100 p-4 dark:border-slate-800">
+      <p class="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-200"><i class="fa-solid fa-camera mr-1"></i> Photo de l’enfant <span class="text-rose-600">*</span></p>
+      <app-prise-photo [(fichier)]="photo" libelle="Photo de l’enfant" icone="fa-baby" [requise]="true"
+                       aide="Visage de l’enfant bien visible. JPG, PNG ou WebP, 2 Mo max." />
+    </div>
+    <div class="grid gap-4 sm:grid-cols-3">
+      <div><label class="label" for="e-prenom">Prénom</label><input id="e-prenom" class="input" [(ngModel)]="enfant.prenom" autocomplete="off"></div>
+      <div><label class="label" for="e-nom">Nom</label><input id="e-nom" class="input" [(ngModel)]="enfant.nom" autocomplete="off" placeholder="Nom de la mère par défaut"></div>
+      <div><label class="label" for="e-postnom">Postnom</label><input id="e-postnom" class="input" [(ngModel)]="enfant.postnom" autocomplete="off"></div>
+    </div>
+    <div class="grid gap-4 sm:grid-cols-3">
+      <div>
+        <label class="label" for="e-sexe">Sexe <span class="text-rose-600">*</span></label>
+        <select id="e-sexe" class="input" [(ngModel)]="enfant.sexe">
+          <option value="">Choisir…</option><option>Féminin</option><option>Masculin</option><option>Indéterminé</option>
+        </select>
+      </div>
+      <div><label class="label" for="e-ddn">Date de naissance <span class="text-rose-600">*</span></label><input id="e-ddn" type="date" class="input" [max]="aujourdhui" [(ngModel)]="enfant.dateNaissance"></div>
+      <div><label class="label" for="e-heure">Heure (si connue)</label><input id="e-heure" type="time" class="input" [(ngModel)]="enfant.heureNaissance"></div>
+    </div>
+    <div><label class="label" for="e-lieu">Lieu de naissance</label><input id="e-lieu" class="input" [(ngModel)]="enfant.lieuNaissance" placeholder="Autre maternité, centre de santé, domicile…"></div>
+    <div class="grid gap-4 sm:grid-cols-3">
+      <div><label class="label" for="e-poids">Poids de naissance (g)</label><input id="e-poids" type="number" min="300" max="7000" class="input" [(ngModel)]="enfant.naissance.poidsG"></div>
+      <div><label class="label" for="e-taille">Taille (cm)</label><input id="e-taille" type="number" min="20" max="70" class="input" [(ngModel)]="enfant.naissance.tailleCm"></div>
+      <div><label class="label" for="e-pc">Périmètre crânien (cm)</label><input id="e-pc" type="number" min="15" max="50" class="input" [(ngModel)]="enfant.naissance.perimetreCranienCm"></div>
+    </div>
+  </section>
+
+  <!-- ============================== 3. DOSES DÉJÀ REÇUES ============================== -->
+  <section class="card overflow-hidden">
+    <div class="p-5 sm:p-6">
+      <h2 class="flex items-center gap-2 text-base font-semibold text-slate-900 dark:text-white"><span class="flex h-7 w-7 items-center justify-center rounded-full bg-brand-700 text-xs text-white">3</span> Vaccins déjà reçus</h2>
+      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Recopiez les doses notées sur son carnet papier, avec leur date. Sans carnet, ne cochez rien : les doses manquantes apparaîtront à rattraper.</p>
+    </div>
+    <div class="divide-y divide-slate-100 border-t border-slate-100 dark:divide-slate-800 dark:border-slate-800">
+      @for (s of seances; track s.seance) {
+        <div class="px-5 py-4 sm:px-6">
+          <label class="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-200">
+            <input type="checkbox" class="h-4 w-4 rounded" [checked]="seanceCochee(s.doses)" (change)="cocherSeance(s.doses, $any($event.target).checked)"> {{ s.seance }}
+          </label>
+          <ul class="mt-2 space-y-2 pl-6">
+            @for (d of s.doses; track d.code) {
+              <li class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <label class="flex flex-1 items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                  <input type="checkbox" class="h-4 w-4 rounded" [(ngModel)]="recues[d.code].coche"> {{ d.libelle }}
+                  @if (d.type !== 'Vaccin') { <span class="text-xs text-slate-500">({{ d.type }})</span> }
+                </label>
+                @if (recues[d.code].coche) {
+                  <input type="date" class="input w-full py-1.5 text-xs sm:w-40" [attr.aria-label]="'Date de ' + d.libelle" [min]="enfant.dateNaissance" [max]="aujourdhui"
+                         [class.border-rose-400]="!recues[d.code].date" [ngModel]="recues[d.code].date" (ngModelChange)="dater(s.doses, d.code, $event)">
+                  <input class="input w-full py-1.5 text-xs sm:w-48" [attr.aria-label]="'Lieu de ' + d.libelle" placeholder="Lieu (facultatif)" [(ngModel)]="recues[d.code].lieu">
+                }
+              </li>
+            }
+          </ul>
+        </div>
+      }
+    </div>
+  </section>
+
+  @if (erreur) {
+    <div class="flex items-start gap-2 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300" role="alert">
+      <i class="fa-solid fa-circle-exclamation mt-0.5"></i>
+      <div class="flex-1">
+        <p>{{ erreur }}</p>
+        @if (enfantExistant) {
+          <p class="mt-2 flex flex-wrap gap-3">
+            <a [routerLink]="['/admin/enfants', enfantExistant.numero]" class="font-medium underline">Ouvrir son carnet</a>
+            <button type="button" class="font-medium underline" [disabled]="envoi" (click)="enregistrer(true)">Ce n’est pas le même enfant : enregistrer</button>
+          </p>
+        }
+      </div>
+    </div>
+  }
+
+  <div class="flex flex-col-reverse items-stretch gap-3 sm:flex-row sm:items-center sm:justify-end">
+    @if (manquants.length) { <p class="text-xs text-rose-600 dark:text-rose-400 sm:mr-auto">À compléter : {{ manquants.join(', ') }}.</p> }
+    <a routerLink="/admin/enfants" class="btn-secondary">Annuler</a>
+    <button type="button" class="btn-primary" (click)="enregistrer()" [disabled]="manquants.length > 0 || envoi">
+      <i class="fa-solid" [class]="envoi ? 'fa-spinner fa-spin' : 'fa-syringe'"></i> Enregistrer et calculer son carnet
+    </button>
+  </div>
+</div>

@@ -30,9 +30,12 @@
           <p class="font-mono text-xs text-slate-500">{{ e.numero }}</p>
           <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ e.prenom || 'Bébé ' + e.rang }} {{ e.nom }} {{ e.postnom }}</h1>
           <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            {{ e.sexe }} · né(e) le {{ dateHeure(e.neLe) }} · {{ e.age?.libelle }}
+            {{ e.sexe }} · né(e) le {{ e.origine === 'Né hors plateforme' ? jour(e.dateNaissance) : dateHeure(e.neLe) }} · {{ e.age?.libelle }}
             @if (e.mere) { · Mère : <a [routerLink]="['/admin/patientes', e.mere.numero]" class="font-medium text-brand-700 hover:underline dark:text-brand-300">{{ e.mere.prenom }} {{ e.mere.nom }}</a> {{ e.mere.telephone ? '(' + e.mere.telephone + ')' : '' }} }
           </p>
+          @if (e.origine === 'Né hors plateforme') {
+            <p class="mt-2"><span class="badge bg-amber-50 text-amber-800 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/30"><i class="fa-solid fa-house-medical"></i> Né hors plateforme{{ e.lieuNaissance ? ' · ' + e.lieuNaissance : '' }}</span></p>
+          }
         </div>
         @if (e.carnet; as c) {
           <div class="flex items-center gap-6">
@@ -98,7 +101,7 @@
                         @if (d.administration; as a) {
                           <p class="font-medium text-accent-700 dark:text-accent-300">Faite le {{ jour(a.date) }}{{ a.lot ? ' · lot ' + a.lot : '' }}</p>
                           @if (administration(d.code); as adm) {
-                            <p class="text-slate-500">par {{ adm.administreePar.nom }}
+                            <p class="text-slate-500">{{ adm.reportee ? 'reportée du carnet' + (adm.lieu ? ' (' + adm.lieu + ')' : '') + ' par' : 'par' }} {{ adm.administreePar.nom }}
                               <button type="button" class="ml-1 text-rose-600 hover:underline" (click)="annulation = { v: adm, motif: '' }">annuler</button></p>
                           }
                         } @else {

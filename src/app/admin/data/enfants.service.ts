@@ -3,6 +3,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { API_URL } from '../../shared/api';
 import type { Auteur, RendezVous, StatutRdv, CanalRappel } from './patientes.service';
+import type { NouvellePatienteAdmission } from './accouchements.service';
 
 // --- Types renvoyés par backend-ami-connecte (dossier de l'enfant, carnet PEV) ------------
 
@@ -11,6 +12,8 @@ export type TypeDose = 'Vaccin' | 'Supplémentation' | 'Déparasitage';
 export type SexeEnfant = 'Féminin' | 'Masculin' | 'Indéterminé';
 export type StatutEnfant = 'Suivi' | 'Décédé' | 'Transféré';
 export const STATUTS_ENFANT: StatutEnfant[] = ['Suivi', 'Décédé', 'Transféré'];
+/** Né dans la plateforme (dossier d'accouchement), ou ailleurs puis enregistré pour sa vaccination. */
+export type OrigineEnfant = 'Né dans la plateforme' | 'Né hors plateforme';
 export const ALIMENTATIONS = ['Allaitement exclusif', 'Allaitement mixte', 'Alimentation de complément', 'Alimentation familiale'];
 
 /** Une dose du calendrier (PEV RDC, vitamine A, mébendazole), avec son statut pour cet enfant. */
@@ -67,6 +70,7 @@ export interface ResumeEnfant {
   age: AgeEnfant | null;
   mereId: string;
   accouchementId: string | null;
+  origine: OrigineEnfant;
   /** Photo d'identification prise à la naissance (lien signé temporaire). */
   photoUrl: string | null;
   vaccination: (ResumeCarnet & { prochaineSeance: SeanceVaccination | null }) | null;
@@ -126,6 +130,8 @@ export interface Administration {
   site: string;
   lieu: string;
   observations: string;
+  /** Dose reçue ailleurs, recopiée du carnet papier à l'enregistrement. */
+  reportee?: boolean;
   administreePar: Auteur;
   le: string;
   annulation?: { motif: string; par: Auteur; le: string };
@@ -149,6 +155,8 @@ export interface SuiviEnfant {
 export interface DossierEnfant extends Omit<ResumeEnfant, 'vaccination' | 'mere'> {
   grossesseId: string | null;
   etablissementId: string | null;
+  /** Né hors plateforme : lieu de naissance déclaré. */
+  lieuNaissance: string;
   naissance: Naissance;
   vaccinations: Administration[];
   suivis: SuiviEnfant[];
@@ -178,6 +186,20 @@ export interface SaisieDose {
   lieu?: string;
   observations?: string;
 }
+
+/** Enfant né hors plateforme : identité et mensurations connues à la naissance (carnet, déclaration). */
+export interface SaisieEnfantHorsPlateforme {
+  nom: string; postnom: string; prenom: string;
+  sexe: SexeEnfant | '';
+  dateNaissance: string;
+  /** HH:MM, facultative. */
+  heureNaissance: string;
+  lieuNaissance: string;
+  naissance: { poidsG: number | null; tailleCm: number | null; perimetreCranienCm: number | null };
+}
+
+/** Mère : dossier existant (`mereId`), ou nouvelle mère avec son compte de l'application patiente. */
+export type MereEnfant = { mereId: string } | { nouvelleMere: NouvellePatienteAdmission; motDePasse: string; photoMere: File };
 
 /** Classes des pastilles de statut d'une dose. */
 export function classeStatutDose(s: StatutDose): string {
@@ -230,6 +252,22 @@ export class EnfantsService {
     if (criteres.mereId) params['mereId'] = criteres.mereId;
     if (criteres.retard) params['retard'] = 'true';
     return firstValueFrom(this.http.get<ResumeEnfant[]>(this.url, { params }));
+  }
+
+  /**
+   * Enfant né hors plateforme (sa mère n'a ni suivi ses CPN ni accouché ici), enregistré pour sa
+   * vaccination. Photo de l'enfant obligatoire (et de la mère si elle est créée). 409 avec
+   * `doublons` (mère déjà enregistrée ?) ou `enfantExistant` (enfant déjà enregistré ?).
+   */
+  enregistrerHorsPlateforme(enfant: SaisieEnfantHorsPlateforme, mere: MereEnfant, photo: File, vaccinationsAnterieures: SaisieDose[], confirmerMalgreDoublons = false): Promise<DossierEnfant> {
+    const corps = new FormData();
+    const donnees = 'mereId' in mere
+      ? { enfant, mereId: mere.mereId, vaccinationsAnterieures, confirmerMalgreDoublons }
+      : { enfant, nouvelleMere: mere.nouvelleMere, compte: { motDePasse: mere.motDePasse }, vaccinationsAnterieures, confirmerMalgreDoublons };
+    corps.append('donnees', JSON.stringify(donnees));
+    corps.append('photo', photo);
+    if (!('mereId' in mere)) corps.append('photoMere', mere.photoMere);
+    return firstValueFrom(this.http.post<DossierEnfant>(this.url, corps));
   }
 
   obtenir(id: string): Promise<DossierEnfant> {

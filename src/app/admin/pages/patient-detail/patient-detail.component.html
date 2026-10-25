@@ -431,6 +431,8 @@
                 }
                 @if (!dossier.accouchements.length && !dossier.enfants.length) { <li class="text-xs text-slate-500">Aucun accouchement enregistré.</li> }
               </ul>
+              <!-- Enfant né ailleurs (avant son suivi ici) : rattaché à ce dossier pour sa vaccination -->
+              <a routerLink="/admin/enfants/nouveau" [queryParams]="{ mere: p.numero }" class="btn-ghost mt-2 w-full py-1.5 text-xs"><i class="fa-solid fa-baby"></i> Enregistrer un enfant né ailleurs</a>
             </div>
 
             <!-- Contact -->

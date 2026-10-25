@@ -1,7 +1,10 @@
 <div class="mx-auto max-w-7xl space-y-6">
-  <div>
-    <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Enfants et vaccination</h1>
-    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Bébés nés en maternité, rattachés au compte de leur mère. Calendrier du PEV RDC, vitamine A et déparasitage ; chaque séance est programmée automatiquement.</p>
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Enfants et vaccination</h1>
+      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Bébés nés en maternité ou ailleurs, rattachés au compte de leur mère. Calendrier du PEV RDC, vitamine A et déparasitage ; chaque séance est programmée automatiquement.</p>
+    </div>
+    <a routerLink="/admin/enfants/nouveau" class="btn-primary flex-none"><i class="fa-solid fa-baby"></i> Enregistrer un enfant né ailleurs</a>
   </div>
 
   <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -76,6 +79,7 @@
                     <div>
                       <p class="font-medium text-slate-900 dark:text-white">{{ e.prenom || 'Bébé ' + e.rang }} {{ e.nom }}</p>
                       <p class="font-mono text-xs text-slate-500">{{ e.numero }} · né(e) le {{ jour(e.dateNaissance) }}</p>
+                      @if (e.origine === 'Né hors plateforme') { <p class="text-[11px] text-amber-700 dark:text-amber-300"><i class="fa-solid fa-house-medical mr-1"></i>Né hors plateforme</p> }
                     </div>
                   </div>
                 </td>
@@ -101,7 +105,7 @@
                 <td class="table-td text-right"><a [routerLink]="['/admin/enfants', e.numero]" class="btn-secondary px-3 py-1.5 text-xs">Carnet <i class="fa-solid fa-chevron-right text-[10px]"></i></a></td>
               </tr>
             } @empty {
-              <tr><td colspan="7" class="px-5 py-10 text-center text-sm text-slate-500 dark:text-slate-400">Aucun enfant. Les bébés sont enregistrés depuis le dossier d’accouchement (module V).</td></tr>
+              <tr><td colspan="7" class="px-5 py-10 text-center text-sm text-slate-500 dark:text-slate-400">Aucun enfant. Les bébés nés ici sont enregistrés depuis le dossier d’accouchement (module V) ; un enfant né ailleurs, avec « Enregistrer un enfant né ailleurs ».</td></tr>
             }
           </tbody>
         </table>

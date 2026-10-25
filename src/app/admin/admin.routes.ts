@@ -28,6 +28,7 @@ import { ArticlesComponent } from './pages/articles/articles.component';
 import { SalleTravailComponent } from './pages/salle-travail/salle-travail.component';
 import { AccouchementComponent } from './pages/accouchement/accouchement.component';
 import { EnfantDetailComponent } from './pages/enfant-detail/enfant-detail.component';
+import { EnfantNewComponent } from './pages/enfant-new/enfant-new.component';
 
 /** Pages réservées au superadmin. ⚠️ Côté client seulement : le serveur doit refuser aussi. */
 const superAdminGuard = () => UTILISATEUR.superAdmin || inject(Router).parseUrl('/admin/tableau-de-bord');
@@ -70,6 +71,8 @@ export const ADMIN_ROUTES: Routes = [
       { path: 'accouchements', component: SalleTravailComponent, canActivate: [connecteGuard, materniteGuard], title: 'Salle de travail · AMI Santé Connect' },
       { path: 'accouchements/:id', component: AccouchementComponent, canActivate: [connecteGuard, materniteGuard], title: 'Dossier d’accouchement · AMI Santé Connect' },
       { path: 'enfants', component: EnfantsComponent, canActivate: [connecteGuard], title: 'Enfants et vaccination · AMI Santé Connect' },
+      // Enfant né hors plateforme (ni CPN ni accouchement ici) : tout le personnel (vaccination).
+      { path: 'enfants/nouveau', component: EnfantNewComponent, canActivate: [connecteGuard], title: 'Enregistrer un enfant · AMI Santé Connect' },
       { path: 'enfants/:id', component: EnfantDetailComponent, canActivate: [connecteGuard], title: 'Carnet de l’enfant · AMI Santé Connect' },
       { path: 'agents', component: AgentsComponent, title: 'Agents de vaccination · AMI Santé Connect' },
       { path: 'doublons', component: DuplicatesComponent, title: 'Doublons · AMI Santé Connect' },
