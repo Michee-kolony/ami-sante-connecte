@@ -2,6 +2,7 @@ import { Component, Input, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AvatarComponent } from '../../components/avatar.component';
+import { PrisePhotoComponent } from '../../components/prise-photo.component';
 import { AccouchementsService, AlerteSalle, AlertesMaterniteService, NouvellePatienteAdmission, ResumeAccouchement, classeZone } from '../../data/accouchements.service';
 import { Doublon, PatientesService, ResumePatiente, doublonsDe } from '../../data/patientes.service';
 import { dateHeureChiffres, versSaisieLocale } from '../../data/format';
@@ -22,7 +23,7 @@ const nouvelleVide = (): NouvellePatienteAdmission => ({
 @Component({
   selector: 'app-salle-travail',
   standalone: true,
-  imports: [FormsModule, RouterLink, AvatarComponent],
+  imports: [FormsModule, RouterLink, AvatarComponent, PrisePhotoComponent],
   templateUrl: './salle-travail.component.html',
 })
 export class SalleTravailComponent implements OnInit {
@@ -51,6 +52,8 @@ export class SalleTravailComponent implements OnInit {
   /** Femme venue directement accoucher, sans dossier dans la plateforme (pas de CPN). */
   sansDossier = false;
   nouvelle: NouvellePatienteAdmission = nouvelleVide();
+  /** Photo d'identification de la nouvelle patiente (obligatoire, comme à l'enregistrement CPN). */
+  photo: File | null = null;
   /** Compte de l'application patiente : mot de passe choisi par elle (même règle que le serveur). */
   compte = { motDePasse: '', confirmation: '' };
   afficherMdp = false;
@@ -124,6 +127,7 @@ export class SalleTravailComponent implements OnInit {
     this.resultats = [];
     this.sansDossier = false;
     this.nouvelle = nouvelleVide();
+    this.photo = null;
     this.compte = { motDePasse: '', confirmation: '' };
     this.doublons = [];
     this.form ={ motif: '', admiseLe: versSaisieLocale(new Date()), debutTravail: '', provenance: '' };
@@ -180,7 +184,7 @@ export class SalleTravailComponent implements OnInit {
 
   get peutAdmettre(): boolean {
     if (this.sansDossier) {
-      return !!this.nouvelle.nom.trim() && (!!this.nouvelle.dateNaissance || this.nouvelle.ageDeclare != null)
+      return !!this.photo && !!this.nouvelle.nom.trim() && (!!this.nouvelle.dateNaissance || this.nouvelle.ageDeclare != null)
         && !!this.nouvelle.email.trim() && !this.emailInvalide && this.reglesMdp.every(r => r.ok);
     }
     return !!this.choisie;
@@ -198,7 +202,7 @@ export class SalleTravailComponent implements OnInit {
     } as never;
     try {
       const d = this.sansDossier
-        ? await this.service.admettreSansDossier(this.nouvelle, this.compte.motDePasse, admission, confirmerMalgreDoublons)
+        ? await this.service.admettreSansDossier(this.nouvelle, this.compte.motDePasse, this.photo!, admission, confirmerMalgreDoublons)
         : await this.service.admettre(this.choisie!.id, admission);
       this.router.navigate(['/admin/accouchements', d.numero]);
     } catch (err) {

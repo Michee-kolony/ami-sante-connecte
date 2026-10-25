@@ -373,11 +373,14 @@ export class AccouchementsService {
 
   /**
    * Admission directe d'une femme venue accoucher sans dossier (pas de CPN) : son dossier patiente
-   * minimal et son compte de l'application patiente sont créés avec le dossier d'accouchement.
-   * 409 avec `doublons` si elle semble déjà enregistrée.
+   * minimal (photo d'identification obligatoire) et son compte de l'application patiente sont créés
+   * avec le dossier d'accouchement. 409 avec `doublons` si elle semble déjà enregistrée.
    */
-  admettreSansDossier(nouvellePatiente: NouvellePatienteAdmission, motDePasse: string, admission: Partial<Admission>, confirmerMalgreDoublons = false): Promise<DossierAccouchement> {
-    return firstValueFrom(this.http.post<DossierAccouchement>(this.url, { nouvellePatiente, compte: { motDePasse }, admission, confirmerMalgreDoublons }));
+  admettreSansDossier(nouvellePatiente: NouvellePatienteAdmission, motDePasse: string, photo: File, admission: Partial<Admission>, confirmerMalgreDoublons = false): Promise<DossierAccouchement> {
+    const corps = new FormData();
+    corps.append('donnees', JSON.stringify({ nouvellePatiente, compte: { motDePasse }, admission, confirmerMalgreDoublons }));
+    corps.append('photo', photo);
+    return firstValueFrom(this.http.post<DossierAccouchement>(this.url, corps));
   }
 
   obtenir(id: string): Promise<DossierAccouchement> {

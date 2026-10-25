@@ -146,8 +146,13 @@
           <!-- Femme venue directement accoucher, sans CPN ni dossier dans la plateforme -->
           <div class="flex items-start gap-3 rounded-xl bg-amber-50 p-4 text-sm text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">
             <i class="fa-solid fa-person-pregnant mt-0.5"></i>
-            <p class="flex-1">Venue directement pour accoucher, sans CPN. Son dossier et son compte de l’application patiente sont créés avec l’admission ; photo, groupe sanguin et antécédents se complètent ensuite dans l’admission et son dossier.</p>
+            <p class="flex-1">Venue directement pour accoucher, sans CPN. Son dossier et son compte de l’application patiente sont créés avec l’admission ; groupe sanguin et antécédents se complètent ensuite dans l’admission et son dossier.</p>
             <button type="button" class="btn-ghost self-start px-2 text-xs" (click)="sansDossier = false; doublons = []">Rechercher</button>
+          </div>
+          <!-- Photo d'identification obligatoire : reconnaître la patiente (et sa carte) sans confusion -->
+          <div class="rounded-xl border border-slate-100 p-4 dark:border-slate-800">
+            <p class="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-200"><i class="fa-solid fa-camera mr-1"></i> Photo de la patiente <span class="text-rose-600">*</span></p>
+            <app-prise-photo [(fichier)]="photo" libelle="Photo de la patiente" [requise]="true" />
           </div>
           <div class="grid gap-4 sm:grid-cols-3">
             <div><label class="label" for="n-nom">Nom <span class="text-rose-600">*</span></label><input id="n-nom" class="input" [(ngModel)]="nouvelle.nom" autocomplete="off"></div>
@@ -272,6 +277,7 @@
       </div>
       <div class="flex justify-end gap-2 border-t border-slate-100 px-6 py-4 dark:border-slate-800">
         <button class="btn-secondary" (click)="admissionOuverte = false">Annuler</button>
+        @if (sansDossier && !photo) { <span class="self-center text-xs text-rose-600 dark:text-rose-400">Prenez la photo de la patiente pour l’admettre.</span> }
         <button class="btn-primary" (click)="admettre()" [disabled]="!peutAdmettre || envoi"><i class="fa-solid" [class]="envoi ? 'fa-spinner fa-spin' : 'fa-bed-pulse'"></i> Admettre</button>
       </div>
     </div>
