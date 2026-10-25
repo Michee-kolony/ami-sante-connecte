@@ -92,12 +92,16 @@ export interface ExamenClinique {
     toucherVaginal: { effacementPct: number | null; dilatationCm: number | null; oedemeCol: boolean | null };
     pocheEaux: { etat: string; rompueLe: string | null; aspectLiquide: string };
     engagement: string; bassin: string;
+    /** Relevés BCF / dilatation horodatés (plusieurs au cours de l'examen d'entrée). */
+    releves: ReleveExamen[];
   };
   laboratoire: Record<string, string>;
   conclusion: string; pronostic: string; conduiteATenir: string;
   examinateur?: Auteur;
   examineLe: string | null;
 }
+
+export interface ReleveExamen { le: string | null; bcf: number | null; dilatationCm: number | null }
 
 /** Module 3 — une ligne de surveillance du travail. */
 export interface SaisieSurveillance {

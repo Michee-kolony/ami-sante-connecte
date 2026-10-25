@@ -44,7 +44,7 @@ function examenVide(): ExamenClinique {
     obstetrical: {
       hauteurUterineCm: null, presentation: '', position: '', bcf: null, contractions10min: null, contractions: '', mouvementsFoetauxActifs: null,
       speculum: '', colAspect: '', toucherVaginal: { effacementPct: null, dilatationCm: null, oedemeCol: null },
-      pocheEaux: { etat: '', rompueLe: null, aspectLiquide: '' }, engagement: '', bassin: '',
+      pocheEaux: { etat: '', rompueLe: null, aspectLiquide: '' }, engagement: '', bassin: '', releves: [],
     },
     laboratoire: {}, conclusion: '', pronostic: '', conduiteATenir: '', examineLe: null,
   };
@@ -175,7 +175,15 @@ export class AccouchementComponent implements OnChanges {
     const e = d.examenClinique ? cloner(d.examenClinique) : examenVide();
     this.completesExamen = d.examenClinique ? 0 : completer(e, d.preRemplissage?.examen);
     e.obstetrical.pocheEaux.rompueLe = local(e.obstetrical.pocheEaux.rompueLe);
+    // Relevés BCF / dilatation ; un ancien examen (valeur unique) devient le premier relevé.
+    const o = e.obstetrical;
+    if (!o.releves?.length) {
+      o.releves = o.bcf != null || o.toucherVaginal.dilatationCm != null
+        ? [{ le: e.examineLe ?? new Date().toISOString(), bcf: o.bcf, dilatationCm: o.toucherVaginal.dilatationCm }] : [];
+    }
+    o.releves = o.releves.map(r => ({ ...r, le: local(r.le) }));
     e.examineLe = local(e.examineLe ?? new Date().toISOString());
+    if (!o.releves.length) o.releves.push({ le: e.examineLe, bcf: null, dilatationCm: null });
     this.formExamen = e;
     const acc = d.accouchement ? cloner(d.accouchement) : accouchementVide();
     acc.heure = local(acc.heure);
@@ -230,9 +238,22 @@ export class AccouchementComponent implements OnChanges {
   }
 
   // --- II. Examen clinique ---------------------------------------------------------------
+  ajouterReleve(): void {
+    this.formExamen.obstetrical.releves.push({ le: local(new Date().toISOString()), bcf: null, dilatationCm: null });
+  }
+  retirerReleve(i: number): void {
+    this.formExamen.obstetrical.releves.splice(i, 1);
+  }
+  bcfAnormal(bcf: number | null | undefined): boolean {
+    return bcf != null && (bcf < 120 || bcf > 160);
+  }
+
   enregistrerExamen(): void {
     const e = cloner(this.formExamen);
     e.obstetrical.pocheEaux.rompueLe = iso(e.obstetrical.pocheEaux.rompueLe);
+    e.obstetrical.releves = e.obstetrical.releves
+      .filter(r => r.bcf != null || r.dilatationCm != null)
+      .map(r => ({ ...r, le: iso(r.le) }));
     e.examineLe = iso(e.examineLe);
     delete e.examinateur;
     this.enregistrer(() => this.service.examiner(this.id, e), 'Examen clinique enregistré.');
@@ -253,8 +274,18 @@ export class AccouchementComponent implements OnChanges {
     this.formSurv = { ...surveillanceVide(), le: local(new Date().toISOString()) };
   }
 
+  /** Après l'accouchement, la saisie reste possible pour une mesure prise avant la naissance (heure obligatoire). */
+  get heureAccouchementLocal(): string {
+    return local(this.d?.accouchement?.heure ?? null) ?? '';
+  }
+
   async enregistrerSurveillance(): Promise<void> {
     if (!this.d) return;
+    if (this.d.accouchement && !this.formSurv.le) {
+      this.erreur = 'Indiquez l’heure à laquelle la mesure a été prise (avant l’accouchement).';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     this.envoi = true;
     this.erreur = '';
     try {
@@ -292,16 +323,24 @@ export class AccouchementComponent implements OnChanges {
   }
 
   /**
-   * Examen clinique d'entrée, première ligne du tableau de surveillance (et premier point du
-   * partogramme) lorsqu'il comporte un BCF, une dilatation ou un effacement.
+   * Relevés BCF / dilatation de l'examen clinique d'entrée : dernières lignes du tableau de
+   * surveillance (et premiers points du partogramme), du plus récent au plus ancien. Les autres
+   * données de l'examen (effacement, constantes, poche des eaux…) figurent sur le plus ancien.
    */
-  get examenEntree() {
+  get examensEntree() {
     const e = this.d?.examenClinique;
     const o = e?.obstetrical;
     const tv = o?.toucherVaginal;
-    if (!e?.examineLe || !o || (o.bcf == null && tv?.dilatationCm == null && tv?.effacementPct == null)) return null;
-    const arriveeH = Math.round(((new Date(e.examineLe).getTime() - new Date(this.d!.admission.admiseLe).getTime()) / 3_600_000) * 100) / 100;
-    return { e, o, tv, arriveeH, phase: (tv?.dilatationCm ?? 0) >= 4 ? 'Active' : 'Latence' };
+    if (!e?.examineLe || !o) return [];
+    const releves = o.releves?.length ? o.releves
+      : o.bcf != null || tv?.dilatationCm != null || tv?.effacementPct != null
+        ? [{ le: e.examineLe, bcf: o.bcf, dilatationCm: tv?.dilatationCm ?? null }] : [];
+    const admise = new Date(this.d!.admission.admiseLe).getTime();
+    return releves.map((r, i) => ({
+      ...r, e, o, tv, premier: i === 0,
+      arriveeH: Math.round(((new Date(r.le!).getTime() - admise) / 3_600_000) * 100) / 100,
+      phase: (r.dilatationCm ?? 0) >= 4 ? 'Active' : 'Latence',
+    })).reverse();
   }
 
   // --- IV. Accouchement ------------------------------------------------------------------
