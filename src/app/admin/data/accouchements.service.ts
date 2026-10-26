@@ -177,6 +177,27 @@ export interface Partogramme {
   effacement: { echelle: [number, number]; points: { id: string; le: string; phase: string; pct: number; heures: number | null }[] };
   /** Engagement de la présentation (M, A, F, E, D) et incidents, sous le graphe des BCF. */
   reperes: { id: string; le: string; heures: number | null; engagement: string | null; incident: string | null }[];
+  /** Tableau horaire sous la dilatation : une colonne par heure de phase active (14 au minimum). */
+  tableau: { colonnes: ColonnePartogramme[] };
+}
+
+/** Une heure du tableau du partogramme : dernière valeur saisie dans l'heure, médicaments IV cumulés. */
+export interface ColonnePartogramme {
+  heure: number;
+  debut: string | null;
+  contractions10min: number | null;
+  dureeContractionsSec: number | null;
+  membranes: string | null;
+  liquideAmniotique: string | null;
+  pertesSang: string | null;
+  temperature: number | null;
+  pouls: number | null;
+  taSystolique: number | null;
+  taDiastolique: number | null;
+  diurese: string | null;
+  ocytocineUParMl: number | null;
+  ocytocineGouttesMin: number | null;
+  medicamentsIV: string[];
 }
 
 /** Module 4 — accouchement et délivrance. */

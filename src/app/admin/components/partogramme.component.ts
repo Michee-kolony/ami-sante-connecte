@@ -1,6 +1,6 @@
 import { AfterViewInit, Component, ElementRef, Input, OnChanges, OnDestroy, ViewChild, effect, inject, untracked } from '@angular/core';
 import { Chart, LineController, LineElement, LinearScale, Plugin, PointElement, Tooltip } from 'chart.js';
-import { Partogramme, Zone, classeZone } from '../data/accouchements.service';
+import { ColonnePartogramme, Partogramme, Zone, classeZone } from '../data/accouchements.service';
 import { ThemeService } from '../../shared/theme.service';
 import { dateHeureChiffres, heureFr } from '../data/format';
 
@@ -80,8 +80,34 @@ function completer(p: Partial<Partogramme> | null | undefined): Partogramme {
       points: p?.dilatation?.points ?? [],
     },
     reperes: p?.reperes ?? [],
+    // Avant la phase active (ou dossier ancien) : grille vide de 14 heures, comme sur la feuille.
+    tableau: {
+      colonnes: p?.tableau?.colonnes?.length ? p.tableau.colonnes : Array.from({ length: COLONNES_TABLEAU }, (_, i) => ({
+        heure: i + 1, debut: null, contractions10min: null, dureeContractionsSec: null, membranes: null, liquideAmniotique: null,
+        pertesSang: null, temperature: null, pouls: null, taSystolique: null, taDiastolique: null, diurese: null,
+        ocytocineUParMl: null, ocytocineGouttesMin: null, medicamentsIV: [],
+      })),
+    },
   } as Partogramme;
 }
+
+const COLONNES_TABLEAU = 14;
+
+/** Lignes du tableau horaire sous la dilatation, dans l'ordre de la feuille papier. */
+const LIGNES_TABLEAU: { titre: string; valeur: (c: ColonnePartogramme) => string | number | null; rouge?: boolean }[] = [
+  { titre: 'Contractions utérines en 10 minutes', valeur: c => c.contractions10min },
+  { titre: 'Durée des contractions (en sec)', valeur: c => c.dureeContractionsSec },
+  { titre: 'Membranes présentes ou rompues', valeur: c => c.membranes },
+  { titre: 'LA (aspect)', valeur: c => c.liquideAmniotique },
+  { titre: 'Pertes de sang', valeur: c => c.pertesSang },
+  { titre: 'Température axillaire', valeur: c => (c.temperature != null ? `${c.temperature} °C` : null) },
+  { titre: 'Pouls', valeur: c => c.pouls },
+  { titre: 'Tension artérielle', valeur: c => (c.taSystolique != null || c.taDiastolique != null ? `${c.taSystolique ?? '?'}/${c.taDiastolique ?? '?'}` : null) },
+  { titre: 'Diurèse', valeur: c => c.diurese },
+  { titre: 'Ocytocine U/ml', valeur: c => c.ocytocineUParMl },
+  { titre: 'Ocytocine gttes/min', valeur: c => c.ocytocineGouttesMin },
+  { titre: 'Médicaments et injections IV', valeur: c => c.medicamentsIV.join(' ; ') || null, rouge: true },
+];
 
 /** Lignes de cases sous un graphe (Engagement, Incident, Heure réelle), alignées sur les colonnes d'heures. */
 const casesPlugin: Plugin<'line'> = {
@@ -213,6 +239,34 @@ const valeursPlugin: Plugin<'line'> = {
         <div class="relative mt-6 h-[360px]">
           <canvas #dilatation role="img" aria-label="Courbe de dilatation du col sur les zones verte, jaune et rouge, avec l’heure réelle"></canvas>
         </div>
+
+        <!-- Tableau horaire de la feuille papier : une colonne par heure écoulée depuis le début de la phase active. -->
+        <table class="mt-6 w-full table-fixed border-collapse text-[11px] text-slate-700 dark:text-slate-300">
+          <caption class="sr-only">Surveillance horaire de la phase active : contractions, membranes, liquide amniotique, constantes, ocytocine et médicaments IV</caption>
+          <colgroup><col class="w-40"></colgroup>
+          <thead>
+            <tr>
+              <th scope="row" class="border border-slate-400 px-1.5 py-1 text-left font-medium leading-tight dark:border-slate-600">Temps écoulé depuis phase active</th>
+              @for (c of p.tableau.colonnes; track c.heure) {
+                <th scope="col" class="border border-slate-400 px-0.5 py-1 text-center font-bold dark:border-slate-600" [attr.title]="c.debut ? 'À partir de ' + heure(c.debut) : null">
+                  {{ c.heure }}
+                  @if (c.debut) { <span class="block text-[10px] font-normal text-slate-500 dark:text-slate-400">{{ heure(c.debut) }}</span> }
+                </th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (l of lignesTableau; track l.titre) {
+              <tr>
+                <th scope="row" class="border border-slate-400 px-1.5 py-1 text-left font-medium leading-tight dark:border-slate-600"
+                    [class]="l.rouge ? 'h-12 text-rose-600 dark:text-rose-400' : ''">{{ l.titre }}</th>
+                @for (c of p.tableau.colonnes; track c.heure) {
+                  <td class="break-words border border-slate-400 px-0.5 py-1 text-center align-middle font-semibold dark:border-slate-600">{{ l.valeur(c) ?? '' }}</td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
       </div>
     </div>
     <div class="flex flex-wrap gap-4 border-t border-slate-100 px-5 py-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
@@ -258,6 +312,7 @@ export class PartogrammeComponent implements AfterViewInit, OnChanges, OnDestroy
   zone = classeZone;
   heure = heureFr;
   margeGauche = MARGE_GAUCHE;
+  lignesTableau = LIGNES_TABLEAU;
 
   constructor() {
     // Changement de thème : le quadrillage est redessiné dans les bonnes couleurs.
