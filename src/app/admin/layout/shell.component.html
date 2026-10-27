@@ -145,17 +145,25 @@
           @if (session.estMedecin()) {
             <app-rappels-rdv />
           }
+          @if (pending) {
           <a routerLink="/admin/synchronisation"
-             class="hidden items-center gap-2 whitespace-nowrap rounded-full border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-800 dark:text-amber-300 sm:inline-flex" [title]="pending + ' ' + 'opérations à synchroniser'">
+             class="hidden items-center gap-2 whitespace-nowrap rounded-full border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-800 dark:text-amber-300 sm:inline-flex" [title]="pending + ' saisie(s) à synchroniser'">
             <span class="relative flex h-2 w-2">
               <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"></span>
               <span class="relative inline-flex h-2 w-2 rounded-full bg-amber-500"></span>
             </span>
-            {{ pending }}<span class="hidden xl:inline"> opérations à synchroniser</span>
+            {{ pending }}<span class="hidden xl:inline"> saisie{{ pending > 1 ? 's' : '' }} à synchroniser</span>
           </a>
-          <span class="hidden items-center gap-1.5 whitespace-nowrap rounded-full bg-accent-50 dark:bg-accent-500/10 px-3 py-1.5 text-xs font-medium text-accent-700 dark:text-accent-300 ring-1 ring-accent-200 dark:ring-accent-500/30 sm:inline-flex" title="En ligne">
-            <i class="fa-solid fa-wifi"></i><span class="hidden xl:inline">En ligne</span>
-          </span>
+          }
+          @if (horsLigne.enLigne()) {
+            <span class="hidden items-center gap-1.5 whitespace-nowrap rounded-full bg-accent-50 dark:bg-accent-500/10 px-3 py-1.5 text-xs font-medium text-accent-700 dark:text-accent-300 ring-1 ring-accent-200 dark:ring-accent-500/30 sm:inline-flex" title="En ligne">
+              <i class="fa-solid fa-wifi"></i><span class="hidden xl:inline">{{ horsLigne.synchronisation() ? 'Synchronisation…' : 'En ligne' }}</span>
+            </span>
+          } @else {
+            <span class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white" title="Hors connexion : les saisies sont gardées sur cet appareil">
+              <i class="fa-solid fa-plane"></i> Hors connexion
+            </span>
+          }
           <button class="relative hidden rounded-full p-2.5 sm:block text-slate-500 dark:text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Notifications">
             <i class="fa-regular fa-bell"></i>
             <span class="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900"></span>
@@ -194,7 +202,7 @@
     <footer class="border-t border-white/60 bg-white/30 backdrop-blur-md dark:border-white/10 dark:bg-slate-900/30 px-4 py-4 text-xs text-slate-500 dark:text-slate-400 sm:px-6 lg:px-8">
       <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <span><i class="fa-solid fa-lock mr-1"></i> Données confidentielles — accès journalisé. Les calculs sont des estimations à confirmer cliniquement.</span>
-        <span>Dernière synchronisation : 18/10/2026 · 09:30</span>
+        <span>Dernière synchronisation : {{ horsLigne.derniereSynchronisation() ? (horsLigne.derniereSynchronisation() | date: 'dd/MM/yyyy · HH:mm') : '—' }}</span>
       </div>
     </footer>
   </div>
@@ -219,4 +227,13 @@
       }
     </div>
   </nav>
+
+<!-- Saisie faite hors connexion : gardée sur l'appareil, envoyée à la synchronisation -->
+@if (annonceHorsLigne(); as libelle) {
+  <a routerLink="/admin/synchronisation" role="status"
+     class="fixed bottom-20 left-1/2 z-50 flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 items-start gap-3 rounded-2xl bg-slate-900 px-4 py-3 text-sm text-white shadow-2xl lg:bottom-6">
+    <i class="fa-solid fa-floppy-disk mt-0.5 text-amber-300"></i>
+    <span><strong>{{ libelle }}</strong> enregistrée sur cet appareil (hors connexion). Elle sera envoyée au serveur dès le retour du réseau.</span>
+  </a>
+}
 </div>

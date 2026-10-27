@@ -1,6 +1,8 @@
-import { Component, afterNextRender, inject } from '@angular/core';
+import { Component, afterNextRender, effect, inject, signal, untracked } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { STRUCTURE, SYNC_QUEUE, UTILISATEUR } from '../data/mock-data';
+import { STRUCTURE, UTILISATEUR } from '../data/mock-data';
+import { HorsLigneService } from '../data/hors-ligne/hors-ligne.service';
 import { UrgencesService } from '../data/urgences.service';
 import { SessionService } from '../data/session.service';
 import { PresenceService } from '../data/presence.service';
@@ -26,7 +28,7 @@ interface NavItem {
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ThemeToggleComponent, NotificationsMessagesComponent, AvatarComponent, ConversationsFlottantesComponent, RappelsRdvComponent],
+  imports: [DatePipe, RouterOutlet, RouterLink, RouterLinkActive, ThemeToggleComponent, NotificationsMessagesComponent, AvatarComponent, ConversationsFlottantesComponent, RappelsRdvComponent],
   templateUrl: './shell.component.html',
 })
 export class ShellComponent {
@@ -58,6 +60,7 @@ export class ShellComponent {
     if (item.path === '/admin/messages') return this.discussions.nonLusPatientes() || undefined;
     if (item.path === '/admin/discussions') return this.discussions.nonLusCollegues() || undefined;
     if (item.path === '/admin/urgences') return this.urgences.nouvelles();
+    if (item.path === '/admin/synchronisation') return this.pending || undefined;
     if (item.path === '/admin/accouchements') return this.alertesMaternite.actives().length || undefined;
     return item.badge;
   }
@@ -88,7 +91,23 @@ export class ShellComponent {
     return `${this.session.estMedecin() ? 'Dr ' : ''}${this.user.nom}`;
   }
   menuOpen = false;
-  pending = SYNC_QUEUE.filter(s => s.etat !== 'synchronisé').length;
+  /** Travail hors connexion : état du réseau et saisies en attente d'envoi. */
+  horsLigne = inject(HorsLigneService);
+  get pending(): number {
+    return this.horsLigne.enAttente() + this.horsLigne.enEchec();
+  }
+  /** Annonce « saisie gardée sur l'appareil », affichée quelques secondes après chaque mise en file. */
+  annonceHorsLigne = signal<string | null>(null);
+  private minuterieAnnonce?: ReturnType<typeof setTimeout>;
+  private suiviFile = effect(() => {
+    const op = this.horsLigne.derniereMiseEnFile();
+    if (!op) return;
+    untracked(() => {
+      this.annonceHorsLigne.set(op.libelle);
+      clearTimeout(this.minuterieAnnonce);
+      this.minuterieAnnonce = setTimeout(() => this.annonceHorsLigne.set(null), 6000);
+    });
+  });
 
   /** Enregistrement (dossier médical) : masqué aux infirmier·ères et sages-femmes — le serveur refuse aussi. Patientes et rendez-vous : vue de suivi. */
   get nav(): NavItem[] {
@@ -131,7 +150,7 @@ export class ShellComponent {
   ];
 
   navAdmin: NavItem[] = [
-    { label: 'Synchronisation', icon: 'fa-arrows-rotate', path: '/admin/synchronisation', badge: this.pending },
+    { label: 'Synchronisation', icon: 'fa-arrows-rotate', path: '/admin/synchronisation' },
     { label: 'Journal d’audit', icon: 'fa-shield-halved', path: '/admin/audit' },
   ];
 

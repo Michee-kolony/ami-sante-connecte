@@ -150,6 +150,7 @@ const ANGLAIS = /\b(Path|is required|Cast to|failed|Unexpected|is not a valid|al
 export function messageErreur(err: unknown): string {
   if (err instanceof HttpErrorResponse) {
     if (err.status === 0) {
+      if (typeof err.error?.message === 'string') return err.error.message;
       return navigator.onLine === false
         ? 'Pas de connexion internet. Vérifiez votre réseau puis réessayez.'
         : 'Serveur injoignable. Vérifiez votre connexion ou réessayez dans un instant.';
