@@ -56,6 +56,8 @@ export interface AlerteUrgence {
   ambulanceId?: string;
   chauffeurId?: string;
   chauffeur?: string;
+  /** Infirmier·ère ou sage-femme envoyé·e avec l'ambulance. */
+  infirmier: { id: string; nom: string; role: string } | null;
   prisEnChargePar: string | null;
   evenements: EvenementUrgence[];
 }

@@ -14,6 +14,7 @@ import {
 } from '../../data/carte';
 import { EtablissementsService } from '../../data/etablissements.service';
 import { SessionService, messageErreur } from '../../data/session.service';
+import { Soignant, SoignantsService } from '../../data/soignants.service';
 import { ThemeService } from '../../../shared/theme.service';
 
 type Filtre = 'actives' | 'toutes';
@@ -70,6 +71,26 @@ const RECALCUL_M = 250;
     <div class="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200" role="alert">
       <i class="fa-solid fa-circle-exclamation mt-0.5"></i><span class="flex-1">{{ erreur }}</span>
       <button type="button" (click)="erreur = ''" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+  }
+
+  <!-- Alertes en attente de prise en charge : visibles tout de suite, sans chercher dans la page -->
+  @for (n of enAttente; track n.id) {
+    <div class="flex flex-col gap-3 rounded-2xl border-2 border-rose-500 bg-rose-50 p-4 shadow-lg shadow-rose-500/20 sm:flex-row sm:items-center dark:bg-rose-500/10" role="alert">
+      <span class="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-rose-600 text-xl text-white">
+        <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-500 opacity-60"></span>
+        <i class="fa-solid fa-truck-medical relative"></i>
+      </span>
+      <div class="min-w-0 flex-1">
+        <p class="font-bold text-rose-800 dark:text-rose-200">Nouvelle alerte · {{ n.patiente }} <span class="font-mono text-xs font-normal">{{ n.id }}</span></p>
+        <p class="text-sm text-rose-700 dark:text-rose-300">{{ n.motif }} · gravité {{ n.gravite }} · {{ n.heure }}{{ n.commune ? ' · ' + n.commune : '' }}</p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button type="button" class="btn-secondary" (click)="ouvrir(n)"><i class="fa-solid fa-eye"></i> Voir</button>
+        <button type="button" class="btn-primary !bg-rose-600 hover:!bg-rose-700" [disabled]="envoi" (click)="prendreEnCharge(n)">
+          <i class="fa-solid fa-hand-holding-medical"></i> Prendre en charge
+        </button>
+      </div>
     </div>
   }
 
@@ -141,7 +162,7 @@ const RECALCUL_M = 250;
   <!-- Détail de l'alerte sélectionnée -->
   @if (selection; as a) {
     @let amb = flotte.ambulance(a.ambulanceId);
-    <div class="card overflow-hidden">
+    <div #detail class="card scroll-mt-24 overflow-hidden" [class.ring-2]="a.etat === 'nouvelle' || (estActive(a) && !a.statutCourse)" [class.ring-rose-500]="a.etat === 'nouvelle'" [class.ring-brand-500]="a.etat !== 'nouvelle'">
       <div class="card-header flex-wrap">
         <h2 class="card-title"><i class="fa-solid fa-truck-medical text-rose-500"></i> {{ a.id }} — {{ a.patiente }}</h2>
         <a [routerLink]="['/admin/patientes', a.patienteId]" class="text-xs font-semibold text-brand-700 hover:underline dark:text-brand-300">Ouvrir le dossier <i class="fa-solid fa-arrow-right"></i></a>
@@ -173,6 +194,9 @@ const RECALCUL_M = 250;
               <i class="fa-solid fa-truck-medical"></i>
               <span><strong>{{ amb.id }}</strong> · {{ amb.immatriculation }} — {{ a.chauffeur }}</span>
             </p>
+            @if (a.infirmier) {
+              <p class="mt-1 flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300"><i class="fa-solid fa-user-nurse text-brand-600 dark:text-brand-400"></i> {{ a.infirmier.nom }} · {{ a.infirmier.role }}</p>
+            }
             <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
               @if (amb.position) { GPS reçu à {{ heureGps(amb.position.le) }}{{ amb.position.vitesse != null ? ' · ' + amb.position.vitesse + ' km/h' : '' }} }
               @else { En attente de la première position GPS de l’application chauffeur. }
@@ -205,9 +229,9 @@ const RECALCUL_M = 250;
       @if (estActive(a) && (!a.statutCourse || a.statutCourse === 'Assignée')) {
         <div class="border-t border-slate-100 px-5 py-4 dark:border-slate-800">
           <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            {{ a.statutCourse ? 'Changer le chauffeur ou l’ambulance (avant le départ)' : 'Envoyer un chauffeur et une ambulance' }}
+            {{ a.statutCourse ? 'Changer l’équipe (avant le départ)' : 'Étape suivante : envoyer un chauffeur, une ambulance et un·e infirmier·ère' }}
           </p>
-          <div class="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+          <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_auto]">
             <div>
               <label class="label" for="envoi-chauffeur">Chauffeur</label>
               <select id="envoi-chauffeur" class="input" [ngModel]="choixChauffeur" (ngModelChange)="choisirChauffeur($event)">
@@ -223,6 +247,15 @@ const RECALCUL_M = 250;
                 <option [ngValue]="''">— Choisir —</option>
                 @for (x of ambulancesEnvoyables(); track x.id) {
                   <option [ngValue]="x.id">{{ x.id }} · {{ x.immatriculation }} · {{ x.type.split(' — ')[0] }}</option>
+                }
+              </select>
+            </div>
+            <div>
+              <label class="label" for="envoi-infirmier">Infirmier·ère / sage-femme</label>
+              <select id="envoi-infirmier" class="input" [(ngModel)]="choixInfirmier">
+                <option [ngValue]="''">— Sans accompagnant —</option>
+                @for (s of infirmiers(); track s.id) {
+                  <option [ngValue]="s.id">{{ s.prenom }} {{ s.nom }} · {{ s.role }}</option>
                 }
               </select>
             </div>
@@ -266,14 +299,18 @@ const RECALCUL_M = 250;
               </div>
             </div>
           } @empty {
-            <p class="py-4 text-center text-xs text-slate-500 dark:text-slate-400">Aucun message. Écrivez à la patiente{{ a.chauffeur ? ' et au chauffeur' : '' }} : tout le monde voit la conversation.</p>
+            <p class="py-4 text-center text-xs text-slate-500 dark:text-slate-400">
+              {{ estActive(a) ? 'Aucun message. Écrivez à la patiente' + (a.chauffeur ? ' et au chauffeur' : '') + ' : tout le monde voit la conversation.' : 'Mission terminée : la conversation a été supprimée définitivement.' }}
+            </p>
           }
         </div>
+        @if (estActive(a)) {
         <form class="mt-3 flex gap-2" (ngSubmit)="envoyerMessage(a)">
           <input class="input flex-1" name="message" [(ngModel)]="brouillon" maxlength="1000" autocomplete="off"
                  placeholder="Message à la patiente{{ a.chauffeur ? ' et au chauffeur' : '' }}…" aria-label="Message">
           <button type="submit" class="btn-primary" [disabled]="!brouillon.trim() || envoiMessage"><i class="fa-solid fa-paper-plane"></i><span class="sr-only">Envoyer</span></button>
         </form>
+        }
       </div>
 
       <!-- Chronologie, conservée dans l'historique -->
@@ -304,6 +341,8 @@ export class UrgencesComponent implements AfterViewInit, OnDestroy {
   flotte = inject(FlotteService);
   private etablissements = inject(EtablissementsService);
   private session = inject(SessionService);
+  private soignants = inject(SoignantsService);
+  @ViewChild('detail') detailRef?: ElementRef<HTMLDivElement>;
 
   vue: Vue = 'direct';
   vues: { id: Vue; label: string; icon: string }[] = [
@@ -332,6 +371,17 @@ export class UrgencesComponent implements AfterViewInit, OnDestroy {
   @ViewChild('fil') filRef?: ElementRef<HTMLDivElement>;
   choixChauffeur = '';
   choixAmbulance = '';
+  choixInfirmier = '';
+
+  /** Infirmier·ères et sages-femmes actifs, qui peuvent accompagner l'ambulance. */
+  infirmiers(): Soignant[] {
+    return this.soignants.soignants().filter(s => s.statut === 'Actif' && /^(Infirmier|Sage-femme)/.test(s.role));
+  }
+
+  /** Alertes en attente de prise en charge, de la plus ancienne à la plus récente. */
+  get enAttente(): AlerteUrgence[] {
+    return this.urgences.alertes().filter(a => a.etat === 'nouvelle').reverse();
+  }
 
   /** Chauffeurs actifs et libres (ou celui déjà affecté à l'alerte sélectionnée). */
   chauffeursEnvoyables(): Chauffeur[] {
@@ -369,6 +419,7 @@ export class UrgencesComponent implements AfterViewInit, OnDestroy {
       untracked(() => {
         if (this.selection && !this.visibles.includes(this.selection)) this.deselectionner();
         this.dessinerMarqueurs();
+        if (!this.selection && this.carte && this.enAttente[0]) this.selectionner(this.enAttente[0]);
       });
     });
     // Positions des ambulances (chaque seconde) : le marqueur glisse vers la nouvelle position.
@@ -401,6 +452,7 @@ export class UrgencesComponent implements AfterViewInit, OnDestroy {
       }));
     });
     this.etablissements.charger().catch(() => {});
+    if (!this.soignants.soignants().length) this.soignants.charger().catch(() => {});
   }
 
   /** Alertes du jour et alertes encore en cours (même d'un jour précédent). */
@@ -466,6 +518,7 @@ export class UrgencesComponent implements AfterViewInit, OnDestroy {
       this.motifAnnulation = '';
       this.choixChauffeur = a.chauffeurId ?? '';
       this.choixAmbulance = a.ambulanceId ?? '';
+      this.choixInfirmier = a.infirmier?.id ?? '';
       this.brouillon = '';
       this.urgences.ouvrirConversation(a.id).then(() => this.defilerFil()).catch(() => {});
     }
@@ -488,12 +541,29 @@ export class UrgencesComponent implements AfterViewInit, OnDestroy {
     if (attitree && this.ambulancesEnvoyables().some(x => x.id === attitree.id)) this.choixAmbulance = attitree.id;
   }
 
+  /** Depuis le bandeau : l'alerte s'ouvre et la page descend jusqu'à son détail. */
+  ouvrir(a: AlerteUrgence): void {
+    this.vue = 'direct';
+    this.selectionner(a);
+    this.defilerVersDetail();
+  }
+
+  /**
+   * Prise en charge (la sirène s'arrête dès qu'aucune alerte n'attend plus) : le détail s'ouvre
+   * sur l'envoi du chauffeur, de l'ambulance et de l'infirmier·ère.
+   */
   async prendreEnCharge(a: AlerteUrgence): Promise<void> {
-    await this.action(() => this.urgences.prendreEnCharge(a));
+    this.vue = 'direct';
+    if (this.selection !== a) this.selectionner(a);
+    if (await this.action(() => this.urgences.prendreEnCharge(a))) this.defilerVersDetail();
   }
 
   async envoyer(a: AlerteUrgence): Promise<void> {
-    if (await this.action(() => this.urgences.affecter(a, this.choixChauffeur, this.choixAmbulance))) this.calculerItineraire(a, true);
+    if (await this.action(() => this.urgences.affecter(a, this.choixChauffeur, this.choixAmbulance, this.choixInfirmier || null))) this.calculerItineraire(a, true);
+  }
+
+  private defilerVersDetail(): void {
+    setTimeout(() => this.detailRef?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
   }
 
   async cloturer(a: AlerteUrgence): Promise<void> {

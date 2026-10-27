@@ -85,6 +85,7 @@ function lire(jouer: (ctx: AudioContext) => void): void {
  * qu'une alerte attend sa prise en charge. Le compresseur pousse le volume sans saturer.
  */
 function jouerSirene(ctx: AudioContext): void {
+  if (!minuterieSirene) return; // arrêtée entre-temps (alerte prise en charge, son coupé)
   const t = ctx.currentTime + 0.02;
   const compresseur = ctx.createDynamicsCompressor();
   compresseur.threshold.value = -10;
@@ -95,6 +96,7 @@ function jouerSirene(ctx: AudioContext): void {
   gain.gain.setValueAtTime(0.9, t + 1.5);
   gain.gain.exponentialRampToValueAtTime(0.0001, t + 1.75);
   gain.connect(compresseur).connect(ctx.destination);
+  sortieSirene = gain;
   for (const [type, decalage] of [['sawtooth', 0], ['square', 3]] as const) {
     const osc = ctx.createOscillator();
     osc.type = type;
@@ -114,18 +116,22 @@ function jouerSirene(ctx: AudioContext): void {
 }
 
 let minuterieSirene: ReturnType<typeof setInterval> | undefined;
+/** Sortie du son en cours, coupée à l'arrêt de la sirène. */
+let sortieSirene: GainNode | null = null;
 
 /** Démarre la sirène (répétée toutes les 2,5 s) ; sans effet si elle sonne déjà. */
 export function demarrerSirene(): void {
   if (minuterieSirene) return;
-  lire(jouerSirene);
-  // Son encore bloqué par le navigateur : lire() le jouera à la première interaction, puis on répète.
   minuterieSirene = setInterval(() => {
     if (contexte?.state === 'running') jouerSirene(contexte);
   }, 2500);
+  // Son encore bloqué par le navigateur : lire() le jouera à la première interaction (si la sirène est toujours active).
+  lire(jouerSirene);
 }
 
 export function arreterSirene(): void {
   clearInterval(minuterieSirene);
   minuterieSirene = undefined;
+  sortieSirene?.disconnect();
+  sortieSirene = null;
 }

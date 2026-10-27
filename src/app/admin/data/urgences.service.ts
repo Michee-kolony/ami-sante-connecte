@@ -73,6 +73,11 @@ export class UrgencesService {
     this.presence.sur<{ urgence: string; lat: number; lng: number; precisionM: number | null }>('urgence:position', p =>
       this.alertes.update(liste => liste.map(a => (a.id === p.urgence ? Object.assign(a, { lat: p.lat, lng: p.lng, precisionM: p.precisionM }) : a))));
     this.presence.sur<MessageUrgence>('urgence:message', m => this.recevoirMessage(m));
+    // Mission terminée : la conversation est supprimée définitivement par le serveur.
+    this.presence.sur<{ urgence: string }>('urgence:conversation-supprimee', ({ urgence }) => {
+      this.messages.update(t => ({ ...t, [urgence]: [] }));
+      this.nonLus.update(n => ({ ...n, [urgence]: 0 }));
+    });
     // Reconnexion après une coupure : on recharge pour ne rien manquer.
     this.presence.surConnexion(() => this.session.connecte() && this.charger().catch(() => {}));
   }
@@ -103,8 +108,8 @@ export class UrgencesService {
   }
 
   /** Envoie le chauffeur et l'ambulance choisis vers la patiente. */
-  async affecter(a: AlerteUrgence, chauffeurId: string, ambulance: string): Promise<AlerteUrgence> {
-    return this.remplacer(await firstValueFrom(this.http.post<AlerteUrgence>(`${this.url}/${a.id}/affectation`, { chauffeurId, ambulance })));
+  async affecter(a: AlerteUrgence, chauffeurId: string, ambulance: string, infirmierId: string | null): Promise<AlerteUrgence> {
+    return this.remplacer(await firstValueFrom(this.http.post<AlerteUrgence>(`${this.url}/${a.id}/affectation`, { chauffeurId, ambulance, infirmierId })));
   }
 
   async cloturer(a: AlerteUrgence, detail = ''): Promise<AlerteUrgence> {
