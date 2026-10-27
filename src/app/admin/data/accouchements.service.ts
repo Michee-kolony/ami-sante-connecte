@@ -179,6 +179,37 @@ export interface Partogramme {
   reperes: { id: string; le: string; heures: number | null; engagement: string | null; incident: string | null }[];
   /** Tableau horaire sous la dilatation : une colonne par heure de phase active (14 au minimum). */
   tableau: { colonnes: ColonnePartogramme[] };
+  /** Tableau « Surveillance de la phase de latence (< 4 cm) », avant le partogramme. */
+  latence?: LatencePartogramme;
+}
+
+export type PhaseArrivee = 'Latence' | 'Active' | 'Dilatation complète';
+
+/** Une heure du tableau de la phase de latence (0 = première heure après l'arrivée). */
+export interface ColonneLatence {
+  heure: number;
+  debut: string;
+  /** Heure de la dernière mesure de la colonne (temps depuis la rupture et le début du travail). */
+  mesureLe: string | null;
+  ruptureH: number | null;
+  debutTravailH: number | null;
+  saignement: string | null;
+  contractions10min: number | null;
+  dureeContractionsSec: number | null;
+  bcf: number | null;
+  temperature: number | null;
+  pouls: number | null;
+  taSystolique: number | null;
+  taDiastolique: number | null;
+  diurese: string | null;
+  dilatationCm: number | null;
+}
+
+export interface LatencePartogramme {
+  phaseArrivee: PhaseArrivee | null;
+  colonnes: ColonneLatence[];
+  affections: { id: string; le: string; affection: string; traitements: string }[];
+  evacuation: { le: string; motif: string; par: Auteur | null } | null;
 }
 
 /** Une heure du tableau du partogramme : dernière valeur saisie dans l'heure, médicaments IV cumulés. */
@@ -418,6 +449,11 @@ export class AccouchementsService {
 
   surveiller(id: string, saisie: SaisieSurveillance): Promise<{ surveillance: Surveillance; alertes: Alerte[]; partogramme: Partogramme }> {
     return firstValueFrom(this.http.post<{ surveillance: Surveillance; alertes: Alerte[]; partogramme: Partogramme }>(`${this.url}/${encodeURIComponent(id)}/surveillances`, saisie));
+  }
+
+  /** Évacuation pendant le travail : heure et motif (vides : évacuation retirée). */
+  evacuer(id: string, evacuation: { le: string | null; motif: string }): Promise<DossierAccouchement> {
+    return firstValueFrom(this.http.put<DossierAccouchement>(`${this.url}/${encodeURIComponent(id)}/evacuation`, evacuation));
   }
 
   acquitter(id: string, alerteId: string): Promise<Alerte> {

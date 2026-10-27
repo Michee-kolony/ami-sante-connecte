@@ -425,8 +425,8 @@
                 <div><label class="label">TA syst.</label><input type="number" class="input" [(ngModel)]="s.taSystolique"></div>
                 <div><label class="label">TA diast.</label><input type="number" class="input" [(ngModel)]="s.taDiastolique"></div>
                 <div><label class="label">Diurèse</label><input class="input" [(ngModel)]="s.diurese"></div>
+                <div><label class="label">Membranes</label><select class="input" [(ngModel)]="s.membranes"><option value="">—</option>@for (x of ref?.MEMBRANES ?? []; track x) { <option>{{ x }}</option> }</select></div>
                 @if (phaseSaisie === 'Active') {
-                  <div><label class="label">Membranes</label><select class="input" [(ngModel)]="s.membranes"><option value="">—</option>@for (x of ref?.MEMBRANES ?? []; track x) { <option>{{ x }}</option> }</select></div>
                   <div><label class="label">Liquide amniotique</label><select class="input" [(ngModel)]="s.liquideAmniotique"><option value="">—</option>@for (x of ref?.ASPECTS_LA ?? []; track x) { <option>{{ x }}</option> }</select></div>
                   <div><label class="label">Ocytocine (U/ml)</label><input type="number" class="input" [(ngModel)]="s.ocytocine.uParMl"></div>
                   <div><label class="label">Ocytocine (gttes/min)</label><input type="number" class="input" [(ngModel)]="s.ocytocine.gouttesMin"></div>
@@ -460,6 +460,8 @@
               <p>Dossier clôturé : plus aucune saisie possible.</p>
             </div>
           }
+
+          <app-partogramme-latence class="block" [l]="d.partogramme.latence!" [modifiable]="!clos" (evacuer)="enregistrerEvacuation($event)" />
 
           <app-partogramme class="block" [p]="d.partogramme" [admiseLe]="d.admission.admiseLe" />
 

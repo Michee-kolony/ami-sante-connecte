@@ -4,6 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import { OuiNonComponent } from '../../components/oui-non.component';
 import { AvatarComponent } from '../../components/avatar.component';
 import { PartogrammeComponent } from '../../components/partogramme.component';
+import { PartogrammeLatenceComponent } from '../../components/partogramme-latence.component';
 import { PrisePhotoComponent } from '../../components/prise-photo.component';
 import {
   AccouchementsService, Admission, Alerte, AlertesMaterniteService, DonneesAccouchement, DossierAccouchement, ExamenClinique,
@@ -80,7 +81,7 @@ function mereVide(): MereSurveillancePP {
 @Component({
   selector: 'app-accouchement',
   standalone: true,
-  imports: [FormsModule, RouterLink, OuiNonComponent, PartogrammeComponent, AvatarComponent, PrisePhotoComponent],
+  imports: [FormsModule, RouterLink, OuiNonComponent, PartogrammeComponent, PartogrammeLatenceComponent, AvatarComponent, PrisePhotoComponent],
   templateUrl: './accouchement.component.html',
 })
 export class AccouchementComponent implements OnChanges {
@@ -277,6 +278,10 @@ export class AccouchementComponent implements OnChanges {
   /** Après l'accouchement, la saisie reste possible pour une mesure prise avant la naissance (heure obligatoire). */
   get heureAccouchementLocal(): string {
     return local(this.d?.accouchement?.heure ?? null) ?? '';
+  }
+
+  enregistrerEvacuation(e: { le: string | null; motif: string }): void {
+    this.enregistrer(() => this.service.evacuer(this.id, e), e.le ? 'Évacuation enregistrée.' : 'Évacuation retirée.');
   }
 
   async enregistrerSurveillance(): Promise<void> {
