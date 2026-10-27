@@ -192,3 +192,9 @@
 .attribution-compacte.ouverte::before {
   content: none;
 }
+
+/* Ambulances suivies en direct (page Urgences) : le marqueur glisse d'une position GPS à la
+   suivante (une par seconde), sans saut ; pas d'animation pendant un zoom. */
+.ambulance-fluide { transition: transform 1s linear; }
+.leaflet-zoom-anim .ambulance-fluide { transition: none; }
+.ambulance-libre img { filter: grayscale(0.5); opacity: 0.85; }

@@ -12,6 +12,7 @@ const ICONE_EVENEMENT: Record<TypeEvenement, string> = {
   'Alerte reçue': 'fa-bell text-rose-500',
   'Prise en charge': 'fa-hand-holding-medical text-brand-600 dark:text-brand-400',
   'Ambulance envoyée': 'fa-truck-medical text-sky-600 dark:text-sky-400',
+  'En route': 'fa-route text-sky-600 dark:text-sky-400',
   'Arrivée sur place': 'fa-location-dot text-orange-500',
   'Patiente à bord': 'fa-user-injured text-violet-500',
   'Arrivée à l’hôpital': 'fa-hospital text-accent-600 dark:text-accent-400',

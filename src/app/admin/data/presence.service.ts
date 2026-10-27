@@ -39,6 +39,10 @@ export class PresenceService implements OnDestroy {
   readonly enLigne = signal<SoignantEnLigne[]>([]);
   /** Patientes connectées à l'application mobile (identifiants seulement). */
   readonly patientesEnLigne = signal<Set<string>>(new Set());
+  /** Chauffeurs connectés à l'application ami-connecte-chauffeur (identifiants seulement). */
+  readonly chauffeursEnLigne = signal<Set<string>>(new Set());
+  /** Appelés à chaque (re)connexion du socket : rechargement des données temps réel. */
+  private aLaConnexion = new Set<() => void>();
   /** Liste reçue du serveur (avant, ou pendant une reconnexion : squelette). */
   readonly charge = signal(false);
 
@@ -67,6 +71,12 @@ export class PresenceService implements OnDestroy {
     return () => abonnes.delete(f);
   }
 
+  /** Appelé à chaque connexion ou reconnexion au serveur ; renvoie la fonction de désabonnement. */
+  surConnexion(f: () => void): () => void {
+    this.aLaConnexion.add(f);
+    return () => this.aLaConnexion.delete(f);
+  }
+
   /** Envoie un événement au serveur (ignoré hors connexion). */
   emettre(evenement: string, donnees: unknown): void {
     this.socket?.emit(evenement, donnees);
@@ -91,6 +101,8 @@ export class PresenceService implements OnDestroy {
       this.charge.set(true);
     });
     this.socket.on('presence:patientes', (ids: string[]) => this.patientesEnLigne.set(new Set(ids)));
+    this.socket.on('presence:chauffeurs', (ids: string[]) => this.chauffeursEnLigne.set(new Set(ids)));
+    this.socket.on('connect', () => this.zone.run(() => this.aLaConnexion.forEach(f => f())));
     // Serveur redémarré ou réseau coupé : socket.io se reconnecte seul et le serveur renvoie la liste.
     this.socket.on('disconnect', () => this.charge.set(false));
   }
@@ -100,6 +112,7 @@ export class PresenceService implements OnDestroy {
     this.socket = undefined;
     this.enLigne.set([]);
     this.patientesEnLigne.set(new Set());
+    this.chauffeursEnLigne.set(new Set());
     this.charge.set(false);
   }
 }

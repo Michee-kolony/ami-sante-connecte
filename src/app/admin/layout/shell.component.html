@@ -129,6 +129,18 @@
         </a>
 
         <div class="ml-auto flex items-center gap-2 sm:gap-3">
+          @if (urgences.nouvelles() > 0) {
+            <a routerLink="/admin/urgences" class="inline-flex items-center gap-2 whitespace-nowrap rounded-full bg-rose-600 px-3 py-1.5 text-xs font-bold text-white shadow-lg shadow-rose-600/30" role="alert">
+              <span class="relative flex h-2 w-2"><span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75"></span><span class="relative inline-flex h-2 w-2 rounded-full bg-white"></span></span>
+              <span class="hidden sm:inline">Alerte de détresse</span> {{ urgences.nouvelles() }}
+            </a>
+          }
+          <!-- Sirène des alertes de détresse : coupée ou réactivée (choix mémorisé sur ce poste) -->
+          <button type="button" (click)="urgences.basculerSon()" class="btn-ghost h-9 w-9 justify-center rounded-full p-0"
+                  [attr.aria-pressed]="urgences.muet()" [attr.aria-label]="urgences.muet() ? 'Réactiver la sirène des urgences' : 'Couper la sirène des urgences'"
+                  [title]="urgences.muet() ? 'Sirène des urgences coupée : cliquer pour la réactiver' : 'Couper la sirène des urgences'">
+            <i class="fa-solid" [class]="urgences.muet() ? 'fa-volume-xmark text-rose-500' : 'fa-volume-high'"></i>
+          </button>
           <app-theme-toggle />
           @if (session.estMedecin()) {
             <app-rappels-rdv />

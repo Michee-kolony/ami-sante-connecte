@@ -2,7 +2,9 @@ import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AvatarComponent } from '../../components/avatar.component';
-import { Ambulance, FlotteService, StatutAmbulance, TypeAmbulance, joursAvant } from '../../data/flotte.service';
+import { Ambulance, FlotteService, LIBELLE_STATUT, StatutAmbulance, TypeAmbulance, joursAvant } from '../../data/flotte.service';
+import { heureFr } from '../../data/format';
+import { messageErreur } from '../../data/session.service';
 
 function formulaireVide() {
   return {
@@ -22,6 +24,9 @@ function formulaireVide() {
 export class AmbulancesComponent implements OnDestroy {
   flotte = inject(FlotteService);
   ambulances = this.flotte.ambulances;
+  libelleStatut = LIBELLE_STATUT;
+  heure = heureFr;
+  erreur = '';
 
   types: TypeAmbulance[] = ['Type A — transport', 'Type B — soins d’urgence', 'Type C — réanimation'];
   statuts: StatutAmbulance[] = ['Disponible', 'En mission', 'Maintenance', 'Hors service'];
@@ -61,15 +66,23 @@ export class AmbulancesComponent implements OnDestroy {
     }
   }
 
-  affecter(a: Ambulance, chauffeurId: string): void {
-    this.flotte.affecterChauffeur(a.id, chauffeurId || null);
-    const c = this.flotte.chauffeur(chauffeurId);
-    this.notifier(c ? `${c.prenom} ${c.nom} conduit désormais ${a.id}.` : `${a.id} n’a plus de chauffeur attitré.`);
+  async affecter(a: Ambulance, chauffeurId: string): Promise<void> {
+    try {
+      await this.flotte.affecterChauffeur(a.id, chauffeurId || null);
+      const c = this.flotte.chauffeur(chauffeurId);
+      this.notifier(c ? `${c.prenom} ${c.nom} conduit désormais ${a.id}.` : `${a.id} n’a plus de chauffeur attitré.`);
+    } catch (err) {
+      this.erreur = messageErreur(err);
+    }
   }
 
-  changerStatut(a: Ambulance, statut: Exclude<StatutAmbulance, 'En mission'>): void {
-    this.flotte.changerStatut(a.id, statut);
-    this.notifier(`${a.id} · ${a.immatriculation} : ${statut.toLowerCase()}.`);
+  async changerStatut(a: Ambulance, statut: Exclude<StatutAmbulance, 'En mission'>): Promise<void> {
+    try {
+      await this.flotte.changerStatut(a.id, statut);
+      this.notifier(`${a.id} · ${a.immatriculation} : ${statut.toLowerCase()}.`);
+    } catch (err) {
+      this.erreur = messageErreur(err);
+    }
   }
 
   // --- Formulaire d'ajout ------------------------------------------------------
@@ -94,22 +107,31 @@ export class AmbulancesComponent implements OnDestroy {
     document.body.style.overflow = '';
   }
 
-  enregistrer(f: NgForm): void {
-    if (f.invalid || this.immatriculationExiste) return;
-    const a = this.flotte.ajouterAmbulance({
-      immatriculation: this.form.immatriculation.trim().toUpperCase(),
-      modele: this.form.modele.trim(),
-      annee: this.form.annee,
-      type: this.form.type,
-      chauffeurId: null,
-      infirmier: this.form.infirmier.trim(),
-      kilometrage: this.form.kilometrage,
-      carburant: 100,
-      prochaineRevision: this.form.prochaineRevision,
-    });
-    if (this.form.chauffeurId) this.flotte.affecterChauffeur(a.id, this.form.chauffeurId);
-    this.fermer();
-    this.notifier(`Ambulance ${a.id} · ${a.immatriculation} ajoutée à la flotte.`);
+  enregistrement = false;
+
+  async enregistrer(f: NgForm): Promise<void> {
+    if (f.invalid || this.immatriculationExiste || this.enregistrement) return;
+    this.enregistrement = true;
+    this.erreur = '';
+    try {
+      const a = await this.flotte.ajouterAmbulance({
+        immatriculation: this.form.immatriculation.trim().toUpperCase(),
+        modele: this.form.modele.trim(),
+        annee: this.form.annee,
+        type: this.form.type,
+        chauffeurId: this.form.chauffeurId,
+        infirmier: this.form.infirmier.trim(),
+        kilometrage: this.form.kilometrage,
+        prochaineRevision: this.form.prochaineRevision,
+      });
+      this.fermer();
+      this.notifier(`Ambulance ${a.id} · ${a.immatriculation} ajoutée à la flotte.`);
+    } catch (err) {
+      this.erreur = messageErreur(err);
+      this.fermer();
+    } finally {
+      this.enregistrement = false;
+    }
   }
 
   private notifier(message: string): void {

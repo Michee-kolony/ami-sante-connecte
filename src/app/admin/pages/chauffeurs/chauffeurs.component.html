@@ -3,10 +3,18 @@
   <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
     <div>
       <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Gestion des chauffeurs</h1>
-      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Chauffeurs d’ambulance, validité de leur permis et véhicule attitré. Chaque chauffeur se connecte à l’<a href="/ambulance" target="_blank" class="font-medium text-brand-700 hover:underline dark:text-brand-300">application ambulance <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i></a> avec son matricule et son mot de passe.</p>
+      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Chauffeurs d’ambulance, validité de leur permis et véhicule attitré. Chaque chauffeur se connecte à l’application <strong class="font-medium text-slate-700 dark:text-slate-200">ami-connecte-chauffeur</strong> avec son matricule et son mot de passe ; il est <strong class="font-medium text-sky-700 dark:text-sky-300">occupé</strong> pendant une mission.</p>
     </div>
     <button type="button" class="btn-primary" (click)="ouvrir()"><i class="fa-solid fa-user-plus"></i> Ajouter un chauffeur</button>
   </div>
+
+  @if (erreur) {
+    <div class="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200" role="alert">
+      <i class="fa-solid fa-circle-exclamation mt-0.5"></i>
+      <span class="flex-1">{{ erreur }}</span>
+      <button type="button" (click)="erreur = ''" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+  }
 
   @if (notification) {
     <div class="flex items-start gap-3 rounded-xl border border-accent-200 bg-accent-50 px-4 py-3 text-sm text-accent-900 dark:border-accent-500/30 dark:bg-accent-500/10 dark:text-accent-200" role="status">
@@ -70,11 +78,15 @@
         <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
           @for (c of filtres(); track c.id) {
             @let amb = flotte.affectations().get(c.id);
+            @let dispo = flotte.disponibilite(c);
             @let jours = joursPermis(c);
             <tr class="transition hover:bg-slate-50/70 dark:hover:bg-slate-800/50" [class.opacity-60]="c.statut === 'Suspendu'">
               <td class="table-td">
                 <div class="flex items-center gap-3">
-                  <app-avatar [photo]="c.photo" [prenom]="c.prenom" [nomFamille]="c.nom" class="h-12 w-12 rounded-full text-sm ring-2 ring-white dark:ring-slate-900" />
+                  <span class="relative shrink-0">
+                    <app-avatar [photo]="c.photo" [prenom]="c.prenom" [nomFamille]="c.nom" class="h-12 w-12 rounded-full text-sm ring-2 ring-white dark:ring-slate-900" />
+                    @if (flotte.enLigne(c)) { <span class="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-accent-500 ring-2 ring-white dark:ring-slate-900" title="Connecté à l’application"></span> }
+                  </span>
                   <div>
                     <p class="whitespace-nowrap font-medium text-slate-900 dark:text-white">{{ c.prenom }} {{ c.nom }} <span class="text-slate-500 dark:text-slate-400">{{ c.postnom }}</span></p>
                     <p class="font-mono text-xs text-slate-500 dark:text-slate-400">{{ c.matricule }}</p>
@@ -90,8 +102,9 @@
                 <a [href]="'tel:' + c.telephone.split(' ').join('')" class="hover:text-brand-700 dark:hover:text-brand-300"><i class="fa-solid fa-phone mr-1.5 w-3 text-slate-400"></i>{{ c.telephone }}</a>
               </td>
               <td class="table-td whitespace-nowrap">
-                <p class="font-mono text-xs">{{ c.permis }}</p>
-                @if (jours < 0) {
+                <p class="font-mono text-xs">{{ c.permis || '—' }}</p>
+                @if (!c.permisExpire) {
+                } @else if (jours < 0) {
                   <span class="badge mt-1 bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"><i class="fa-solid fa-circle-exclamation"></i> Expiré</span>
                 } @else if (jours <= 60) {
                   <span class="badge mt-1 bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"><i class="fa-solid fa-hourglass-half"></i> Expire dans {{ jours }} j</span>
@@ -103,7 +116,7 @@
                 @if (amb) {
                   <p class="font-medium text-slate-900 dark:text-white"><i class="fa-solid fa-truck-medical mr-1.5 text-slate-400"></i>{{ amb.id }}</p>
                   <p class="text-xs" [class]="amb.statut === 'En mission' ? 'text-sky-600 dark:text-sky-400' : 'text-slate-500 dark:text-slate-400'">
-                    {{ amb.immatriculation }} · {{ amb.statut === 'En mission' ? 'en mission' : amb.statut.toLowerCase() }}
+                    {{ amb.immatriculation }} · {{ libelleStatut[amb.statut].toLowerCase() }}
                   </p>
                 } @else {
                   <span class="text-slate-400">—</span>
@@ -111,19 +124,25 @@
               </td>
               <td class="table-td font-semibold text-slate-900 dark:text-white">{{ c.missionsMois }}</td>
               <td class="table-td">
-                @if (c.statut === 'Actif') {
-                  <span class="badge bg-accent-50 text-accent-700 ring-1 ring-accent-200 dark:bg-accent-500/10 dark:text-accent-300 dark:ring-accent-500/30">Actif</span>
+                @if (dispo === 'Occupé') {
+                  <span class="badge bg-sky-50 text-sky-700 ring-1 ring-sky-200 dark:bg-sky-500/10 dark:text-sky-300 dark:ring-sky-500/30"><i class="fa-solid fa-route"></i> Occupé</span>
+                  @if (c.mission) { <p class="mt-1 font-mono text-[11px] text-slate-500 dark:text-slate-400">{{ c.mission }}</p> }
+                } @else if (c.statut === 'Actif') {
+                  <span class="badge bg-accent-50 text-accent-700 ring-1 ring-accent-200 dark:bg-accent-500/10 dark:text-accent-300 dark:ring-accent-500/30">Disponible</span>
                 } @else {
                   <span class="badge bg-rose-50 text-rose-700 ring-1 ring-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/30">Suspendu</span>
                 }
               </td>
               <td class="table-td">
                 <div class="flex justify-end gap-1">
+                  <button type="button" class="btn-ghost px-2.5 py-1.5" title="Carte de service" (click)="ouvrirCarte(c)">
+                    <i class="fa-solid fa-id-badge"></i><span class="sr-only">Carte de service</span>
+                  </button>
                   <button type="button" class="btn-ghost px-2.5 py-1.5" title="Réinitialiser le mot de passe" (click)="reinitialiser(c)">
                     <i class="fa-solid fa-key"></i><span class="sr-only">Réinitialiser le mot de passe</span>
                   </button>
-                  <button type="button" class="btn-ghost px-2.5 py-1.5" [disabled]="amb?.statut === 'En mission'"
-                          [title]="amb?.statut === 'En mission' ? 'En mission : action impossible' : c.statut === 'Actif' ? 'Suspendre' : 'Réactiver'" (click)="basculer(c)">
+                  <button type="button" class="btn-ghost px-2.5 py-1.5" [disabled]="dispo === 'Occupé'"
+                          [title]="dispo === 'Occupé' ? 'En mission : action impossible' : c.statut === 'Actif' ? 'Suspendre' : 'Réactiver'" (click)="basculer(c)">
                     <i class="fa-solid" [class]="c.statut === 'Actif' ? 'fa-user-lock text-rose-500' : 'fa-user-check text-accent-600'"></i>
                     <span class="sr-only">{{ c.statut === 'Actif' ? 'Suspendre' : 'Réactiver' }}</span>
                   </button>
@@ -131,7 +150,7 @@
               </td>
             </tr>
           } @empty {
-            <tr><td colspan="7" class="table-td py-10 text-center text-slate-500 dark:text-slate-400">Aucun chauffeur ne correspond à la recherche.</td></tr>
+            <tr><td colspan="7" class="table-td py-10 text-center text-slate-500 dark:text-slate-400">{{ chauffeurs().length ? 'Aucun chauffeur ne correspond à la recherche.' : 'Aucun chauffeur enregistré : ajoutez le premier compte.' }}</td></tr>
           }
         </tbody>
       </table>
@@ -149,7 +168,7 @@
       <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800 sm:px-6">
         <div>
           <h2 id="titre-ajout-ch" class="text-lg font-semibold text-slate-900 dark:text-white">Ajouter un chauffeur</h2>
-          <p class="text-xs text-slate-500 dark:text-slate-400">Matricule (identifiant de connexion) : <span class="font-mono font-semibold text-slate-700 dark:text-slate-200">{{ matriculePropose }}</span></p>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Compte de l’application ami-connecte-chauffeur</p>
         </div>
         <button type="button" class="btn-ghost px-3" (click)="fermer()" aria-label="Fermer"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
@@ -165,7 +184,7 @@
             }
           </div>
           <div class="space-y-2">
-            <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Photo d’identité</p>
+            <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Photo de profil <span class="req">*</span></p>
             <div class="flex flex-wrap gap-2">
               <label class="btn-secondary cursor-pointer px-3 py-2 text-xs">
                 <i class="fa-solid fa-camera"></i> {{ photoApercu ? 'Changer' : 'Choisir une photo' }}
@@ -175,8 +194,8 @@
                 <button type="button" class="btn-ghost px-3 py-2 text-xs text-rose-600" (click)="retirerPhoto()"><i class="fa-solid fa-trash"></i> Retirer</button>
               }
             </div>
-            <p class="text-xs" [class]="photoErreur ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500 dark:text-slate-400'">
-              {{ photoErreur || 'Photo de face, fond neutre. JPG, PNG ou WebP, 2 Mo max.' }}
+            <p class="text-xs" [class]="photoErreur || (!photoApercu && f.submitted) ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500 dark:text-slate-400'">
+              {{ photoErreur || (!photoApercu && f.submitted ? 'La photo de profil est obligatoire (elle figure sur la carte de service).' : 'Photo de face, fond neutre. JPG, PNG ou WebP, 2 Mo max.') }}
             </p>
           </div>
         </section>
@@ -185,6 +204,12 @@
         <section>
           <h3 class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-id-card"></i> Identité</h3>
           <div class="grid gap-4 sm:grid-cols-2">
+            <div class="sm:col-span-2">
+              <label class="label" for="ch-matricule">Matricule (identifiant de connexion) <span class="req">*</span></label>
+              <input id="ch-matricule" name="matricule" class="input font-mono uppercase" [(ngModel)]="form.matricule" #mat="ngModel" required pattern="[A-Za-z0-9][A-Za-z0-9\-]{2,19}"
+                     [class.border-rose-400]="mat.invalid && (mat.touched || f.submitted)">
+              <p class="mt-1.5 text-xs text-slate-500 dark:text-slate-400">Proposé automatiquement ; modifiable (lettres, chiffres et tirets).</p>
+            </div>
             <div>
               <label class="label" for="ch-prenom">Prénom <span class="req">*</span></label>
               <input id="ch-prenom" name="prenom" class="input" [(ngModel)]="form.prenom" #prenom="ngModel" required autocomplete="given-name"
@@ -241,9 +266,9 @@
 
         <!-- Accès à l'application ambulance -->
         <section class="rounded-2xl border border-slate-200 p-4 dark:border-slate-800 sm:p-5">
-          <h3 class="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-lock"></i> Accès à l’application ambulance</h3>
+          <h3 class="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-lock"></i> Accès à l’application ami-connecte-chauffeur</h3>
           <p class="mb-4 text-xs text-slate-500 dark:text-slate-400">
-            Le chauffeur se connectera avec son matricule <span class="font-mono font-semibold text-slate-700 dark:text-slate-200">{{ matriculePropose }}</span> et ce mot de passe pour recevoir ses missions et suivre l’itinéraire vers les patientes.
+            Le chauffeur se connectera avec son matricule <span class="font-mono font-semibold text-slate-700 dark:text-slate-200">{{ form.matricule.toUpperCase() }}</span> et ce mot de passe pour recevoir ses missions et suivre l’itinéraire vers les patientes.
           </p>
 
           <div class="space-y-4">
@@ -331,6 +356,43 @@
         }
       </dl>
       <button type="button" class="btn-primary mt-6 w-full" (click)="identifiants = null">C’est noté</button>
+    </div>
+  </div>
+}
+
+<!-- Carte de service : aperçu puis impression (format carte bancaire) -->
+@if (carte(); as k) {
+  @let c = k.chauffeur;
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="titre-carte">
+    <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" (click)="carte.set(null)"></div>
+    <div class="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
+      <h2 id="titre-carte" class="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-white"><i class="fa-solid fa-id-badge text-brand-600 dark:text-brand-400"></i> Carte de service</h2>
+      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Aperçu de la carte de {{ c.prenom }} {{ c.nom }}. Imprimez-la sur papier cartonné (85,6 × 54 mm).</p>
+
+      <div class="mx-auto mt-5 aspect-[85.6/54] w-full max-w-sm overflow-hidden rounded-xl bg-gradient-to-br from-brand-700 to-brand-900 p-4 text-white shadow-lg">
+        <div class="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-white/80">
+          <span><i class="fa-solid fa-truck-medical mr-1"></i> AMI Santé Connect</span><span>Carte de service</span>
+        </div>
+        <div class="mt-3 flex gap-3">
+          <app-avatar [photo]="c.photo" [prenom]="c.prenom" [nomFamille]="c.nom" class="h-20 w-16 shrink-0 rounded-lg bg-white text-lg text-brand-800 ring-2 ring-white/70" />
+          <div class="min-w-0 flex-1 leading-tight">
+            <p class="truncate text-sm font-bold">{{ c.prenom }} {{ c.nom }}</p>
+            @if (c.postnom) { <p class="truncate text-xs text-white/80">{{ c.postnom }}</p> }
+            <p class="mt-1 text-[11px] text-white/80">Chauffeur ambulancier</p>
+            <p class="mt-1 font-mono text-xs font-semibold">{{ c.matricule }}</p>
+            <p class="text-[10px] text-white/80">{{ c.ambulance ? c.ambulance.code + ' · ' + c.ambulance.immatriculation : 'Sans ambulance attitrée' }}</p>
+          </div>
+          <img [src]="k.qr" alt="QR code de vérification" class="h-16 w-16 shrink-0 self-end rounded bg-white p-0.5">
+        </div>
+        <div class="mt-2 flex justify-between text-[9px] text-white/70">
+          <span>Émise le {{ k.emiseLe.split('-').reverse().join('/') }} · Tél. {{ c.telephone }}</span><span class="font-mono">{{ k.controle }}</span>
+        </div>
+      </div>
+
+      <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <button type="button" class="btn-secondary" (click)="carte.set(null)">Fermer</button>
+        <button type="button" class="btn-primary" (click)="imprimerCarte(k)"><i class="fa-solid fa-print"></i> Imprimer la carte</button>
+      </div>
     </div>
   </div>
 }

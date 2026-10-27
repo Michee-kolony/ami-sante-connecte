@@ -1,13 +1,7 @@
-// Éléments de carte Leaflet partagés : page Urgences (admin) et application ambulance.
+// Éléments de carte Leaflet partagés par la page Urgences de l'espace administrateur.
 import * as L from 'leaflet';
 import { AlerteUrgence, BASE_SECOURS, Gravite } from './urgences';
 import { TOMTOM_TUILES } from './tomtom';
-
-/**
- * Simulation du déplacement des ambulances (×8 pour la démonstration), utilisée tant que
- * l'appareil n'envoie pas de position GPS réelle.
- */
-export const SIMULATION = 8;
 
 // Couleurs des marqueurs (classes Tailwind, la carte Leaflet vit hors des templates Angular).
 export const TEINTE: Record<Gravite, string> = {

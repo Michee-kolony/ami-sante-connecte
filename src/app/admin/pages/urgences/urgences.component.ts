@@ -1,35 +1,38 @@
 import { AfterViewInit, Component, ElementRef, NgZone, OnDestroy, ViewChild, effect, inject, untracked } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { AvatarComponent } from '../../components/avatar.component';
 import * as L from 'leaflet';
-import { AlerteUrgence, AmbulanceEnRoute, BASE_SECOURS, EtatAlerte, Gravite, PROGRESSION_INITIALE, jour } from '../../data/urgences';
+import { AvatarComponent } from '../../components/avatar.component';
+import { AlerteUrgence, BASE_SECOURS, EtatAlerte, Gravite, STATUTS_COURSE, StatutCourse, jour } from '../../data/urgences';
 import { UrgencesService } from '../../data/urgences.service';
-import { FlotteService } from '../../data/flotte.service';
-import { UTILISATEUR } from '../../data/mock-data';
+import { Ambulance, Chauffeur, FlotteService } from '../../data/flotte.service';
 import { HistoriqueUrgencesComponent } from './historique-urgences.component';
 import { Itineraire, adresseDe, calculerItineraire } from '../../data/tomtom';
 import {
-  SIMULATION, TEINTE, coucheOsm, coucheTomTom, coucheTrafic, creerCarte, deplacerAmbulance, iconeAmbulance, iconePatiente,
-  lierPhotoEtablissement, marqueurEtablissement, pointSurTrajet, urlTomTom,
+  TEINTE, coucheOsm, coucheTomTom, coucheTrafic, creerCarte, deplacerAmbulance, iconeAmbulance, iconePatiente,
+  lierPhotoEtablissement, marqueurEtablissement, urlTomTom,
 } from '../../data/carte';
 import { EtablissementsService } from '../../data/etablissements.service';
-import { SessionService } from '../../data/session.service';
+import { SessionService, messageErreur } from '../../data/session.service';
 import { ThemeService } from '../../../shared/theme.service';
 
 type Filtre = 'actives' | 'toutes';
 type Vue = 'direct' | 'historique';
-type InfosTomTom = { adresse: string | null; itineraire: Itineraire | null };
+
+/** Nouveau calcul de l'itinéraire de l'ambulance : après ce délai ou ce déplacement. */
+const RECALCUL_MS = 30_000;
+const RECALCUL_M = 250;
 
 /**
- * Urgences : localisation en direct des patientes ayant déclenché une alerte de détresse.
- * Fond OpenStreetMap (gratuit) par défaut ; TomTom fournit les fonds alternatifs,
- * le trafic, l'adresse la plus proche et l'itinéraire depuis la structure.
- * Les ambulances engagées avancent sur cet itinéraire jusqu'à la patiente.
+ * Urgences en direct : alertes de détresse envoyées par les patientes (application mobile), avec
+ * sirène tant qu'une alerte n'est pas prise en charge. La régulation envoie un chauffeur et une
+ * ambulance ; la position GPS de l'ambulance arrive chaque seconde de l'application chauffeur et
+ * le marqueur glisse sur la carte. Le chauffeur indique le statut de la course.
  */
 @Component({
   selector: 'app-urgences',
   standalone: true,
-  imports: [RouterLink, AvatarComponent, HistoriqueUrgencesComponent],
+  imports: [FormsModule, RouterLink, AvatarComponent, HistoriqueUrgencesComponent],
   template: `
 <div class="mx-auto max-w-7xl space-y-6">
   <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -43,18 +46,32 @@ type InfosTomTom = { adresse: string | null; itineraire: Itineraire | null };
           </span>
         }
       </h1>
-      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Patientes du système ayant signalé une détresse, localisées par GPS. Chaque urgence et chaque étape de l’intervention sont conservées dans l’historique.</p>
+      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Alertes de détresse envoyées par les patientes depuis leur application, localisées par GPS. Ambulances suivies en direct.</p>
     </div>
-    <div class="inline-flex rounded-xl bg-slate-100 p-1 text-sm font-semibold dark:bg-slate-800" role="tablist" aria-label="Vue">
-      @for (v of vues; track v.id) {
-        <button type="button" role="tab" (click)="vue = v.id" [attr.aria-selected]="vue === v.id"
-                class="flex items-center gap-2 rounded-lg px-4 py-2 transition"
-                [class]="vue === v.id ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'">
-          <i class="fa-solid {{ v.icon }}"></i> {{ v.label }}
-        </button>
-      }
+    <div class="flex flex-wrap items-center gap-2">
+      <button type="button" (click)="urgences.basculerSon()" class="btn-secondary" [attr.aria-pressed]="urgences.muet()"
+              [title]="urgences.muet() ? 'Réactiver la sirène des nouvelles alertes' : 'Couper la sirène des nouvelles alertes'">
+        <i class="fa-solid" [class]="urgences.muet() ? 'fa-volume-xmark text-rose-500' : 'fa-volume-high text-accent-600'"></i>
+        {{ urgences.muet() ? 'Son coupé' : 'Son activé' }}
+      </button>
+      <div class="inline-flex rounded-xl bg-slate-100 p-1 text-sm font-semibold dark:bg-slate-800" role="tablist" aria-label="Vue">
+        @for (v of vues; track v.id) {
+          <button type="button" role="tab" (click)="vue = v.id" [attr.aria-selected]="vue === v.id"
+                  class="flex items-center gap-2 rounded-lg px-4 py-2 transition"
+                  [class]="vue === v.id ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'">
+            <i class="fa-solid {{ v.icon }}"></i> {{ v.label }}
+          </button>
+        }
+      </div>
     </div>
   </div>
+
+  @if (erreur) {
+    <div class="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200" role="alert">
+      <i class="fa-solid fa-circle-exclamation mt-0.5"></i><span class="flex-1">{{ erreur }}</span>
+      <button type="button" (click)="erreur = ''" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+  }
 
   @if (vue === 'historique') {
     <app-historique-urgences (suivre)="suivreSurCarte($event)" />
@@ -66,7 +83,7 @@ type InfosTomTom = { adresse: string | null; itineraire: Itineraire | null };
     <!-- Liste des alertes -->
     <div class="card flex flex-col overflow-hidden lg:max-h-[38rem]">
       <div class="card-header">
-        <h2 class="card-title"><i class="fa-solid fa-triangle-exclamation text-rose-500"></i> Alertes du jour</h2>
+        <h2 class="card-title"><i class="fa-solid fa-triangle-exclamation text-rose-500"></i> Alertes</h2>
         <div class="inline-flex rounded-lg bg-slate-100 p-0.5 text-[11px] font-semibold dark:bg-slate-800" role="group" aria-label="Alertes affichées">
           @for (f of filtres; track f.id) {
             <button type="button" (click)="changerFiltre(f.id)" [attr.aria-pressed]="filtre === f.id"
@@ -82,7 +99,7 @@ type InfosTomTom = { adresse: string | null; itineraire: Itineraire | null };
           <li>
             <button type="button" (click)="selectionner(a)"
                     class="flex w-full items-start gap-3 px-5 py-4 text-left transition hover:bg-slate-50/70 dark:hover:bg-slate-800/40"
-                    [class]="selection?.id === a.id ? '!bg-brand-50 dark:!bg-brand-500/10' : ''">
+                    [class]="selection?.id === a.id ? '!bg-brand-50 dark:!bg-brand-500/10' : a.etat === 'nouvelle' ? 'bg-rose-50/60 dark:bg-rose-500/5' : ''">
               <span class="relative shrink-0">
                 <app-avatar [photo]="a.photo" [prenom]="a.patiente.split(' ')[0]" [nomFamille]="a.patiente.split(' ')[1]" class="h-10 w-10 rounded-full text-xs" />
                 <span class="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-white dark:ring-slate-900 {{ teinte(a.gravite) }}"></span>
@@ -90,33 +107,40 @@ type InfosTomTom = { adresse: string | null; itineraire: Itineraire | null };
               <span class="min-w-0 flex-1">
                 <span class="flex items-center justify-between gap-2">
                   <span class="truncate text-sm font-semibold text-slate-900 dark:text-white">{{ a.patiente }}</span>
-                  <span class="text-xs text-slate-500 dark:text-slate-400">{{ a.heure }}</span>
+                  <span class="text-xs text-slate-500 dark:text-slate-400">{{ a.date === aujourdhui ? a.heure : a.date.split('-').reverse().join('/') + ' ' + a.heure }}</span>
                 </span>
                 <span class="mt-0.5 block text-sm text-slate-600 dark:text-slate-300">{{ a.motif }}</span>
                 <span class="mt-1.5 flex flex-wrap items-center gap-2">
-                  <span class="text-xs text-slate-500 dark:text-slate-400"><i class="fa-solid fa-location-dot mr-1"></i>{{ a.quartier }}, {{ a.commune }}</span>
+                  @if (a.commune) { <span class="text-xs text-slate-500 dark:text-slate-400"><i class="fa-solid fa-location-dot mr-1"></i>{{ a.quartier ? a.quartier + ', ' : '' }}{{ a.commune }}</span> }
                   <span class="badge {{ badgeEtat(a.etat) }}">{{ a.etat }}</span>
-                  @if (ambulanceDe(a); as amb) {
-                    <span class="badge bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300"><i class="fa-solid fa-truck-medical"></i> {{ amb.id }}</span>
+                  @if (a.ambulanceId && estActive(a)) {
+                    <span class="badge bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300"><i class="fa-solid fa-truck-medical"></i> {{ a.ambulanceId }} · {{ a.statutCourse }}</span>
+                  }
+                  @if (urgences.nonLus()[a.id]; as n) {
+                    <span class="badge bg-rose-600 text-white"><i class="fa-solid fa-comment"></i> {{ n }}</span>
                   }
                 </span>
               </span>
             </button>
           </li>
         } @empty {
-          <li class="px-5 py-10 text-center text-sm text-slate-500 dark:text-slate-400"><i class="fa-solid fa-circle-check mb-2 block text-2xl text-accent-500"></i>Aucune alerte active.</li>
+          <li class="px-5 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
+            @if (urgences.charge()) { <i class="fa-solid fa-circle-check mb-2 block text-2xl text-accent-500"></i>Aucune alerte active. }
+            @else { <i class="fa-solid fa-spinner fa-spin mb-2 block text-2xl"></i>Chargement… }
+          </li>
         }
       </ul>
     </div>
 
     <!-- Carte -->
     <div class="card overflow-hidden lg:col-span-2">
-      <div #carte class="relative z-0 h-[26rem] w-full lg:h-[38rem]" role="region" aria-label="Carte des alertes de détresse"></div>
+      <div #carte class="relative z-0 h-[26rem] w-full lg:h-[38rem]" role="region" aria-label="Carte des alertes de détresse et des ambulances"></div>
     </div>
   </div>
 
   <!-- Détail de l'alerte sélectionnée -->
   @if (selection; as a) {
+    @let amb = flotte.ambulance(a.ambulanceId);
     <div class="card overflow-hidden">
       <div class="card-header flex-wrap">
         <h2 class="card-title"><i class="fa-solid fa-truck-medical text-rose-500"></i> {{ a.id }} — {{ a.patiente }}</h2>
@@ -124,13 +148,16 @@ type InfosTomTom = { adresse: string | null; itineraire: Itineraire | null };
       </div>
       <div class="grid gap-5 p-5 md:grid-cols-3">
         <div>
-          <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Adresse estimée</p>
-          <p class="mt-1 text-sm text-slate-800 dark:text-slate-200">{{ adresse ?? (a.quartier + ', ' + a.commune) }}</p>
-          <p class="mt-1 font-mono text-xs text-slate-500 dark:text-slate-400">{{ a.lat.toFixed(5) }}, {{ a.lng.toFixed(5) }}</p>
+          <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Motif · gravité</p>
+          <p class="mt-1 text-sm font-medium text-slate-800 dark:text-slate-200">{{ a.motif }} · <span class="capitalize">{{ a.gravite }}</span></p>
+          @if (a.precisions) { <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">« {{ a.precisions }} »</p> }
+          <p class="mt-3 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Adresse estimée</p>
+          <p class="mt-1 text-sm text-slate-800 dark:text-slate-200">{{ adresse ?? ((a.quartier ? a.quartier + ', ' : '') + (a.commune || 'Position GPS')) }}</p>
+          <p class="mt-1 font-mono text-xs text-slate-500 dark:text-slate-400">{{ a.lat.toFixed(5) }}, {{ a.lng.toFixed(5) }}{{ a.precisionM ? ' · ±' + a.precisionM + ' m' : '' }}</p>
         </div>
         <div>
-          <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Itinéraire depuis la structure</p>
-          @if (calcul) {
+          <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{{ amb?.position && estActive(a) ? 'Ambulance → patiente' : 'Itinéraire depuis la structure' }}</p>
+          @if (calcul && !itineraire) {
             <p class="mt-1 text-sm text-slate-500 dark:text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Calcul TomTom…</p>
           } @else if (itineraire) {
             @let it = itineraire;
@@ -141,26 +168,112 @@ type InfosTomTom = { adresse: string | null; itineraire: Itineraire | null };
           } @else {
             <p class="mt-1 text-sm text-rose-600 dark:text-rose-400">Itinéraire indisponible.</p>
           }
-          @if (ambulanceDe(a); as amb) {
-            @let restant = restantS(amb);
+          @if (amb) {
             <p class="mt-3 flex items-center gap-2 text-sm text-sky-700 dark:text-sky-300">
               <i class="fa-solid fa-truck-medical"></i>
-              <span><strong>{{ amb.id }}</strong> · {{ amb.immatriculation }} —
-                @if (amb.progression >= 1) { sur place } @else if (restant !== null) { arrivée dans {{ minutes(restant) }} min } @else { en route }
-              </span>
+              <span><strong>{{ amb.id }}</strong> · {{ amb.immatriculation }} — {{ a.chauffeur }}</span>
             </p>
-            <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{{ amb.equipage }}</p>
+            <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+              @if (amb.position) { GPS reçu à {{ heureGps(amb.position.le) }}{{ amb.position.vitesse != null ? ' · ' + amb.position.vitesse + ' km/h' : '' }} }
+              @else { En attente de la première position GPS de l’application chauffeur. }
+            </p>
           }
         </div>
-        <div class="flex flex-wrap items-start gap-2 md:justify-end">
-          <a [href]="lienTel(a)" class="btn-secondary"><i class="fa-solid fa-phone"></i> {{ a.telephone }}</a>
+        <div class="flex flex-wrap content-start items-start gap-2 md:justify-end">
+          @if (a.telephone) { <a [href]="lienTel(a)" class="btn-secondary"><i class="fa-solid fa-phone"></i> {{ a.telephone }}</a> }
           @if (a.etat === 'nouvelle') {
-            <button class="btn-primary" (click)="changerEtat(a, 'prise en charge')"><i class="fa-solid fa-hand-holding-medical"></i> Prendre en charge</button>
-            <button class="btn-ghost text-slate-500" (click)="changerEtat(a, 'annulée')" title="Alerte déclenchée par erreur"><i class="fa-solid fa-ban"></i> Fausse alerte</button>
-          } @else if (a.etat === 'prise en charge') {
-            <button class="btn-primary" (click)="changerEtat(a, 'résolue')"><i class="fa-solid fa-check"></i> Marquer résolue</button>
+            <button class="btn-primary" [disabled]="envoi" (click)="prendreEnCharge(a)"><i class="fa-solid fa-hand-holding-medical"></i> Prendre en charge</button>
+          }
+          @if (estActive(a)) {
+            @if (a.statutCourse && a.statutCourse !== 'Assignée') {
+              <button class="btn-primary" [disabled]="envoi" (click)="cloturer(a)"><i class="fa-solid fa-check"></i> Clôturer</button>
+            }
+            @if (!annulation) {
+              <button class="btn-ghost text-slate-500" (click)="annulation = true" title="Alerte déclenchée par erreur"><i class="fa-solid fa-ban"></i> Fausse alerte</button>
+            } @else {
+              <div class="flex w-full flex-wrap gap-2 md:justify-end">
+                <input class="input md:w-64" [(ngModel)]="motifAnnulation" placeholder="Motif (ex. appel : la patiente va bien)" aria-label="Motif de l’annulation">
+                <button class="btn-secondary" (click)="annulation = false">Retour</button>
+                <button class="btn-primary !bg-rose-600" [disabled]="!motifAnnulation.trim() || envoi" (click)="annuler(a)">Annuler l’alerte</button>
+              </div>
+            }
           }
         </div>
+      </div>
+
+      <!-- Envoi du chauffeur et de l'ambulance -->
+      @if (estActive(a) && (!a.statutCourse || a.statutCourse === 'Assignée')) {
+        <div class="border-t border-slate-100 px-5 py-4 dark:border-slate-800">
+          <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            {{ a.statutCourse ? 'Changer le chauffeur ou l’ambulance (avant le départ)' : 'Envoyer un chauffeur et une ambulance' }}
+          </p>
+          <div class="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+            <div>
+              <label class="label" for="envoi-chauffeur">Chauffeur</label>
+              <select id="envoi-chauffeur" class="input" [ngModel]="choixChauffeur" (ngModelChange)="choisirChauffeur($event)">
+                <option [ngValue]="''">— Choisir —</option>
+                @for (c of chauffeursEnvoyables(); track c.id) {
+                  <option [ngValue]="c.id">{{ c.prenom }} {{ c.nom }} · {{ c.matricule }}{{ flotte.enLigne(c) ? ' · en ligne' : ' · hors ligne' }}</option>
+                }
+              </select>
+            </div>
+            <div>
+              <label class="label" for="envoi-ambulance">Ambulance</label>
+              <select id="envoi-ambulance" class="input" [(ngModel)]="choixAmbulance">
+                <option [ngValue]="''">— Choisir —</option>
+                @for (x of ambulancesEnvoyables(); track x.id) {
+                  <option [ngValue]="x.id">{{ x.id }} · {{ x.immatriculation }} · {{ x.type.split(' — ')[0] }}</option>
+                }
+              </select>
+            </div>
+            <button class="btn-primary self-end" [disabled]="!choixChauffeur || !choixAmbulance || envoi" (click)="envoyer(a)">
+              <i class="fa-solid" [class]="envoi ? 'fa-spinner fa-spin' : 'fa-paper-plane'"></i> {{ a.statutCourse ? 'Réaffecter' : 'Envoyer' }}
+            </button>
+          </div>
+          @if (!chauffeursEnvoyables().length || !ambulancesEnvoyables().length) {
+            <p class="mt-2 text-xs text-amber-700 dark:text-amber-300"><i class="fa-solid fa-triangle-exclamation mr-1"></i>
+              {{ !chauffeursEnvoyables().length ? 'Aucun chauffeur disponible (tous occupés ou suspendus).' : 'Aucune ambulance disponible (toutes occupées ou à l’atelier).' }}</p>
+          }
+        </div>
+      }
+
+      <!-- Statut de la course, indiqué par le chauffeur -->
+      @if (a.statutCourse) {
+        <div class="border-t border-slate-100 px-5 py-4 dark:border-slate-800">
+          <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Statut de la course (application chauffeur)</p>
+          <ol class="flex flex-wrap gap-2">
+            @for (s of etapesCourse; track s; let i = $index) {
+              <li class="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold"
+                  [class]="i < rangCourse(a) ? 'bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300' : i === rangCourse(a) ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500'">
+                <i class="fa-solid" [class]="i < rangCourse(a) ? 'fa-check' : i === rangCourse(a) ? 'fa-circle-dot' : 'fa-circle'"></i> {{ s }}
+              </li>
+            }
+          </ol>
+        </div>
+      }
+
+      <!-- Conversation : patiente, chauffeur envoyé et régulation -->
+      <div class="border-t border-slate-100 px-5 py-4 dark:border-slate-800">
+        <p class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <i class="fa-solid fa-comments"></i> Conversation avec la patiente{{ a.chauffeur ? ' et le chauffeur' : '' }}
+        </p>
+        <div #fil class="max-h-72 space-y-2 overflow-y-auto rounded-xl bg-slate-50 p-3 dark:bg-slate-800/40" role="log" aria-live="polite">
+          @for (m of urgences.messages()[a.id] ?? []; track m.id) {
+            <div class="flex" [class.justify-end]="m.auteur.type === 'regulation'">
+              <div class="max-w-[80%] rounded-2xl px-3 py-2 text-sm shadow-sm" [class]="bulle(m.auteur.type)">
+                <p class="text-[11px] font-semibold opacity-80">{{ m.auteur.nom }} · {{ libelleAuteur[m.auteur.type] }} · {{ heureGps(m.le).slice(0, 5) }}</p>
+                <p class="whitespace-pre-line break-words">{{ m.texte }}</p>
+              </div>
+            </div>
+          } @empty {
+            <p class="py-4 text-center text-xs text-slate-500 dark:text-slate-400">Aucun message. Écrivez à la patiente{{ a.chauffeur ? ' et au chauffeur' : '' }} : tout le monde voit la conversation.</p>
+          }
+        </div>
+        <form class="mt-3 flex gap-2" (ngSubmit)="envoyerMessage(a)">
+          <input class="input flex-1" name="message" [(ngModel)]="brouillon" maxlength="1000" autocomplete="off"
+                 placeholder="Message à la patiente{{ a.chauffeur ? ' et au chauffeur' : '' }}…" aria-label="Message">
+          <button type="submit" class="btn-primary" [disabled]="!brouillon.trim() || envoiMessage"><i class="fa-solid fa-paper-plane"></i><span class="sr-only">Envoyer</span></button>
+        </form>
       </div>
 
       <!-- Chronologie, conservée dans l'historique -->
@@ -171,7 +284,7 @@ type InfosTomTom = { adresse: string | null; itineraire: Itineraire | null };
             <li class="flex items-center gap-2 text-sm">
               <span class="font-mono text-xs text-slate-500 dark:text-slate-400">{{ e.date.slice(11) }}</span>
               <span class="font-medium" [class]="dernier ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-300'">{{ e.type }}</span>
-              <span class="text-xs text-slate-400">· {{ e.auteur }}</span>
+              <span class="text-xs text-slate-400">· {{ e.auteur }}{{ e.detail ? ' — ' + e.detail : '' }}</span>
             </li>
           }
         </ol>
@@ -187,8 +300,8 @@ export class UrgencesComponent implements AfterViewInit, OnDestroy {
   private zone = inject(NgZone);
   private theme = inject(ThemeService);
 
-  private urgences = inject(UrgencesService);
-  private flotte = inject(FlotteService);
+  urgences = inject(UrgencesService);
+  flotte = inject(FlotteService);
   private etablissements = inject(EtablissementsService);
   private session = inject(SessionService);
 
@@ -197,33 +310,39 @@ export class UrgencesComponent implements AfterViewInit, OnDestroy {
     { id: 'direct', label: 'En direct', icon: 'fa-tower-broadcast' },
     { id: 'historique', label: 'Historique', icon: 'fa-clock-rotate-left' },
   ];
-
-  /** Alertes du jour et alertes encore en cours (même d'un jour précédent). */
-  get alertes(): AlerteUrgence[] {
-    const aujourdhui = jour(0);
-    return this.urgences.alertes().filter(a => a.date === aujourdhui || a.etat === 'nouvelle' || a.etat === 'prise en charge');
-  }
-
-  /** Ambulances actuellement en mission, avec leur avancement sur l'itinéraire. */
-  ambulances: AmbulanceEnRoute[] = this.flotte.ambulances()
-    .filter(a => a.alerteId)
-    .map(a => ({
-      id: a.id,
-      immatriculation: a.immatriculation,
-      equipage: this.flotte.equipage(a),
-      alerteId: a.alerteId!,
-      progression: PROGRESSION_INITIALE[a.id] ?? 0,
-    }));
   filtre: Filtre = 'actives';
   filtres: { id: Filtre; label: string }[] = [
     { id: 'actives', label: 'Actives' },
-    { id: 'toutes', label: 'Toutes' },
+    { id: 'toutes', label: 'Du jour' },
   ];
+  etapesCourse = STATUTS_COURSE.filter(s => s !== 'Assignée');
+  aujourdhui = jour(0);
 
   selection: AlerteUrgence | null = null;
   adresse: string | null = null;
   itineraire: Itineraire | null = null;
   calcul = false;
+  envoi = false;
+  erreur = '';
+  annulation = false;
+  motifAnnulation = '';
+  brouillon = '';
+  envoiMessage = false;
+  libelleAuteur = { patiente: 'Patiente', chauffeur: 'Chauffeur', regulation: 'Régulation' };
+  @ViewChild('fil') filRef?: ElementRef<HTMLDivElement>;
+  choixChauffeur = '';
+  choixAmbulance = '';
+
+  /** Chauffeurs actifs et libres (ou celui déjà affecté à l'alerte sélectionnée). */
+  chauffeursEnvoyables(): Chauffeur[] {
+    return this.flotte.chauffeurs().filter(c => c.statut === 'Actif'
+      && (this.flotte.disponibilite(c) === 'Disponible' || c.id === this.selection?.chauffeurId));
+  }
+
+  /** Ambulances disponibles (ou celle déjà affectée à l'alerte sélectionnée). */
+  ambulancesEnvoyables(): Ambulance[] {
+    return this.flotte.ambulances().filter(a => a.statut === 'Disponible' || a.id === this.selection?.ambulanceId);
+  }
 
   private carte?: L.Map;
   private marqueurs = L.layerGroup();
@@ -235,26 +354,34 @@ export class UrgencesComponent implements AfterViewInit, OnDestroy {
   private base?: L.Marker;
   private photoBase: string | null = null;
   private marqueursAmbulances = new Map<string, L.Marker>();
-  private chrono?: ReturnType<typeof setInterval>;
-  /** Réponses TomTom par alerte : une alerte déjà consultée s'affiche instantanément. */
-  private infos = new Map<string, Promise<InfosTomTom>>();
-  /** Itinéraires déjà reçus, lisibles sans attendre (déplacement des ambulances). */
-  private itineraires = new Map<string, Itineraire>();
+  private adresses = new Map<string, Promise<string | null>>();
+  /** Origine et heure du dernier calcul d'itinéraire (pour le recalculer quand l'ambulance avance). */
+  private dernierCalcul: { alerte: string; depart: L.LatLng; le: number } | null = null;
 
   constructor() {
-    // Le fond TomTom suit le thème (plan ↔ nuit) ; le fond OSM est assombri en CSS (styles.css).
     effect(() => {
       const url = urlTomTom(this.theme.sombre());
       this.zone.runOutsideAngular(() => this.fondTomTom?.setUrl(url));
     });
-    // Une urgence peut être clôturée ailleurs (application ambulance) : on libère son ambulance et on redessine.
+    // Alertes reçues ou modifiées en temps réel : la carte et la sélection suivent.
     effect(() => {
       this.urgences.alertes();
       untracked(() => {
-        for (const m of this.ambulances.filter(m => !this.estActive(this.urgences.alerte(m.alerteId)))) this.retirerAmbulance(m);
         if (this.selection && !this.visibles.includes(this.selection)) this.deselectionner();
         this.dessinerMarqueurs();
       });
+    });
+    // Positions des ambulances (chaque seconde) : le marqueur glisse vers la nouvelle position.
+    effect(() => {
+      const liste = this.flotte.ambulances();
+      untracked(() => {
+        this.zone.runOutsideAngular(() => this.placerAmbulances(liste));
+        this.peutEtreRecalculer();
+      });
+    });
+    effect(() => {
+      const fil = this.urgences.messages()[this.selection?.id ?? ''];
+      if (fil?.length) untracked(() => this.defilerFil());
     });
     // Établissements géolocalisés (page Établissements sanitaires) : croix d'hôpital nommée.
     effect(() => {
@@ -263,7 +390,6 @@ export class UrgencesComponent implements AfterViewInit, OnDestroy {
       untracked(() => this.zone.runOutsideAngular(() => {
         this.calqueEtablissements.clearLayers();
         for (const e of liste) {
-          // La base de secours a déjà son marqueur : il reprend seulement la photo de sa fiche.
           if (e.nom === BASE_SECOURS.nom) {
             this.photoBase = e.photos[0] ?? null;
             if (this.base) lierPhotoEtablissement(this.base, BASE_SECOURS.nom, this.photoBase);
@@ -274,7 +400,12 @@ export class UrgencesComponent implements AfterViewInit, OnDestroy {
         }
       }));
     });
-    this.etablissements.charger().catch(() => {}); // hors connexion (maquette) : seule la base de secours s'affiche
+    this.etablissements.charger().catch(() => {});
+  }
+
+  /** Alertes du jour et alertes encore en cours (même d'un jour précédent). */
+  get alertes(): AlerteUrgence[] {
+    return this.urgences.alertes().filter(a => a.date === this.aujourdhui || this.estActive(a));
   }
 
   get visibles(): AlerteUrgence[] {
@@ -285,53 +416,40 @@ export class UrgencesComponent implements AfterViewInit, OnDestroy {
     return this.urgences.nouvelles();
   }
 
-  /** Depuis l'historique : retour sur la carte, centrée sur l'urgence en cours. */
   suivreSurCarte(a: AlerteUrgence): void {
     this.vue = 'direct';
+    if (!this.estActive(a)) this.filtre = 'toutes';
     this.selectionner(a);
   }
 
   ngAfterViewInit(): void {
-    // Leaflet écoute souris et zoom en continu : on le garde hors de la détection de changements.
     this.zone.runOutsideAngular(() => {
-      // OSM déjà préconnecté par ShellComponent.
       const osm = coucheOsm();
       ({ carte: this.carte, redimension: this.redimension } = creerCarte(this.carteRef.nativeElement, {
         center: [BASE_SECOURS.lat, BASE_SECOURS.lng],
         zoom: 13,
         layers: [osm, this.calqueEtablissements, this.calqueAmbulances, this.marqueurs],
       }));
-
       L.control.layers(
         { 'OpenStreetMap': osm, 'TomTom': this.fondTomTom = coucheTomTom(this.theme.sombre()) },
         {
           'Établissements sanitaires': this.calqueEtablissements,
-          'Ambulances en route': this.calqueAmbulances,
+          'Ambulances': this.calqueAmbulances,
           'Trafic en temps réel (TomTom)': coucheTrafic(),
         },
       ).addTo(this.carte);
       L.control.scale({ imperial: false }).addTo(this.carte);
       this.base = marqueurEtablissement(BASE_SECOURS.lat, BASE_SECOURS.lng, BASE_SECOURS.nom, true, this.photoBase).addTo(this.carte);
+      this.placerAmbulances(this.flotte.ambulances());
     });
-
     this.dessinerMarqueurs();
-
-    // Les nouvelles alertes seront consultées en premier : adresse et itinéraire demandés d'avance.
-    this.alertes.filter(a => a.etat === 'nouvelle').forEach(a => this.infosDe(a));
-
-    // Les ambulances avancent hors de la détection de changements ; Angular n'est
-    // sollicité que si l'alerte affichée en détail a une ambulance (compte à rebours).
-    this.zone.runOutsideAngular(() => {
-      this.chrono = setInterval(() => {
-        this.deplacerAmbulances();
-        if (this.selection && this.ambulanceDe(this.selection)) this.zone.run(() => {});
-      }, 1000);
-    });
-    this.ambulances.forEach(m => this.suivre(m));
+    // La plus ancienne alerte en attente est ouverte d'office.
+    const enAttente = this.alertes.filter(a => a.etat === 'nouvelle').at(-1);
+    if (enAttente) this.selectionner(enAttente);
   }
 
   ngOnDestroy(): void {
-    clearInterval(this.chrono);
+    this.urgences.ouvrirConversation(null);
     this.redimension?.disconnect();
     this.carte?.remove();
   }
@@ -343,62 +461,69 @@ export class UrgencesComponent implements AfterViewInit, OnDestroy {
   }
 
   async selectionner(a: AlerteUrgence): Promise<void> {
+    if (this.selection !== a) {
+      this.annulation = false;
+      this.motifAnnulation = '';
+      this.choixChauffeur = a.chauffeurId ?? '';
+      this.choixAmbulance = a.ambulanceId ?? '';
+      this.brouillon = '';
+      this.urgences.ouvrirConversation(a.id).then(() => this.defilerFil()).catch(() => {});
+    }
     this.selection = a;
     this.adresse = null;
     this.itineraire = null;
-    this.calcul = true;
+    this.dernierCalcul = null;
     this.trace?.remove();
     this.carte?.flyTo([a.lat, a.lng], 15, { duration: 0.8 });
+    const adresse = this.adresseDe(a);
+    this.calculerItineraire(a, true);
+    const texte = await adresse;
+    if (this.selection === a) this.adresse = texte;
+  }
 
-    const infos = await this.infosDe(a);
-    if (this.selection !== a) return; // une autre alerte a été choisie entre-temps
+  /** Le chauffeur choisi part avec son ambulance attitrée si elle est disponible. */
+  choisirChauffeur(id: string): void {
+    this.choixChauffeur = id;
+    const attitree = this.flotte.affectations().get(id);
+    if (attitree && this.ambulancesEnvoyables().some(x => x.id === attitree.id)) this.choixAmbulance = attitree.id;
+  }
 
-    this.adresse = infos.adresse;
-    this.itineraire = infos.itineraire;
-    this.calcul = false;
+  async prendreEnCharge(a: AlerteUrgence): Promise<void> {
+    await this.action(() => this.urgences.prendreEnCharge(a));
+  }
 
-    if (this.itineraire && this.carte) {
-      this.trace = L.polyline(this.itineraire.points, { color: '#e11d48', weight: 5, opacity: 0.85 }).addTo(this.carte);
-      this.carte.flyToBounds(this.trace.getBounds(), { padding: [40, 40], duration: 0.8 });
+  async envoyer(a: AlerteUrgence): Promise<void> {
+    if (await this.action(() => this.urgences.affecter(a, this.choixChauffeur, this.choixAmbulance))) this.calculerItineraire(a, true);
+  }
+
+  async cloturer(a: AlerteUrgence): Promise<void> {
+    await this.action(() => this.urgences.cloturer(a, 'Clôturée par la régulation'));
+  }
+
+  async annuler(a: AlerteUrgence): Promise<void> {
+    if (await this.action(() => this.urgences.annuler(a, this.motifAnnulation.trim()))) this.annulation = false;
+  }
+
+  private async action(f: () => Promise<unknown>): Promise<boolean> {
+    this.envoi = true;
+    this.erreur = '';
+    try {
+      await f();
+      return true;
+    } catch (err) {
+      this.erreur = messageErreur(err);
+      return false;
+    } finally {
+      this.envoi = false;
     }
   }
 
-  /** Chaque changement est inscrit dans la chronologie de l'urgence (UrgencesService). */
-  changerEtat(a: AlerteUrgence, etat: EtatAlerte): void {
-    const auteur = UTILISATEUR.nom;
-    if (etat === 'prise en charge') {
-      this.urgences.prendreEnCharge(a, auteur);
-      // Première ambulance disponible (avec un chauffeur actif) envoyée vers la patiente.
-      const libre = this.flotte.premiereDisponible();
-      if (libre) {
-        this.flotte.engager(libre.id, a.id);
-        const c = this.flotte.chauffeur(libre.chauffeurId);
-        this.urgences.ambulanceEnvoyee(a, libre.id, c ? `${c.prenom.charAt(0)}. ${c.nom}` : '—', auteur);
-        const m: AmbulanceEnRoute = {
-          id: libre.id, immatriculation: libre.immatriculation, equipage: this.flotte.equipage(libre), alerteId: a.id, progression: 0,
-        };
-        this.ambulances.push(m);
-        this.suivre(m);
-      }
-    } else if (etat === 'résolue') {
-      this.urgences.cloturer(a, auteur);
-    } else if (etat === 'annulée') {
-      this.urgences.annuler(a, auteur, 'Fausse alerte confirmée par la régulation');
-    }
-    // L'effet du constructeur libère l'ambulance et redessine la carte.
-  }
-
-  private estActive(a: AlerteUrgence | undefined): boolean {
+  estActive(a: AlerteUrgence | undefined | null): boolean {
     return a?.etat === 'nouvelle' || a?.etat === 'prise en charge';
   }
 
-  private retirerAmbulance(m: AmbulanceEnRoute): void {
-    if (this.flotte.ambulances().find(x => x.id === m.id)?.alerteId === m.alerteId) {
-      this.flotte.engager(m.id, null); // retour à la base : de nouveau disponible
-    }
-    this.ambulances = this.ambulances.filter(x => x !== m);
-    this.marqueursAmbulances.get(m.id)?.remove();
-    this.marqueursAmbulances.delete(m.id);
+  rangCourse(a: AlerteUrgence): number {
+    return (this.etapesCourse as (StatutCourse | null)[]).indexOf(a.statutCourse);
   }
 
   teinte(g: Gravite): string {
@@ -414,16 +539,6 @@ export class UrgencesComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  ambulanceDe(a: AlerteUrgence): AmbulanceEnRoute | undefined {
-    return this.ambulances.find(m => m.alerteId === a.id);
-  }
-
-  /** Secondes restantes avant l'arrivée (null tant que l'itinéraire n'est pas connu). */
-  restantS(m: AmbulanceEnRoute): number | null {
-    const it = m.alerteId ? this.itineraires.get(m.alerteId) : undefined;
-    return it ? (1 - m.progression) * it.dureeS : null;
-  }
-
   lienTel(a: AlerteUrgence): string {
     return 'tel:' + a.telephone.replace(/\s/g, '');
   }
@@ -432,59 +547,116 @@ export class UrgencesComponent implements AfterViewInit, OnDestroy {
     return Math.max(1, Math.round(s / 60));
   }
 
-  private infosDe(a: AlerteUrgence): Promise<InfosTomTom> {
-    let infos = this.infos.get(a.id);
-    if (!infos) {
-      const depart: [number, number] = [BASE_SECOURS.lat, BASE_SECOURS.lng];
-      infos = Promise.allSettled([adresseDe(a.lat, a.lng), calculerItineraire(depart, [a.lat, a.lng])])
-        .then(([adresse, itineraire]) => {
-          const it = itineraire.status === 'fulfilled' ? itineraire.value : null;
-          if (it) this.itineraires.set(a.id, it);
-          return { adresse: adresse.status === 'fulfilled' ? adresse.value : null, itineraire: it };
-        });
-      this.infos.set(a.id, infos);
-    }
-    return infos;
+  heureGps(iso: string): string {
+    return new Date(iso).toLocaleTimeString('fr-FR');
   }
 
-  /** Demande l'itinéraire de l'ambulance puis l'affiche sur la carte. */
-  private suivre(m: AmbulanceEnRoute): void {
-    const alerte = this.alertes.find(a => a.id === m.alerteId);
-    if (alerte) this.infosDe(alerte).then(() => this.zone.runOutsideAngular(() => this.placerAmbulance(m)));
+  private adresseDe(a: AlerteUrgence): Promise<string | null> {
+    const cle = `${a.lat.toFixed(4)},${a.lng.toFixed(4)}`;
+    let p = this.adresses.get(cle);
+    if (!p) {
+      p = adresseDe(a.lat, a.lng).catch(() => null);
+      this.adresses.set(cle, p);
+    }
+    return p;
   }
 
-  private deplacerAmbulances(): void {
-    for (const m of this.ambulances) {
-      const it = m.alerteId ? this.itineraires.get(m.alerteId) : undefined;
-      if (!it || m.progression >= 1) continue;
-      m.progression = Math.min(1, m.progression + SIMULATION / it.dureeS);
-      this.placerAmbulance(m);
+  /** Départ : position GPS de l'ambulance engagée, sinon la structure de rattachement. */
+  private depart(a: AlerteUrgence): L.LatLng {
+    const p = this.estActive(a) ? this.flotte.ambulance(a.ambulanceId)?.position : null;
+    return p ? L.latLng(p.lat, p.lng) : L.latLng(BASE_SECOURS.lat, BASE_SECOURS.lng);
+  }
+
+  private async calculerItineraire(a: AlerteUrgence, recentrer = false): Promise<void> {
+    const depart = this.depart(a);
+    this.dernierCalcul = { alerte: a.id, depart, le: Date.now() };
+    this.calcul = true;
+    try {
+      const it = await calculerItineraire([depart.lat, depart.lng], [a.lat, a.lng]);
+      if (this.selection !== a) return;
+      this.itineraire = it;
+      this.zone.runOutsideAngular(() => {
+        this.trace?.remove();
+        if (!this.carte) return;
+        this.trace = L.polyline(it.points, { color: '#e11d48', weight: 5, opacity: 0.85 }).addTo(this.carte);
+        if (recentrer) this.carte.flyToBounds(this.trace.getBounds(), { padding: [40, 40], duration: 0.8 });
+      });
+    } catch {
+      if (this.selection === a) this.itineraire = null;
+    } finally {
+      if (this.selection === a) this.calcul = false;
     }
   }
 
-  private placerAmbulance(m: AmbulanceEnRoute): void {
-    const alerte = this.alertes.find(a => a.id === m.alerteId);
-    const it = m.alerteId ? this.itineraires.get(m.alerteId) : undefined;
-    if (!alerte || !it) return;
+  /** L'ambulance a bien avancé (ou 30 s écoulées) : durée et tracé restants recalculés. */
+  private peutEtreRecalculer(): void {
+    const a = this.selection;
+    const d = this.dernierCalcul;
+    if (!a || !d || d.alerte !== a.id || !this.estActive(a) || this.calcul) return;
+    const ici = this.depart(a);
+    if (Date.now() - d.le >= RECALCUL_MS || ici.distanceTo(d.depart) >= RECALCUL_M) this.calculerItineraire(a);
+  }
 
-    const position = pointSurTrajet(it.points, m.progression);
-    const statut = m.progression >= 1 ? 'sur place' : `arrivée dans ${this.minutes(this.restantS(m) ?? 0)} min`;
-    const infobulle = `<strong>${m.id}</strong> · ${m.immatriculation}<br>→ ${alerte.patiente} — ${statut}`;
-
-    let marqueur = this.marqueursAmbulances.get(m.id);
-    if (!marqueur) {
-      marqueur = L.marker(position, { icon: iconeAmbulance(), zIndexOffset: 500 })
-        .bindTooltip(infobulle, { direction: 'top', offset: [0, -11] })
-        .on('click', () => this.zone.run(() => this.selectionner(alerte)))
-        .addTo(this.calqueAmbulances);
-      this.marqueursAmbulances.set(m.id, marqueur);
-    } else {
-      deplacerAmbulance(marqueur, position);
-      marqueur.setTooltipContent(infobulle);
+  private placerAmbulances(liste: Ambulance[]): void {
+    if (!this.carte) return;
+    const vues = new Set<string>();
+    for (const a of liste) {
+      if (!a.position || a.statut === 'Hors service') continue;
+      vues.add(a.id);
+      const c: Chauffeur | undefined = this.flotte.chauffeur(a.chauffeurId);
+      const infobulle = `<strong>${a.id}</strong> · ${a.immatriculation}<br>${a.statut === 'En mission' ? `Occupée → ${a.alerteId}` : a.statut}`
+        + (c ? `<br>${c.prenom} ${c.nom}` : '') + (a.position.vitesse != null ? ` · ${a.position.vitesse} km/h` : '');
+      let m = this.marqueursAmbulances.get(a.id);
+      if (!m) {
+        m = L.marker([a.position.lat, a.position.lng], { icon: iconeAmbulance(a.statut === 'En mission' ? 34 : 26), zIndexOffset: 500 })
+          .bindTooltip(infobulle, { direction: 'top', offset: [0, -11] })
+          .on('click', () => this.zone.run(() => {
+            const alerte = this.urgences.alerte(this.flotte.ambulance(a.id)?.alerteId);
+            if (alerte) this.selectionner(alerte);
+          }))
+          .addTo(this.calqueAmbulances);
+        m.getElement()?.classList.add('ambulance-fluide');
+        this.marqueursAmbulances.set(a.id, m);
+      } else {
+        deplacerAmbulance(m, [a.position.lat, a.position.lng]);
+        m.setTooltipContent(infobulle);
+        m.getElement()?.classList.toggle('ambulance-libre', a.statut !== 'En mission');
+      }
     }
+    for (const [code, m] of this.marqueursAmbulances) {
+      if (vues.has(code)) continue;
+      m.remove();
+      this.marqueursAmbulances.delete(code);
+    }
+  }
+
+  async envoyerMessage(a: AlerteUrgence): Promise<void> {
+    const texte = this.brouillon.trim();
+    if (!texte) return;
+    this.envoiMessage = true;
+    try {
+      await this.urgences.envoyerMessage(a.id, texte);
+      this.brouillon = '';
+    } catch (err) {
+      this.erreur = messageErreur(err);
+    } finally {
+      this.envoiMessage = false;
+    }
+  }
+
+  bulle(type: 'patiente' | 'chauffeur' | 'regulation'): string {
+    return type === 'regulation' ? 'bg-brand-600 text-white'
+      : type === 'chauffeur' ? 'bg-sky-100 text-sky-900 dark:bg-sky-500/20 dark:text-sky-100'
+      : 'bg-white text-slate-800 dark:bg-slate-700 dark:text-slate-100';
+  }
+
+  /** Dernier message visible en bas du fil. */
+  private defilerFil(): void {
+    setTimeout(() => this.filRef?.nativeElement.scrollTo({ top: this.filRef.nativeElement.scrollHeight }));
   }
 
   private deselectionner(): void {
+    this.urgences.ouvrirConversation(null);
     this.selection = null;
     this.trace?.remove();
   }
@@ -492,7 +664,7 @@ export class UrgencesComponent implements AfterViewInit, OnDestroy {
   private dessinerMarqueurs(): void {
     this.marqueurs.clearLayers();
     for (const a of this.visibles) {
-      L.marker([a.lat, a.lng], { icon: iconePatiente(a, a.etat === 'nouvelle') })
+      L.marker([a.lat, a.lng], { icon: iconePatiente(a, a.etat === 'nouvelle'), zIndexOffset: a.etat === 'nouvelle' ? 800 : 0 })
         .bindTooltip(`<strong>${a.patiente}</strong><br>${a.motif}`, { direction: 'top', offset: [0, -18] })
         .on('click', () => this.zone.run(() => this.selectionner(a)))
         .addTo(this.marqueurs);

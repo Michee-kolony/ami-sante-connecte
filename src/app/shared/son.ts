@@ -77,3 +77,55 @@ function lire(jouer: (ctx: AudioContext) => void): void {
     else ['pointerdown', 'keydown', 'touchstart'].forEach(e => window.addEventListener(e, debloquer, { once: true }));
   }).catch(() => undefined);
 }
+
+// --- Sirène de détresse (alertes des patientes) ----------------------------------------
+
+/**
+ * Sirène forte et reconnaissable : balayage aigu ↔ grave (type « deux tons »), répété tant
+ * qu'une alerte attend sa prise en charge. Le compresseur pousse le volume sans saturer.
+ */
+function jouerSirene(ctx: AudioContext): void {
+  const t = ctx.currentTime + 0.02;
+  const compresseur = ctx.createDynamicsCompressor();
+  compresseur.threshold.value = -10;
+  compresseur.ratio.value = 4;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, t);
+  gain.gain.exponentialRampToValueAtTime(0.9, t + 0.05);
+  gain.gain.setValueAtTime(0.9, t + 1.5);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + 1.75);
+  gain.connect(compresseur).connect(ctx.destination);
+  for (const [type, decalage] of [['sawtooth', 0], ['square', 3]] as const) {
+    const osc = ctx.createOscillator();
+    osc.type = type;
+    osc.detune.value = decalage;
+    // Deux montées-descentes 650 → 1450 Hz : le cri d'une sirène d'ambulance.
+    osc.frequency.setValueAtTime(650, t);
+    osc.frequency.linearRampToValueAtTime(1450, t + 0.42);
+    osc.frequency.linearRampToValueAtTime(650, t + 0.85);
+    osc.frequency.linearRampToValueAtTime(1450, t + 1.27);
+    osc.frequency.linearRampToValueAtTime(650, t + 1.7);
+    const g = ctx.createGain();
+    g.gain.value = type === 'square' ? 0.25 : 0.45;
+    osc.connect(g).connect(gain);
+    osc.start(t);
+    osc.stop(t + 1.8);
+  }
+}
+
+let minuterieSirene: ReturnType<typeof setInterval> | undefined;
+
+/** Démarre la sirène (répétée toutes les 2,5 s) ; sans effet si elle sonne déjà. */
+export function demarrerSirene(): void {
+  if (minuterieSirene) return;
+  lire(jouerSirene);
+  // Son encore bloqué par le navigateur : lire() le jouera à la première interaction, puis on répète.
+  minuterieSirene = setInterval(() => {
+    if (contexte?.state === 'running') jouerSirene(contexte);
+  }, 2500);
+}
+
+export function arreterSirene(): void {
+  clearInterval(minuterieSirene);
+  minuterieSirene = undefined;
+}

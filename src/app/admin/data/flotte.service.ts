@@ -1,15 +1,36 @@
-import { Injectable, computed, signal } from '@angular/core';
-import { Empreinte, hacherMotDePasse, verifierMotDePasse } from '../../shared/mot-de-passe';
+import { HttpClient } from '@angular/common/http';
+import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
+import { API_URL } from '../../shared/api';
+import { dateHeureChiffres } from './format';
+import { PresenceService } from './presence.service';
+import { SessionService } from './session.service';
 
 export type StatutAmbulance = 'Disponible' | 'En mission' | 'Maintenance' | 'Hors service';
 export type TypeAmbulance = 'Type A — transport' | 'Type B — soins d’urgence' | 'Type C — réanimation';
 export type StatutChauffeur = 'Actif' | 'Suspendu';
+export type DisponibiliteChauffeur = 'Disponible' | 'Occupé' | 'Suspendu';
+
+/** Libellé affiché : une ambulance en mission est « Occupée ». */
+export const LIBELLE_STATUT: Record<StatutAmbulance, string> = {
+  'Disponible': 'Disponible', 'En mission': 'Occupée', 'Maintenance': 'Maintenance', 'Hors service': 'Hors service',
+};
+
+/** Dernière position GPS envoyée par l'application chauffeur. */
+export interface PositionAmbulance {
+  lat: number;
+  lng: number;
+  cap: number | null;
+  vitesse: number | null;
+  le: string;
+}
 
 export interface Ambulance {
+  /** Code public (AMB-01). */
   id: string;
   immatriculation: string;
   modele: string;
-  annee: number;
+  annee: number | null;
   type: TypeAmbulance;
   statut: StatutAmbulance;
   chauffeurId: string | null;
@@ -19,8 +40,9 @@ export interface Ambulance {
   /** Niveau de carburant, en %. */
   carburant: number;
   prochaineRevision: string;
-  /** Alerte en cours de prise en charge (page Urgences) ; null hors mission. */
+  /** Urgence en cours (URG-…) ; null hors mission. */
   alerteId: string | null;
+  position: PositionAmbulance | null;
 }
 
 export interface Chauffeur {
@@ -30,64 +52,123 @@ export interface Chauffeur {
   nom: string;
   postnom: string;
   telephone: string;
-  /** Photo d'identité (facultative) : sinon les initiales s'affichent. */
   photo?: string;
   permis: string;
   permisExpire: string;
   statut: StatutChauffeur;
   missionsMois: number;
-  /** Empreinte du mot de passe de l'application ambulance (jamais le mot de passe lui-même). */
-  empreinte?: Empreinte;
-  /** Le mot de passe temporaire devra être changé à la première connexion. */
   doitChangerMotDePasse: boolean;
+  /** Dernière connexion à l'application chauffeur (JJ/MM/AAAA HH:mm). */
   derniereConnexion: string | null;
+  /** Urgence en cours (le chauffeur est « Occupé »). */
+  mission: string | null;
 }
 
-/** Mot de passe des chauffeurs de démonstration (à supprimer avec les données fictives). */
-export const MOT_DE_PASSE_DEMO = 'Ambulance@2026';
+export interface NouveauChauffeur {
+  prenom: string;
+  nom: string;
+  postnom: string;
+  telephone: string;
+  permis: string;
+  permisExpire: string;
+  matricule: string;
+  motDePasse: string;
+  doitChangerMotDePasse: boolean;
+  ambulance: string | null;
+}
 
-export type ResultatConnexion = { chauffeur: Chauffeur } | { erreur: string };
+export interface CarteService {
+  chauffeur: Chauffeur & { ambulance: { code: string; immatriculation: string; statut: StatutAmbulance } | null };
+  emiseLe: string;
+  controle: string;
+  /** QR code (image PNG en data URL). */
+  qr: string;
+}
 
-/** Données fictives — photos libres de droits (Pexels), personnes sans lien avec le projet. */
-const CHAUFFEURS_INITIAUX: Omit<Chauffeur, 'doitChangerMotDePasse' | 'derniereConnexion'>[] = [
-  { id: 'CH-001', matricule: 'CHF-0011', prenom: 'Bienvenu', nom: 'LEMA', postnom: 'NDONGALA', telephone: '+243 81 556 2201', photo: 'images/chauffeurs/chauffeur-1.webp', permis: 'KIN-C-448120', permisExpire: '2028-03-14', statut: 'Actif', missionsMois: 23 },
-  { id: 'CH-002', matricule: 'CHF-0014', prenom: 'Dieudonné', nom: 'MPIA', postnom: 'BOKETSHU', telephone: '+243 99 812 4410', photo: 'images/chauffeurs/chauffeur-2.webp', permis: 'KIN-C-390877', permisExpire: '2026-11-30', statut: 'Actif', missionsMois: 19 },
-  { id: 'CH-003', matricule: 'CHF-0017', prenom: 'Jonathan', nom: 'TSHALA', postnom: 'MULUMBA', telephone: '+243 82 304 7756', photo: 'images/chauffeurs/chauffeur-3.webp', permis: 'KIN-C-512043', permisExpire: '2029-07-02', statut: 'Actif', missionsMois: 15 },
-  { id: 'CH-004', matricule: 'CHF-0021', prenom: 'Fabrice', nom: 'KALOMBO', postnom: 'NGOY', telephone: '+243 97 650 1189', photo: 'images/chauffeurs/chauffeur-4.webp', permis: 'KIN-C-287615', permisExpire: '2027-01-18', statut: 'Actif', missionsMois: 21 },
-  { id: 'CH-005', matricule: 'CHF-0025', prenom: 'Serge', nom: 'MATONDO', postnom: 'NKIAMBI', telephone: '+243 85 471 3392', photo: 'images/chauffeurs/chauffeur-5.webp', permis: 'KIN-C-198402', permisExpire: '2026-09-05', statut: 'Suspendu', missionsMois: 0 },
-  { id: 'CH-006', matricule: 'CHF-0028', prenom: 'Patience', nom: 'MUANDA', postnom: 'LUZOLO', telephone: '+243 81 228 9064', photo: 'images/chauffeurs/chauffeur-6.webp', permis: 'KIN-C-603318', permisExpire: '2030-02-11', statut: 'Actif', missionsMois: 8 },
-];
+type AmbulanceApi = Omit<Ambulance, 'id' | 'alerteId' | 'chauffeurId' | 'prochaineRevision'> & {
+  code: string; urgence: string | null; chauffeurId: string | null; prochaineRevision: string | null;
+};
+type ChauffeurApi = Omit<Chauffeur, 'derniereConnexion' | 'permis' | 'permisExpire'> & {
+  derniereConnexion: string | null; permis?: string; permisExpire: string | null;
+};
 
-const AMBULANCES_INITIALES: Ambulance[] = [
-  { id: 'AMB-02', immatriculation: 'GR-4521-KN', modele: 'Toyota Land Cruiser 78', annee: 2022, type: 'Type B — soins d’urgence', statut: 'En mission', chauffeurId: 'CH-001', infirmier: 'Inf. P. Nkulu', kilometrage: 48210, carburant: 72, prochaineRevision: '2026-12-15', alerteId: 'URG-0192' },
-  { id: 'AMB-04', immatriculation: 'GR-3307-KN', modele: 'Toyota HiAce', annee: 2021, type: 'Type A — transport', statut: 'En mission', chauffeurId: 'CH-002', infirmier: 'Inf. A. Kasongo', kilometrage: 76540, carburant: 45, prochaineRevision: '2026-11-02', alerteId: 'URG-0190' },
-  { id: 'AMB-05', immatriculation: 'GR-6610-KN', modele: 'Toyota Land Cruiser 78', annee: 2024, type: 'Type C — réanimation', statut: 'Disponible', chauffeurId: 'CH-003', infirmier: 'Inf. C. Mbombo', kilometrage: 12980, carburant: 90, prochaineRevision: '2027-03-01', alerteId: null },
-  { id: 'AMB-07', immatriculation: 'GR-1184-KN', modele: 'Nissan Patrol', annee: 2020, type: 'Type B — soins d’urgence', statut: 'Disponible', chauffeurId: 'CH-004', infirmier: 'Inf. L. Ngandu', kilometrage: 102330, carburant: 64, prochaineRevision: '2026-10-28', alerteId: null },
-  { id: 'AMB-09', immatriculation: 'GR-2275-KN', modele: 'Toyota HiAce', annee: 2019, type: 'Type A — transport', statut: 'Maintenance', chauffeurId: null, infirmier: '', kilometrage: 154870, carburant: 20, prochaineRevision: '2026-10-10', alerteId: null },
-];
+const versAmbulance = (a: AmbulanceApi): Ambulance => ({
+  id: a.code, immatriculation: a.immatriculation, modele: a.modele, annee: a.annee, type: a.type, statut: a.statut,
+  chauffeurId: a.chauffeurId ? String(a.chauffeurId) : null, infirmier: a.infirmier, kilometrage: a.kilometrage,
+  carburant: a.carburant, prochaineRevision: a.prochaineRevision ?? '', alerteId: a.urgence, position: a.position ?? null,
+});
+
+const versChauffeur = (c: ChauffeurApi): Chauffeur => ({
+  id: c.id, matricule: c.matricule, prenom: c.prenom, nom: c.nom, postnom: c.postnom, telephone: c.telephone,
+  photo: c.photo ?? undefined, permis: c.permis ?? '', permisExpire: c.permisExpire ?? '', statut: c.statut,
+  missionsMois: c.missionsMois, doitChangerMotDePasse: c.doitChangerMotDePasse,
+  derniereConnexion: c.derniereConnexion ? dateHeureChiffres(c.derniereConnexion) : null, mission: c.mission,
+});
 
 /**
- * Flotte d'ambulances et chauffeurs, gardée en mémoire pendant la session (maquette sans serveur).
- * Partagée par les pages Ambulances, Chauffeurs et Urgences.
+ * Flotte d'ambulances et chauffeurs (API /flotte), tenue à jour en temps réel : changements de
+ * statut (« flotte:ambulance ») et positions GPS envoyées chaque seconde par l'application
+ * chauffeur (« ambulance:position »). Partagée par les pages Ambulances, Chauffeurs et Urgences.
  */
 @Injectable({ providedIn: 'root' })
 export class FlotteService {
-  readonly ambulances = signal<Ambulance[]>(AMBULANCES_INITIALES);
-  readonly chauffeurs = signal<Chauffeur[]>(
-    CHAUFFEURS_INITIAUX.map(c => ({ ...c, doitChangerMotDePasse: false, derniereConnexion: null })),
-  );
+  private http = inject(HttpClient);
+  private session = inject(SessionService);
+  private presence = inject(PresenceService);
+  private url = `${API_URL}/flotte`;
 
-  /** Empreintes des comptes de démonstration, calculées une fois au démarrage. */
-  private pret = Promise.all(this.chauffeurs().map(async c => ({ id: c.id, empreinte: await hacherMotDePasse(MOT_DE_PASSE_DEMO) })))
-    .then(liste => this.chauffeurs.update(cs => cs.map(c => ({ ...c, empreinte: liste.find(l => l.id === c.id)?.empreinte ?? c.empreinte }))));
+  readonly ambulances = signal<Ambulance[]>([]);
+  readonly chauffeurs = signal<Chauffeur[]>([]);
+  readonly charge = signal(false);
 
   /** Chauffeur → ambulance affectée. */
   readonly affectations = computed(() => new Map(
     this.ambulances().filter(a => a.chauffeurId).map(a => [a.chauffeurId!, a] as const),
   ));
 
-  chauffeur(id: string | null): Chauffeur | undefined {
+  /** Ambulances prêtes à partir. */
+  readonly ambulancesDisponibles = computed(() => this.ambulances().filter(a => a.statut === 'Disponible'));
+
+  constructor() {
+    effect(() => {
+      const connecte = this.session.connecte();
+      untracked(() => (connecte ? this.charger().catch(() => {}) : (this.ambulances.set([]), this.chauffeurs.set([]))));
+    });
+    this.presence.sur<AmbulanceApi>('flotte:ambulance', a => this.remplacerAmbulance(versAmbulance(a)));
+    this.presence.sur<PositionAmbulance & { ambulance: string; urgence: string | null }>('ambulance:position', p =>
+      this.ambulances.update(liste => liste.map(a => (a.id === p.ambulance
+        ? { ...a, position: { lat: p.lat, lng: p.lng, cap: p.cap, vitesse: p.vitesse, le: p.le } }
+        : a))));
+    this.presence.surConnexion(() => this.session.connecte() && this.charger().catch(() => {}));
+  }
+
+  async charger(): Promise<void> {
+    const [ambulances, chauffeurs] = await Promise.all([
+      firstValueFrom(this.http.get<AmbulanceApi[]>(`${this.url}/ambulances`)),
+      firstValueFrom(this.http.get<ChauffeurApi[]>(`${this.url}/chauffeurs`)),
+    ]);
+    this.ambulances.set(ambulances.map(versAmbulance));
+    this.chauffeurs.set(chauffeurs.map(versChauffeur));
+    this.charge.set(true);
+  }
+
+  chauffeur(id: string | null | undefined): Chauffeur | undefined {
     return id ? this.chauffeurs().find(c => c.id === id) : undefined;
+  }
+
+  ambulance(code: string | null | undefined): Ambulance | undefined {
+    return code ? this.ambulances().find(a => a.id === code) : undefined;
+  }
+
+  /** « Occupé » pendant une mission (ambulance en mission), sinon disponible ou suspendu. */
+  disponibilite(c: Chauffeur): DisponibiliteChauffeur {
+    if (c.statut === 'Suspendu') return 'Suspendu';
+    return c.mission || this.affectations().get(c.id)?.statut === 'En mission' ? 'Occupé' : 'Disponible';
+  }
+
+  /** Chauffeur connecté à son application en ce moment. */
+  enLigne(c: Chauffeur | undefined): boolean {
+    return !!c && this.presence.chauffeursEnLigne().has(c.id);
   }
 
   /** « Inf. P. Nkulu · B. LEMA » : équipage affiché sur la carte des urgences. */
@@ -98,98 +179,96 @@ export class FlotteService {
 
   // --- Ambulances -----------------------------------------------------------------
 
-  ajouterAmbulance(a: Omit<Ambulance, 'id' | 'statut' | 'alerteId'>): Ambulance {
-    const max = this.ambulances().reduce((m, x) => Math.max(m, parseInt(x.id.split('-')[1], 10) || 0), 0);
-    const nouvelle: Ambulance = { ...a, id: `AMB-${String(max + 1).padStart(2, '0')}`, statut: 'Disponible', alerteId: null };
-    this.ambulances.update(liste => [...liste, nouvelle]);
-    return nouvelle;
+  async ajouterAmbulance(a: Pick<Ambulance, 'immatriculation' | 'modele' | 'annee' | 'type' | 'infirmier' | 'kilometrage' | 'prochaineRevision'> & { chauffeurId: string | null }): Promise<Ambulance> {
+    const r = versAmbulance(await firstValueFrom(this.http.post<AmbulanceApi>(`${this.url}/ambulances`, {
+      ...a, prochaineRevision: a.prochaineRevision || null,
+    })));
+    this.remplacerAmbulance(r);
+    await this.chargerChauffeurs();
+    return r;
   }
 
-  changerStatut(id: string, statut: Exclude<StatutAmbulance, 'En mission'>): void {
-    this.majAmbulance(id, a => a.statut === 'En mission' ? a : { ...a, statut });
+  private async modifierAmbulance(code: string, champs: Record<string, unknown>): Promise<Ambulance> {
+    const r = versAmbulance(await firstValueFrom(this.http.patch<AmbulanceApi>(`${this.url}/ambulances/${code}`, champs)));
+    this.remplacerAmbulance(r);
+    return r;
   }
 
-  /** Un chauffeur ne conduit qu'une ambulance : il est retiré de la précédente. */
-  affecterChauffeur(ambulanceId: string, chauffeurId: string | null): void {
-    this.ambulances.update(liste => liste.map(a => {
-      if (a.id === ambulanceId) return { ...a, chauffeurId };
-      if (chauffeurId && a.chauffeurId === chauffeurId) return { ...a, chauffeurId: null };
-      return a;
-    }));
+  changerStatut(code: string, statut: Exclude<StatutAmbulance, 'En mission'>): Promise<Ambulance> {
+    return this.modifierAmbulance(code, { statut });
   }
 
-  /** Envoi d'une ambulance sur une alerte (ou fin de mission avec null). */
-  engager(ambulanceId: string, alerteId: string | null): void {
-    this.majAmbulance(ambulanceId, a => ({ ...a, alerteId, statut: alerteId ? 'En mission' : 'Disponible' }));
+  /** Un chauffeur ne conduit qu'une ambulance : le serveur le retire de la précédente. */
+  async affecterChauffeur(code: string, chauffeurId: string | null): Promise<Ambulance> {
+    const r = await this.modifierAmbulance(code, { chauffeurId });
+    await this.chargerAmbulances();
+    return r;
   }
 
-  /** Ambulance prête à partir : disponible, avec un chauffeur actif. */
-  premiereDisponible(): Ambulance | undefined {
-    return this.ambulances().find(a => a.statut === 'Disponible' && this.chauffeur(a.chauffeurId)?.statut === 'Actif');
+  private remplacerAmbulance(a: Ambulance): void {
+    this.ambulances.update(liste => (liste.some(x => x.id === a.id)
+      ? liste.map(x => (x.id === a.id ? { ...a, position: a.position ?? x.position } : x))
+      : [...liste, a].sort((x, y) => x.id.localeCompare(y.id))));
+  }
+
+  private async chargerAmbulances(): Promise<void> {
+    this.ambulances.set((await firstValueFrom(this.http.get<AmbulanceApi[]>(`${this.url}/ambulances`))).map(versAmbulance));
   }
 
   // --- Chauffeurs -----------------------------------------------------------------
 
-  /** Matricule attribué au prochain chauffeur : c'est son identifiant de connexion. */
-  prochainMatricule(): string {
-    const max = this.chauffeurs().reduce((m, x) => Math.max(m, parseInt(x.matricule.split('-')[1], 10) || 0), 0);
-    return `CHF-${String(max + 1).padStart(4, '0')}`;
+  private async chargerChauffeurs(): Promise<void> {
+    this.chauffeurs.set((await firstValueFrom(this.http.get<ChauffeurApi[]>(`${this.url}/chauffeurs`))).map(versChauffeur));
   }
 
-  async ajouterChauffeur(
-    c: Omit<Chauffeur, 'id' | 'matricule' | 'statut' | 'missionsMois' | 'empreinte' | 'derniereConnexion'>,
-    motDePasse: string,
-  ): Promise<Chauffeur> {
-    const nouvel: Chauffeur = {
-      ...c,
-      id: `CH-${String(this.chauffeurs().length + 1).padStart(3, '0')}`,
-      matricule: this.prochainMatricule(),
-      statut: 'Actif',
-      missionsMois: 0,
-      empreinte: await hacherMotDePasse(motDePasse),
-      derniereConnexion: null,
-    };
-    this.chauffeurs.update(liste => [nouvel, ...liste]);
-    return nouvel;
+  /** Matricule proposé pour le prochain chauffeur (modifiable) : son identifiant de connexion. */
+  async prochainMatricule(): Promise<string> {
+    return (await firstValueFrom(this.http.get<{ matricule: string }>(`${this.url}/chauffeurs/prochain-matricule`))).matricule;
   }
 
-  async definirMotDePasse(id: string, motDePasse: string, doitChanger: boolean): Promise<void> {
-    const empreinte = await hacherMotDePasse(motDePasse);
-    this.chauffeurs.update(liste => liste.map(c => c.id === id ? { ...c, empreinte, doitChangerMotDePasse: doitChanger } : c));
+  /** Création du compte : le mot de passe part en HTTPS, le serveur le hache. */
+  async ajouterChauffeur(c: NouveauChauffeur, photo: File): Promise<Chauffeur> {
+    const f = new FormData();
+    f.append('donnees', JSON.stringify(c));
+    f.append('photo', photo);
+    const r = versChauffeur(await firstValueFrom(this.http.post<ChauffeurApi>(`${this.url}/chauffeurs`, f)));
+    this.chauffeurs.update(liste => [r, ...liste]);
+    if (c.ambulance) await this.chargerAmbulances();
+    return r;
   }
 
-  /** Connexion à l'application ambulance avec le matricule et le mot de passe. */
-  async connecter(matricule: string, motDePasse: string): Promise<ResultatConnexion> {
-    await this.pret;
-    const m = matricule.trim().toUpperCase();
-    const c = this.chauffeurs().find(x => x.matricule === m);
-    // Message identique que le matricule existe ou non : on ne révèle pas les comptes.
-    const refus = { erreur: 'Matricule ou mot de passe incorrect.' };
-    if (!c?.empreinte || !(await verifierMotDePasse(motDePasse, c.empreinte))) return refus;
-    if (c.statut === 'Suspendu') return { erreur: 'Votre compte est suspendu. Contactez le superviseur des secours.' };
-
-    const maintenant = new Date().toISOString().slice(0, 16).replace('T', ' ');
-    this.chauffeurs.update(liste => liste.map(x => x.id === c.id ? { ...x, derniereConnexion: maintenant } : x));
-    return { chauffeur: this.chauffeur(c.id)! };
+  async modifierChauffeur(id: string, champs: Partial<NouveauChauffeur>, photo?: File): Promise<Chauffeur> {
+    const f = new FormData();
+    f.append('donnees', JSON.stringify(champs));
+    if (photo) f.append('photo', photo);
+    const r = versChauffeur(await firstValueFrom(this.http.patch<ChauffeurApi>(`${this.url}/chauffeurs/${id}`, f)));
+    this.chauffeurs.update(liste => liste.map(x => (x.id === id ? r : x)));
+    return r;
   }
 
-  /** Un chauffeur suspendu est retiré de son ambulance (sauf en mission). */
-  basculerChauffeur(id: string): void {
+  /** Nouveau mot de passe temporaire (généré par le serveur), à remettre au chauffeur en personne. */
+  reinitialiserMotDePasse(id: string): Promise<{ matricule: string; motDePasse: string }> {
+    return firstValueFrom(this.http.post<{ matricule: string; motDePasse: string }>(`${this.url}/chauffeurs/${id}/mot-de-passe`, {}));
+  }
+
+  /** Suspension ou réactivation ; un chauffeur suspendu est retiré de son ambulance. */
+  async basculerChauffeur(id: string): Promise<Chauffeur> {
     const c = this.chauffeur(id);
-    if (!c) return;
-    const statut: StatutChauffeur = c.statut === 'Actif' ? 'Suspendu' : 'Actif';
-    this.chauffeurs.update(liste => liste.map(x => x.id === id ? { ...x, statut } : x));
-    const amb = this.affectations().get(id);
-    if (statut === 'Suspendu' && amb && amb.statut !== 'En mission') this.affecterChauffeur(amb.id, null);
+    const statut: StatutChauffeur = c?.statut === 'Actif' ? 'Suspendu' : 'Actif';
+    const r = versChauffeur(await firstValueFrom(this.http.patch<ChauffeurApi>(`${this.url}/chauffeurs/${id}/statut`, { statut })));
+    this.chauffeurs.update(liste => liste.map(x => (x.id === id ? r : x)));
+    if (statut === 'Suspendu') await this.chargerAmbulances();
+    return r;
   }
 
-  private majAmbulance(id: string, f: (a: Ambulance) => Ambulance): void {
-    this.ambulances.update(liste => liste.map(a => a.id === id ? f(a) : a));
+  carteService(id: string): Promise<CarteService> {
+    return firstValueFrom(this.http.get<CarteService>(`${this.url}/chauffeurs/${id}/carte-service`));
   }
 }
 
 /** Jours restants avant une date AAAA-MM-JJ (négatif si dépassée). */
 export function joursAvant(iso: string): number {
+  if (!iso) return Infinity;
   const aujourdhui = new Date();
   aujourdhui.setHours(0, 0, 0, 0);
   return Math.round((new Date(iso + 'T00:00:00').getTime() - aujourdhui.getTime()) / 86_400_000);
