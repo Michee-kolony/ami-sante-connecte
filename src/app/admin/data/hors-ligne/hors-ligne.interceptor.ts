@@ -1,9 +1,12 @@
-import { HttpErrorResponse, HttpEvent, HttpInterceptorFn, HttpResponse } from '@angular/common/http';
+import { HttpErrorResponse, HttpEvent, HttpInterceptorFn, HttpRequest, HttpResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Observable, catchError, from, mergeMap, of, tap, throwError } from 'rxjs';
 import { API_URL } from '../../../shared/api';
 import { HorsLigneService, REJEU, depuisFormData, estPanneReseau } from './hors-ligne.service';
 import { ecrire, lire } from './stockage';
+
+/** Liste complète des patientes suivies (copiée par la préparation hors connexion). */
+export const CLE_INDEX_PATIENTES = 'index:patientes';
 
 /**
  * Modules utilisables sans connexion : patientes et CPN (grossesses, consultations, rendez-vous),
@@ -42,9 +45,9 @@ export const horsLigneInterceptor: HttpInterceptorFn = (req, next) => {
       catchError((err: HttpErrorResponse) => {
         if (!estPanneReseau(err.status)) return throwError(() => err);
         horsLigne.signalerReseau(false);
-        return from(lire<{ corps: unknown; le: string }>('lectures', cle).catch(() => undefined)).pipe(
-          mergeMap((garde): Observable<HttpEvent<unknown>> => (garde
-            ? of(new HttpResponse({ status: 200, body: garde.corps, url: req.url }))
+        return from(lire<{ corps: unknown; le: string }>('lectures', cle).catch(() => undefined).then(garde => garde?.corps ?? rechercheLocale(req, c))).pipe(
+          mergeMap((corps): Observable<HttpEvent<unknown>> => (corps !== undefined
+            ? of(new HttpResponse({ status: 200, body: corps, url: req.url }))
             : throwError(() => new HttpErrorResponse({
               status: 0, url: req.url,
               error: { message: 'Hors connexion : ces données n’ont pas encore été consultées sur cet appareil.' },
@@ -89,3 +92,39 @@ export const horsLigneInterceptor: HttpInterceptorFn = (req, next) => {
     }),
   );
 };
+
+interface Fiche { numero: string; nom: string; postnom?: string; prenom: string }
+type Lu<T> = { corps: T } | undefined;
+
+/** Chaque mot recherché figure dans le numéro, le nom, le postnom ou le prénom (comme le serveur). */
+function correspond(f: Fiche, q: string): boolean {
+  const texte = [f.numero, f.nom, f.postnom, f.prenom].join(' ').toLowerCase();
+  return q.toLowerCase().split(/\s+/).filter(Boolean).every(m => texte.includes(m));
+}
+
+/**
+ * Recherche sans réseau, faite sur l'appareil : patientes (liste copiée par la préparation hors
+ * connexion) et enfants (dernière liste reçue). undefined si rien n'a été copié.
+ */
+async function rechercheLocale(req: HttpRequest<unknown>, c: string): Promise<unknown> {
+  const p = req.params;
+  const q = p.get('q') ?? '';
+  if (/^patientes(\?|$)/.test(c)) {
+    const index = await lire<Lu<(Fiche & { statut: string; province: string })[]>>('lectures', CLE_INDEX_PATIENTES).catch(() => undefined);
+    if (!index) return undefined;
+    const page = Math.max(1, Number(p.get('page')) || 1);
+    const parPage = Math.max(1, Number(p.get('parPage')) || 20);
+    const trouvees = index.corps.filter(f => correspond(f, q)
+      && (!p.get('statut') || f.statut === p.get('statut'))
+      && (!p.get('province') || f.province === p.get('province')));
+    return { total: trouvees.length, page, parPage, resultats: trouvees.slice((page - 1) * parPage, page * parPage) };
+  }
+  if (/^enfants(\?|$)/.test(c)) {
+    const liste = await lire<Lu<(Fiche & { mereId?: string; vaccination?: { enRetard?: number } })[]>>('lectures', `${API_URL}/enfants`).catch(() => undefined);
+    if (!liste) return undefined;
+    return liste.corps.filter(e => correspond(e, q)
+      && (!p.get('mereId') || e.mereId === p.get('mereId'))
+      && (p.get('retard') !== 'true' || (e.vaccination?.enRetard ?? 0) > 0));
+  }
+  return undefined;
+}

@@ -3,6 +3,7 @@ import { DatePipe } from '@angular/common';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { STRUCTURE, UTILISATEUR } from '../data/mock-data';
 import { HorsLigneService } from '../data/hors-ligne/hors-ligne.service';
+import { PreparationHorsLigneService } from '../data/hors-ligne/preparation.service';
 import { UrgencesService } from '../data/urgences.service';
 import { SessionService } from '../data/session.service';
 import { PresenceService } from '../data/presence.service';
@@ -93,6 +94,8 @@ export class ShellComponent {
   menuOpen = false;
   /** Travail hors connexion : état du réseau et saisies en attente d'envoi. */
   horsLigne = inject(HorsLigneService);
+  /** Copie automatique des dossiers actifs sur l'appareil (démarrée avec l'espace administrateur). */
+  private preparation = inject(PreparationHorsLigneService);
   get pending(): number {
     return this.horsLigne.enAttente() + this.horsLigne.enEchec();
   }
