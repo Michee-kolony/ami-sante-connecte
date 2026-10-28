@@ -9,7 +9,7 @@ const PHOTO_MAX_OCTETS = 2 * 1024 * 1024;
 
 function formulaireVide() {
   return {
-    matricule: '', prenom: '', nom: '', postnom: '', telephone: '', permis: '', permisExpire: '', ambulanceId: null as string | null,
+    prenom: '', nom: '', postnom: '', telephone: '', permis: '', permisExpire: '', ambulanceId: null as string | null,
     motDePasse: '', confirmation: '', doitChangerMotDePasse: true,
   };
 }
@@ -125,18 +125,13 @@ export class ChauffeursComponent implements OnDestroy {
     return !!p && this.chauffeurs().some(c => c.permis === p);
   }
 
-  async ouvrir(): Promise<void> {
+  ouvrir(): void {
     this.form = formulaireVide();
     this.retirerPhoto();
     this.afficherMdp = false;
     this.erreur = '';
     this.panneauOuvert = true;
     document.body.style.overflow = 'hidden';
-    try {
-      this.form.matricule = await this.flotte.prochainMatricule();
-    } catch {
-      /* le matricule peut être saisi à la main */
-    }
   }
 
   fermer(): void {
@@ -173,7 +168,6 @@ export class ChauffeursComponent implements OnDestroy {
     this.erreur = '';
     try {
       const c = await this.flotte.ajouterChauffeur({
-        matricule: this.form.matricule.trim().toUpperCase(),
         prenom: this.form.prenom.trim(),
         nom: this.form.nom.trim().toUpperCase(),
         postnom: this.form.postnom.trim().toUpperCase(),

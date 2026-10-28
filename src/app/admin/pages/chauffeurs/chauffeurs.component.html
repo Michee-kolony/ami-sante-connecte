@@ -204,12 +204,6 @@
         <section>
           <h3 class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-id-card"></i> Identité</h3>
           <div class="grid gap-4 sm:grid-cols-2">
-            <div class="sm:col-span-2">
-              <label class="label" for="ch-matricule">Matricule (identifiant de connexion) <span class="req">*</span></label>
-              <input id="ch-matricule" name="matricule" class="input font-mono uppercase" [(ngModel)]="form.matricule" #mat="ngModel" required pattern="[A-Za-z0-9][A-Za-z0-9\-]{2,19}"
-                     [class.border-rose-400]="mat.invalid && (mat.touched || f.submitted)">
-              <p class="mt-1.5 text-xs text-slate-500 dark:text-slate-400">Proposé automatiquement ; modifiable (lettres, chiffres et tirets).</p>
-            </div>
             <div>
               <label class="label" for="ch-prenom">Prénom <span class="req">*</span></label>
               <input id="ch-prenom" name="prenom" class="input" [(ngModel)]="form.prenom" #prenom="ngModel" required autocomplete="given-name"
@@ -268,7 +262,7 @@
         <section class="rounded-2xl border border-slate-200 p-4 dark:border-slate-800 sm:p-5">
           <h3 class="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-lock"></i> Accès à l’application ami-connecte-chauffeur</h3>
           <p class="mb-4 text-xs text-slate-500 dark:text-slate-400">
-            Le chauffeur se connectera avec son matricule <span class="font-mono font-semibold text-slate-700 dark:text-slate-200">{{ form.matricule.toUpperCase() }}</span> et ce mot de passe pour recevoir ses missions et suivre l’itinéraire vers les patientes.
+            Le chauffeur se connectera avec son <strong class="font-semibold text-slate-700 dark:text-slate-200">matricule</strong>, attribué automatiquement et affiché après l’enregistrement, et ce mot de passe pour recevoir ses missions et suivre l’itinéraire vers les patientes.
           </p>
 
           <div class="space-y-4">

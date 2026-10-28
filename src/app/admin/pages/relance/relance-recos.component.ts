@@ -93,9 +93,6 @@ import { RelanceService, type Reco } from '../../data/relance.service';
         <div class="sm:col-span-2"><label class="label" for="rz">Secteur couvert (quartiers, villages, avenues)</label>
           <input id="rz" name="rz" class="input" [(ngModel)]="zones" placeholder="Salongo, Kemi, Livulu">
           <p class="hint">Séparez par des virgules. Les tâches d’une personne habitant l’un de ces quartiers sont attribuées automatiquement à ce RECO (au moins chargé s’ils sont plusieurs).</p></div>
-        @if (!e.id) {
-          <div><label class="label" for="rm">Matricule</label><input id="rm" name="rm" class="input font-mono" [(ngModel)]="e.matricule"><p class="hint">Identifiant de connexion du RECO.</p></div>
-        }
       </div>
       <div class="flex justify-end gap-2">
         <button type="button" class="btn-ghost" (click)="edition.set(null)">Annuler</button>
@@ -200,11 +197,10 @@ export class RelanceRecosComponent implements OnInit {
     if (r) this.recos.set(r);
   }
 
-  async nouveau(): Promise<void> {
-    const matricule = await this.faire(() => this.service.prochainMatricule());
+  nouveau(): void {
     this.zones = '';
     this.photo = null;
-    this.edition.set({ prenom: '', nom: '', postnom: '', sexe: 'F', telephone: '', aireSante: '', matricule: matricule ?? '', etablissementId: this.session.etablissement()?.id });
+    this.edition.set({ prenom: '', nom: '', postnom: '', sexe: 'F', telephone: '', aireSante: '', etablissementId: this.session.etablissement()?.id });
   }
 
   modifier(r: Reco): void {
@@ -227,7 +223,7 @@ export class RelanceRecosComponent implements OnInit {
       if (!r) return;
       this.recos.update(l => l.map(x => (x.id === r.id ? { ...x, ...r } : x)));
     } else {
-      const r = await this.faire(() => this.service.creerReco({ ...donnees, matricule: e.matricule, etablissementId: e.etablissementId }, photo!));
+      const r = await this.faire(() => this.service.creerReco({ ...donnees, etablissementId: e.etablissementId }, photo!));
       if (!r) return;
       this.recos.update(l => [...l, r.reco]);
       if (r.motDePasse) this.secret.set({ matricule: r.reco.matricule, motDePasse: r.motDePasse });

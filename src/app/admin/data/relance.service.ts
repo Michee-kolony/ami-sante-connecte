@@ -382,10 +382,6 @@ export class RelanceService {
     return this.get('/recos');
   }
 
-  prochainMatricule(): Promise<string> {
-    return this.get<{ matricule: string }>('/recos/prochain-matricule').then(r => r.matricule);
-  }
-
   /** Création du compte : la photo de profil est obligatoire (formulaire multipart). */
   creerReco(d: Partial<Reco> & { motDePasse?: string }, photo: File): Promise<{ reco: Reco; motDePasse: string | null }> {
     return this.post('/recos', formulaire(d, photo));

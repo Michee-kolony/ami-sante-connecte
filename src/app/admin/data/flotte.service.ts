@@ -71,7 +71,6 @@ export interface NouveauChauffeur {
   telephone: string;
   permis: string;
   permisExpire: string;
-  matricule: string;
   motDePasse: string;
   doitChangerMotDePasse: boolean;
   ambulance: string | null;
@@ -219,11 +218,6 @@ export class FlotteService {
 
   private async chargerChauffeurs(): Promise<void> {
     this.chauffeurs.set((await firstValueFrom(this.http.get<ChauffeurApi[]>(`${this.url}/chauffeurs`))).map(versChauffeur));
-  }
-
-  /** Matricule proposé pour le prochain chauffeur (modifiable) : son identifiant de connexion. */
-  async prochainMatricule(): Promise<string> {
-    return (await firstValueFrom(this.http.get<{ matricule: string }>(`${this.url}/chauffeurs/prochain-matricule`))).matricule;
   }
 
   /** Création du compte : le mot de passe part en HTTPS, le serveur le hache. */
