@@ -6,6 +6,7 @@ import { AvatarComponent } from '../../components/avatar.component';
 import { PrisePhotoComponent } from '../../components/prise-photo.component';
 import { RelanceService, type Reco } from '../../data/relance.service';
 import { EtablissementsService } from '../../data/etablissements.service';
+import { genererMotDePasse, reglesMotDePasse } from '../../../shared/mot-de-passe';
 
 /**
  * Comptes des relais communautaires (RECO) : création, secteur couvert (attribution automatique
@@ -21,8 +22,8 @@ import { EtablissementsService } from '../../data/etablissements.service';
   @if (secret(); as s) {
     <div class="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100" role="status">
       <p><i class="fa-solid fa-key"></i> Identifiants à remettre <strong>en personne</strong> au RECO (ils ne seront plus affichés) :</p>
-      <p class="mt-1 font-mono text-base">{{ s.matricule }} · {{ s.motDePasse }}</p>
-      <p class="mt-1 text-xs">Il devra choisir son propre mot de passe à la première connexion sur <strong>/reco</strong>.</p>
+      <p class="mt-1 font-mono text-base">{{ s.matricule }} · {{ s.motDePasse ?? 'mot de passe que vous avez choisi' }}</p>
+      <p class="mt-1 text-xs">{{ s.doitChanger ? 'Il devra choisir son propre mot de passe à la première connexion sur /reco.' : 'Il se connecte sur /reco avec ce mot de passe.' }}</p>
       <button type="button" class="btn-ghost mt-2 text-xs" (click)="secret.set(null)">J’ai remis les identifiants</button>
     </div>
   }
@@ -101,6 +102,46 @@ import { EtablissementsService } from '../../data/etablissements.service';
           <input id="rz" name="rz" class="input" [(ngModel)]="zones" placeholder="Salongo, Kemi, Livulu">
           <p class="hint">Séparez par des virgules. Les tâches d’une personne habitant l’un de ces quartiers sont attribuées automatiquement à ce RECO (au moins chargé s’ils sont plusieurs).</p></div>
       </div>
+      @if (!e.id) {
+        <section class="space-y-3 rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+          <h4 class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-lock"></i> Mot de passe de l’application RECO</h4>
+          <div class="grid gap-2 sm:grid-cols-2">
+            <label class="flex cursor-pointer items-start gap-2 rounded-xl border p-3 text-sm" [class]="mdp.mode === 'choisi' ? 'border-brand-500 bg-brand-50/60 dark:bg-brand-500/10' : 'border-slate-200 dark:border-slate-700'">
+              <input type="radio" name="mdpMode" value="choisi" class="mt-0.5" [(ngModel)]="mdp.mode"> <span><strong>Je choisis le mot de passe</strong><br><span class="text-xs text-slate-500">Saisi ici, remis au RECO en personne.</span></span>
+            </label>
+            <label class="flex cursor-pointer items-start gap-2 rounded-xl border p-3 text-sm" [class]="mdp.mode === 'genere' ? 'border-brand-500 bg-brand-50/60 dark:bg-brand-500/10' : 'border-slate-200 dark:border-slate-700'">
+              <input type="radio" name="mdpMode" value="genere" class="mt-0.5" [(ngModel)]="mdp.mode"> <span><strong>Mot de passe temporaire</strong><br><span class="text-xs text-slate-500">Généré par le serveur, affiché une fois.</span></span>
+            </label>
+          </div>
+          @if (mdp.mode === 'choisi') {
+            <div>
+              <label class="label" for="rmdp">Mot de passe <span class="req">*</span></label>
+              <div class="relative">
+                <input id="rmdp" name="rmdp" [type]="mdp.voir ? 'text' : 'password'" class="input pr-20 font-mono" autocomplete="new-password" [(ngModel)]="mdp.valeur">
+                <div class="absolute inset-y-0 right-2 flex items-center gap-1">
+                  <button type="button" class="rounded-md px-1.5 py-1 text-slate-400 hover:text-slate-600" (click)="mdp.voir = !mdp.voir" [attr.aria-label]="mdp.voir ? 'Masquer' : 'Afficher'"><i class="fa-regular" [class]="mdp.voir ? 'fa-eye-slash' : 'fa-eye'"></i></button>
+                  <button type="button" class="rounded-md px-1.5 py-1 text-slate-400 hover:text-brand-600" (click)="proposerMotDePasse()" title="Proposer un mot de passe solide" aria-label="Proposer un mot de passe solide"><i class="fa-solid fa-wand-magic-sparkles"></i></button>
+                </div>
+              </div>
+              <ul class="mt-2 grid gap-1 text-xs sm:grid-cols-2">
+                @for (r of regles(); track r.texte) {
+                  <li [class]="r.ok ? 'text-accent-600 dark:text-accent-400' : 'text-slate-500'"><i class="fa-solid" [class]="r.ok ? 'fa-circle-check' : 'fa-circle'"></i> {{ r.texte }}</li>
+                }
+              </ul>
+            </div>
+            <div>
+              <label class="label" for="rmdp2">Confirmation <span class="req">*</span></label>
+              <input id="rmdp2" name="rmdp2" [type]="mdp.voir ? 'text' : 'password'" class="input font-mono" autocomplete="new-password" [(ngModel)]="mdp.confirmation"
+                     [class.border-rose-400]="mdp.confirmation && mdp.confirmation !== mdp.valeur">
+              @if (mdp.confirmation && mdp.confirmation !== mdp.valeur) { <p class="mt-1 text-xs text-rose-600">Les deux mots de passe sont différents.</p> }
+            </div>
+            <label class="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
+              <input type="checkbox" name="rdoit" class="mt-0.5 h-4 w-4 rounded border-slate-300" [(ngModel)]="mdp.doitChanger">
+              <span>Le RECO devra choisir son propre mot de passe à la première connexion <span class="text-xs text-slate-500">(recommandé)</span></span>
+            </label>
+          }
+        </section>
+      }
       <div class="flex justify-end gap-2">
         <button type="button" class="btn-ghost" (click)="edition.set(null)">Annuler</button>
         <button type="submit" class="btn-primary" [disabled]="envoi()">Enregistrer</button>
@@ -181,7 +222,18 @@ export class RelanceRecosComponent implements OnInit {
   edition = signal<Partial<Reco> | null>(null);
   zones = '';
   photo: File | null = null;
-  secret = signal<{ matricule: string; motDePasse: string } | null>(null);
+  secret = signal<{ matricule: string; motDePasse: string | null; doitChanger: boolean } | null>(null);
+  /** Mot de passe à la création : choisi par l'admin ou temporaire généré par le serveur. */
+  mdp = { mode: 'choisi' as 'choisi' | 'genere', valeur: '', confirmation: '', voir: false, doitChanger: true };
+
+  regles() {
+    return reglesMotDePasse(this.mdp.valeur);
+  }
+
+  proposerMotDePasse(): void {
+    this.mdp.valeur = this.mdp.confirmation = genererMotDePasse();
+    this.mdp.voir = true;
+  }
   erreur = signal('');
   envoi = signal(false);
 
@@ -209,6 +261,7 @@ export class RelanceRecosComponent implements OnInit {
   }
 
   nouveau(): void {
+    this.mdp = { mode: 'choisi', valeur: '', confirmation: '', voir: false, doitChanger: true };
     this.zones = '';
     this.photo = null;
     this.edition.set({ prenom: '', nom: '', postnom: '', sexe: 'F', telephone: '', aireSante: '', etablissementId: this.session.etablissement()?.id ?? (this.structures().length === 1 ? this.structures()[0].id : undefined) });
@@ -238,10 +291,22 @@ export class RelanceRecosComponent implements OnInit {
       if (!r) return;
       this.recos.update(l => l.map(x => (x.id === r.id ? { ...x, ...r } : x)));
     } else {
-      const r = await this.faire(() => this.service.creerReco(donnees, photo!));
+      const choisi = this.mdp.mode === 'choisi';
+      if (choisi && !this.regles().every(x => x.ok)) {
+        this.erreur.set('Mot de passe trop faible : 10 caractères, majuscules, minuscules, chiffre et caractère spécial.');
+        return;
+      }
+      if (choisi && this.mdp.confirmation !== this.mdp.valeur) {
+        this.erreur.set('La confirmation ne correspond pas au mot de passe.');
+        return;
+      }
+      const r = await this.faire(() => this.service.creerReco(
+        choisi ? { ...donnees, motDePasse: this.mdp.valeur, doitChangerMotDePasse: this.mdp.doitChanger } : donnees, photo!));
       if (!r) return;
       this.recos.update(l => [...l, r.reco]);
-      if (r.motDePasse) this.secret.set({ matricule: r.reco.matricule, motDePasse: r.motDePasse });
+      // Le matricule (attribué par le serveur) est toujours affiché ; le mot de passe seulement s'il a été généré.
+      this.secret.set({ matricule: r.reco.matricule, motDePasse: r.motDePasse, doitChanger: r.reco.doitChangerMotDePasse });
+      this.mdp = { mode: 'choisi', valeur: '', confirmation: '', voir: false, doitChanger: true };
     }
     this.photo = null;
     this.edition.set(null);
@@ -250,7 +315,7 @@ export class RelanceRecosComponent implements OnInit {
   async motDePasse(r: Reco): Promise<void> {
     if (!confirm(`Générer un nouveau mot de passe temporaire pour ${r.prenom} ${r.nom} ? Ses sessions ouvertes seront fermées.`)) return;
     const s = await this.faire(() => this.service.reinitialiserMotDePasse(r.id));
-    if (s) this.secret.set(s);
+    if (s) this.secret.set({ ...s, doitChanger: true });
   }
 
   async revoquer(r: Reco): Promise<void> {

@@ -383,7 +383,7 @@ export class RelanceService {
   }
 
   /** Création du compte : la photo de profil est obligatoire (formulaire multipart). */
-  creerReco(d: Partial<Reco> & { motDePasse?: string }, photo: File): Promise<{ reco: Reco; motDePasse: string | null }> {
+  creerReco(d: Partial<Reco> & { motDePasse?: string; doitChangerMotDePasse?: boolean }, photo: File): Promise<{ reco: Reco; motDePasse: string | null }> {
     return this.post('/recos', formulaire(d, photo));
   }
 
