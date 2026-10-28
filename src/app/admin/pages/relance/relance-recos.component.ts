@@ -1,0 +1,162 @@
+import { Component, OnInit, inject, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { SessionService, messageErreur } from '../../data/session.service';
+import { RelanceService, type Reco } from '../../data/relance.service';
+
+/**
+ * Comptes des relais communautaires (RECO) : création, secteur couvert (attribution automatique
+ * des tâches), suspension, mot de passe temporaire et révocation des sessions d'un téléphone perdu.
+ */
+@Component({
+  selector: 'app-relance-recos',
+  standalone: true,
+  imports: [DatePipe, FormsModule],
+  template: `
+<div class="space-y-4">
+  @if (erreur()) { <p class="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:bg-rose-500/10 dark:text-rose-200" role="alert">{{ erreur() }}</p> }
+  @if (secret(); as s) {
+    <div class="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100" role="status">
+      <p><i class="fa-solid fa-key"></i> Identifiants à remettre <strong>en personne</strong> au RECO (ils ne seront plus affichés) :</p>
+      <p class="mt-1 font-mono text-base">{{ s.matricule }} · {{ s.motDePasse }}</p>
+      <p class="mt-1 text-xs">Il devra choisir son propre mot de passe à la première connexion sur <strong>/reco</strong>.</p>
+      <button type="button" class="btn-ghost mt-2 text-xs" (click)="secret.set(null)">J’ai remis les identifiants</button>
+    </div>
+  }
+
+  <div class="card overflow-hidden">
+    <div class="card-header">
+      <h2 class="card-title"><i class="fa-solid fa-people-group text-brand-600"></i> Relais communautaires ({{ recos().length }})</h2>
+      <button type="button" class="btn-primary text-xs" (click)="nouveau()"><i class="fa-solid fa-user-plus"></i> Ajouter un RECO</button>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
+        <thead class="bg-slate-50/70 dark:bg-slate-800/50"><tr>
+          <th class="table-th">RECO</th><th class="table-th">Secteur</th><th class="table-th">Tâches</th><th class="table-th">Synchronisation</th><th class="table-th">Statut</th><th class="table-th"><span class="sr-only">Actions</span></th>
+        </tr></thead>
+        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+          @for (r of recos(); track r.id) {
+            <tr>
+              <td class="table-td"><p class="font-medium text-slate-800 dark:text-slate-100">{{ r.prenom }} {{ r.nom }}</p><p class="text-xs text-slate-500">{{ r.matricule }} · {{ r.telephone }}</p></td>
+              <td class="table-td"><p>{{ r.zones.join(', ') || '—' }}</p><p class="text-xs text-slate-500">{{ r.aireSante }}</p></td>
+              <td class="table-td whitespace-nowrap">{{ r.ouvertes }} ouverte(s) @if (r.enRetard) { <span class="text-rose-600">· {{ r.enRetard }} en retard</span> }</td>
+              <td class="table-td whitespace-nowrap text-xs">{{ r.derniereSynchronisation ? (r.derniereSynchronisation | date:'dd/MM/yyyy HH:mm') : 'jamais' }}</td>
+              <td class="table-td"><span class="badge" [class]="r.statut === 'Actif' ? 'bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300' : 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300'">{{ r.statut }}</span></td>
+              <td class="table-td whitespace-nowrap text-right">
+                <button type="button" class="btn-ghost px-2 text-xs" (click)="modifier(r)" title="Modifier"><i class="fa-solid fa-pen"></i></button>
+                <button type="button" class="btn-ghost px-2 text-xs" (click)="motDePasse(r)" title="Nouveau mot de passe temporaire"><i class="fa-solid fa-key"></i></button>
+                <button type="button" class="btn-ghost px-2 text-xs" (click)="revoquer(r)" title="Téléphone perdu : révoquer les sessions"><i class="fa-solid fa-mobile-screen-button"></i></button>
+                <button type="button" class="btn-ghost px-2 text-xs" (click)="basculer(r)" [title]="r.statut === 'Actif' ? 'Suspendre' : 'Réactiver'"><i class="fa-solid" [class]="r.statut === 'Actif' ? 'fa-user-lock' : 'fa-user-check'"></i></button>
+              </td>
+            </tr>
+          } @empty { <tr><td colspan="6" class="px-5 py-8 text-center text-sm text-slate-500">Aucun RECO enregistré pour cette structure.</td></tr> }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  @if (edition(); as e) {
+    <form class="card space-y-4 p-5" (ngSubmit)="enregistrer()">
+      <h3 class="card-title">{{ e.id ? 'Modifier ' + e.matricule : 'Nouveau RECO' }}</h3>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div><label class="label" for="rp">Prénom <span class="req">*</span></label><input id="rp" name="rp" class="input" [(ngModel)]="e.prenom" required></div>
+        <div><label class="label" for="rn">Nom <span class="req">*</span></label><input id="rn" name="rn" class="input" [(ngModel)]="e.nom" required></div>
+        <div><label class="label" for="rpn">Postnom</label><input id="rpn" name="rpn" class="input" [(ngModel)]="e.postnom"></div>
+        <div><label class="label" for="rs">Sexe <span class="req">*</span></label>
+          <select id="rs" name="rs" class="input" [(ngModel)]="e.sexe" required><option value="F">Femme</option><option value="M">Homme</option></select></div>
+        <div><label class="label" for="rt">Téléphone <span class="req">*</span></label><input id="rt" name="rt" class="input" [(ngModel)]="e.telephone" required></div>
+        <div><label class="label" for="ra">Aire de santé</label><input id="ra" name="ra" class="input" [(ngModel)]="e.aireSante" placeholder="Celle de la structure par défaut"></div>
+        <div class="sm:col-span-2"><label class="label" for="rz">Secteur couvert (quartiers, villages, avenues)</label>
+          <input id="rz" name="rz" class="input" [(ngModel)]="zones" placeholder="Salongo, Kemi, Livulu">
+          <p class="hint">Séparez par des virgules. Les tâches d’une personne habitant l’un de ces quartiers sont attribuées automatiquement à ce RECO (au moins chargé s’ils sont plusieurs).</p></div>
+        @if (!e.id) {
+          <div><label class="label" for="rm">Matricule</label><input id="rm" name="rm" class="input font-mono" [(ngModel)]="e.matricule"><p class="hint">Identifiant de connexion du RECO.</p></div>
+        }
+      </div>
+      <div class="flex justify-end gap-2">
+        <button type="button" class="btn-ghost" (click)="edition.set(null)">Annuler</button>
+        <button type="submit" class="btn-primary" [disabled]="envoi()">Enregistrer</button>
+      </div>
+    </form>
+  }
+</div>
+  `,
+})
+export class RelanceRecosComponent implements OnInit {
+  private service = inject(RelanceService);
+  private session = inject(SessionService);
+
+  recos = signal<Reco[]>([]);
+  edition = signal<Partial<Reco> | null>(null);
+  zones = '';
+  secret = signal<{ matricule: string; motDePasse: string } | null>(null);
+  erreur = signal('');
+  envoi = signal(false);
+
+  ngOnInit(): void {
+    this.charger();
+  }
+
+  private async faire<T>(action: () => Promise<T>): Promise<T | undefined> {
+    this.envoi.set(true);
+    this.erreur.set('');
+    try {
+      return await action();
+    } catch (err) {
+      this.erreur.set(messageErreur(err));
+      return undefined;
+    } finally {
+      this.envoi.set(false);
+    }
+  }
+
+  async charger(): Promise<void> {
+    const r = await this.faire(() => this.service.recos());
+    if (r) this.recos.set(r);
+  }
+
+  async nouveau(): Promise<void> {
+    const matricule = await this.faire(() => this.service.prochainMatricule());
+    this.zones = '';
+    this.edition.set({ prenom: '', nom: '', postnom: '', sexe: 'F', telephone: '', aireSante: '', matricule: matricule ?? '', etablissementId: this.session.etablissement()?.id });
+  }
+
+  modifier(r: Reco): void {
+    this.zones = r.zones.join(', ');
+    this.edition.set({ ...r });
+  }
+
+  async enregistrer(): Promise<void> {
+    const e = this.edition();
+    if (!e) return;
+    const donnees = { prenom: e.prenom, nom: e.nom, postnom: e.postnom, sexe: e.sexe, telephone: e.telephone, aireSante: e.aireSante, zones: this.zones.split(',').map(z => z.trim()).filter(Boolean) };
+    if (e.id) {
+      const r = await this.faire(() => this.service.modifierReco(e.id!, donnees));
+      if (r) this.recos.update(l => l.map(x => (x.id === r.id ? r : x)));
+    } else {
+      const r = await this.faire(() => this.service.creerReco({ ...donnees, matricule: e.matricule, etablissementId: e.etablissementId }));
+      if (!r) return;
+      this.recos.update(l => [...l, r.reco]);
+      if (r.motDePasse) this.secret.set({ matricule: r.reco.matricule, motDePasse: r.motDePasse });
+    }
+    this.edition.set(null);
+  }
+
+  async motDePasse(r: Reco): Promise<void> {
+    if (!confirm(`Générer un nouveau mot de passe temporaire pour ${r.prenom} ${r.nom} ? Ses sessions ouvertes seront fermées.`)) return;
+    const s = await this.faire(() => this.service.reinitialiserMotDePasse(r.id));
+    if (s) this.secret.set(s);
+  }
+
+  async revoquer(r: Reco): Promise<void> {
+    if (!confirm(`Téléphone perdu ou compromis : fermer toutes les sessions de ${r.prenom} ${r.nom} ? Les actions non synchronisées de ce téléphone seront perdues.`)) return;
+    await this.faire(() => this.service.revoquerSessions(r.id));
+  }
+
+  async basculer(r: Reco): Promise<void> {
+    const statut = r.statut === 'Actif' ? 'Suspendu' : 'Actif';
+    if (statut === 'Suspendu' && !confirm(`Suspendre ${r.prenom} ${r.nom} ? Ses ${r.ouvertes} tâche(s) ouverte(s) devront être réattribuées (le superviseur est alerté).`)) return;
+    const x = await this.faire(() => this.service.changerStatutReco(r.id, statut));
+    if (x) this.recos.update(l => l.map(y => (y.id === x.id ? x : y)));
+  }
+}

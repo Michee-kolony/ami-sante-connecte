@@ -1,0 +1,261 @@
+<div class="min-h-[100dvh] bg-slate-50 pb-24 dark:bg-slate-950">
+  <!-- En-tête -->
+  <header class="sticky top-0 z-20 bg-brand-950 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-white shadow-lg">
+    <div class="mx-auto flex max-w-2xl items-center justify-between gap-3">
+      <div class="min-w-0">
+        <p class="truncate text-sm font-semibold">{{ service.reco()?.prenom }} {{ service.reco()?.nom }} <span class="font-mono text-xs text-slate-300">{{ service.reco()?.matricule }}</span></p>
+        <p class="truncate text-xs text-slate-300">{{ service.reco()?.structure?.nom ?? 'Relais communautaire' }}</p>
+      </div>
+      <div class="flex shrink-0 items-center gap-1">
+        <app-theme-toggle />
+        <button type="button" class="rounded-lg p-2 text-slate-300 hover:bg-white/10" (click)="service.verrouille.set(true)" title="Verrouiller" aria-label="Verrouiller"><i class="fa-solid fa-lock"></i></button>
+        <button type="button" class="rounded-lg p-2 text-slate-300 hover:bg-white/10" (click)="deconnecter()" title="Déconnexion (efface les données du téléphone)" aria-label="Déconnexion"><i class="fa-solid fa-right-from-bracket"></i></button>
+      </div>
+    </div>
+    <!-- Synchronisation -->
+    <div class="mx-auto mt-2 flex max-w-2xl flex-wrap items-center gap-2 text-xs">
+      @if (service.enLigne()) {
+        <span class="badge bg-accent-500/20 text-accent-200"><i class="fa-solid fa-wifi"></i> En ligne</span>
+      } @else {
+        <span class="badge bg-amber-500/20 text-amber-200"><i class="fa-solid fa-plane"></i> Hors connexion</span>
+      }
+      @if (service.operations().length) {
+        <span class="badge bg-rose-500/25 text-rose-100"><i class="fa-solid fa-cloud-arrow-up"></i> {{ service.operations().length }} action(s) en attente</span>
+      }
+      <span class="text-slate-300">Dernière synchronisation : {{ service.derniereSynchro() ? (service.derniereSynchro() | date:'dd/MM HH:mm') : 'jamais' }}</span>
+      <button type="button" class="ml-auto rounded-md bg-white/10 px-2 py-1 font-medium hover:bg-white/20 disabled:opacity-50" (click)="service.synchroniser()" [disabled]="service.synchronisation()">
+        <i class="fa-solid fa-arrows-rotate" [class.fa-spin]="service.synchronisation()"></i> Synchroniser
+      </button>
+    </div>
+  </header>
+
+  <main class="mx-auto max-w-2xl space-y-4 px-4 pt-4">
+    @if (message()) { <p class="rounded-xl bg-accent-50 px-4 py-3 text-sm text-accent-800 dark:bg-accent-500/10 dark:text-accent-200" role="status"><i class="fa-solid fa-circle-check"></i> {{ message() }}</p> }
+    @if (erreur() && !service.verrouille()) { <p class="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300" role="alert">{{ erreur() }}</p> }
+
+    <!-- Changement de mot de passe exigé -->
+    @if (service.reco()?.doitChangerMotDePasse) {
+      <form class="card space-y-3 p-4" (ngSubmit)="changerMotDePasse()">
+        <p class="text-sm font-semibold text-slate-800 dark:text-slate-100"><i class="fa-solid fa-key text-amber-500"></i> Choisissez votre mot de passe personnel</p>
+        <input class="input" type="password" name="actuel" placeholder="Mot de passe reçu" autocomplete="current-password" [(ngModel)]="mdp.actuel">
+        <input class="input" type="password" name="nouveau" placeholder="Nouveau (10 caractères, majuscule, chiffre, symbole)" autocomplete="new-password" [(ngModel)]="mdp.nouveau">
+        <button type="submit" class="btn-primary w-full" [disabled]="envoi() || !mdp.actuel || !mdp.nouveau || !service.enLigne()">Enregistrer</button>
+        @if (!service.enLigne()) { <p class="hint">Nécessite du réseau.</p> }
+      </form>
+    }
+
+    <!-- Actions refusées par le serveur -->
+    @if (service.refusees().length) {
+      <div class="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200">
+        <p class="font-semibold"><i class="fa-solid fa-triangle-exclamation"></i> Actions non acceptées</p>
+        <ul class="mt-1 list-disc pl-5">
+          @for (r of service.refusees(); track r.operation.operationId) { <li>{{ r.operation.numero ?? 'Signalement' }} — {{ libelleAction(r.operation.type) }} : {{ r.message }}</li> }
+        </ul>
+        <button type="button" class="btn-ghost mt-2 text-xs" (click)="service.oublierRefus()">J’ai compris</button>
+      </div>
+    }
+
+    <!-- Sécurité -->
+    @if (!service.chiffre) {
+      <p class="rounded-xl bg-amber-50 px-4 py-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-200"><i class="fa-solid fa-shield-halved"></i> Ce navigateur ne permet pas de chiffrer les données gardées sur le téléphone : ne prêtez pas l’appareil.</p>
+    }
+
+    @switch (vue()) {
+      <!-- ================= LISTE ================= -->
+      @case ('liste') {
+        @if (alertesOuvertes().length) {
+          <div class="space-y-2">
+            @for (a of alertesOuvertes(); track a.id) {
+              <div class="flex items-start justify-between gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm dark:border-brand-500/30 dark:bg-brand-500/10">
+                <span><i class="fa-solid fa-bell text-brand-600"></i> {{ a.libelle }} : {{ a.taches.join(', ') }}</span>
+                <button type="button" class="shrink-0 text-xs font-semibold text-brand-700 dark:text-brand-300" (click)="service.accuserAlerte(a.id)">Vu</button>
+              </div>
+            }
+          </div>
+        }
+
+        <div class="flex items-center justify-between gap-2">
+          <h1 class="text-lg font-bold text-slate-900 dark:text-white">Mes tâches <span class="text-sm font-normal text-slate-500">({{ service.ouvertes().length }} ouverte(s))</span></h1>
+          <select class="input w-auto py-1.5 text-xs" [value]="filtre()" (change)="filtre.set($any($event.target).value)">
+            <option value="ouvertes">Ouvertes</option><option value="toutes">Toutes (30 jours)</option>
+          </select>
+        </div>
+
+        @for (t of liste(); track t.numero) {
+          <button type="button" class="card block w-full p-4 text-left transition hover:shadow-md" (click)="ouvrir(t)">
+            <div class="flex items-start justify-between gap-2">
+              <div class="min-w-0">
+                <p class="truncate font-semibold text-slate-900 dark:text-white">{{ t.personne.nom || '—' }}@if (t.personne.enfant) { <span class="font-normal text-slate-500"> · enfant {{ t.personne.enfant.prenom }}</span> }</p>
+                <p class="truncate text-sm text-slate-600 dark:text-slate-300">{{ t.motif }}</p>
+                <p class="mt-1 truncate text-xs text-slate-500"><i class="fa-solid fa-location-dot"></i> {{ t.personne.quartier }} {{ t.personne.avenue }} {{ t.personne.repere }}</p>
+              </div>
+              <div class="flex shrink-0 flex-col items-end gap-1">
+                <span class="badge" [class]="couleur(t.statut)">{{ t.statut }}</span>
+                @if (t.priorite !== 'Normale') { <span class="badge" [class]="t.priorite === 'Urgente' ? 'bg-rose-600 text-white' : 'bg-amber-100 text-amber-800'">{{ t.priorite }}</span> }
+                <span class="text-xs" [class]="t.enRetard ? 'font-semibold text-rose-600' : 'text-slate-500'">{{ t.enRetard ? 'En retard' : 'Avant le' }} {{ t.echeance | date:'dd/MM' }}</span>
+              </div>
+            </div>
+          </button>
+        } @empty {
+          <div class="card p-8 text-center text-sm text-slate-500"><i class="fa-regular fa-face-smile mb-2 text-2xl"></i><p>Aucune tâche pour le moment.</p></div>
+        }
+      }
+
+      <!-- ================= TÂCHE ================= -->
+      @case ('tache') {
+        <button type="button" class="btn-ghost -ml-2 text-sm" (click)="retour()"><i class="fa-solid fa-arrow-left"></i> Mes tâches</button>
+        @if (tache(); as t) {
+          <div class="card space-y-3 p-4">
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <p class="text-lg font-bold text-slate-900 dark:text-white">{{ t.personne.nom || '—' }}</p>
+                @if (t.personne.enfant) { <p class="text-sm text-slate-600 dark:text-slate-300">Enfant : {{ t.personne.enfant.prenom }}</p> }
+              </div>
+              <span class="badge" [class]="couleur(t.statut)">{{ t.statut }}</span>
+            </div>
+            <p class="text-sm"><i class="fa-solid fa-flag text-brand-600"></i> {{ t.motif }}</p>
+            <p class="text-sm text-slate-600 dark:text-slate-300"><i class="fa-solid fa-location-dot text-brand-600"></i> {{ t.personne.commune }} {{ t.personne.quartier }} {{ t.personne.avenue }}
+              @if (t.personne.repere) { <br><span class="text-xs">Repère : {{ t.personne.repere }}</span> }</p>
+            <p class="text-xs text-slate-500">À faire avant le {{ t.echeance | date:'dd/MM/yyyy' }} · {{ t.tentativesEchouees }}/{{ t.tentativesMax }} tentative(s) sans contact · {{ t.numero }}</p>
+            @if (t.personne.telephonePartage) { <p class="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-200"><i class="fa-solid fa-mobile-screen"></i> Téléphone partagé : n’expliquez le motif qu’à la personne elle-même ou au responsable légal autorisé.</p> }
+            @if (t.orientation) { <p class="text-sm text-sky-700 dark:text-sky-300"><i class="fa-solid fa-hospital"></i> Orientée vers {{ t.orientation.structure }} le {{ t.orientation.le | date:'dd/MM' }}. La structure confirmera son passage.</p> }
+          </div>
+
+          <!-- Contacter -->
+          @if (actionnable(t)) {
+            @if (canauxTelephone(t).length) {
+              <div class="card space-y-2 p-4">
+                <p class="text-sm font-semibold text-slate-800 dark:text-slate-100">Contacter ({{ t.personne.telephone }})</p>
+                <div class="flex flex-wrap gap-2">
+                  @for (c of canauxTelephone(t); track c) {
+                    <a class="btn-secondary" [href]="lien(t, c)" target="_blank" rel="noopener"><i class="fa-solid" [class]="c === 'Appel' ? 'fa-phone' : c === 'SMS' ? 'fa-comment-sms' : 'fa-brands fa-whatsapp'"></i> {{ c }}</a>
+                  }
+                </div>
+                <p class="text-xs text-slate-500">Message neutre proposé : « {{ t.messageNeutre }} »</p>
+              </div>
+            } @else {
+              <p class="rounded-xl bg-slate-100 px-4 py-3 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300"><i class="fa-solid fa-house"></i> Pas d’accord de la personne pour un contact par téléphone : visite à domicile uniquement.</p>
+            }
+
+            <div class="grid grid-cols-2 gap-2">
+              @if (t.statut === 'Attribuée') { <button type="button" class="btn-primary col-span-2" (click)="agir('accepter')" [disabled]="envoi()"><i class="fa-solid fa-hand"></i> Je prends en charge</button> }
+              @if (canauxTelephone(t).length) { <button type="button" class="btn-secondary" (click)="preparer('tentative')"><i class="fa-solid fa-phone"></i> Noter un appel / message</button> }
+              <button type="button" class="btn-secondary" (click)="preparer('visite_planifiee')"><i class="fa-solid fa-calendar-plus"></i> Planifier une visite</button>
+              <button type="button" class="btn-secondary" (click)="preparer('visite_realisee')"><i class="fa-solid fa-house-user"></i> Noter une visite</button>
+              <button type="button" class="btn-secondary" (click)="preparer('orientation')" [disabled]="!t.contactEtabli" [title]="t.contactEtabli ? '' : 'Après un contact établi'"><i class="fa-solid fa-hospital"></i> Orienter</button>
+              <button type="button" class="btn-secondary" (click)="preparer('refus_report')"><i class="fa-solid fa-hand-holding-hand"></i> Refus / report</button>
+              <button type="button" class="btn-secondary" (click)="preparer('demande_appui')"><i class="fa-solid fa-life-ring"></i> Demander de l’appui</button>
+              <button type="button" class="btn col-span-2 bg-rose-600 text-white hover:bg-rose-700" (click)="preparer('urgence')"><i class="fa-solid fa-triangle-exclamation"></i> Danger / urgence</button>
+            </div>
+          } @else if (t.attribueeAMoi) {
+            <p class="rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+              @switch (t.statut) {
+                @case ('Réintégration confirmée') { <i class="fa-solid fa-circle-check text-accent-600"></i> La structure a confirmé le retour de la personne. Merci ! }
+                @case ('Non retrouvée') { Nombre maximal de tentatives atteint : votre superviseur décide de la suite. }
+                @case ('Escaladée') { Cas transmis au superviseur ou au professionnel habilité. }
+                @case ('Refus / report') { Refus ou report noté : votre superviseur décide de la suite. }
+                @default { Tâche clôturée. }
+              }
+            </p>
+          } @else {
+            <p class="rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-600 dark:bg-slate-800 dark:text-slate-300">Cette tâche a été confiée à un autre RECO.</p>
+          }
+
+          <!-- Formulaire d'action -->
+          @if (formulaire(); as f) {
+            <form class="card space-y-3 border-brand-200 p-4" (ngSubmit)="agir(f)">
+              @switch (f) {
+                @case ('tentative') {
+                  <div><label class="label" for="c">Canal</label>
+                    <select id="c" name="c" class="input" [(ngModel)]="saisie.canal" required><option value="">Choisir…</option>@for (c of canauxTelephone(t); track c) { <option [value]="c">{{ c }}</option> }</select></div>
+                  <div><label class="label" for="r">Résultat</label>
+                    <select id="r" name="r" class="input" [(ngModel)]="saisie.resultat" required><option value="">Choisir…</option>@for (x of service.referentiel()?.resultatsTentative ?? []; track x) { <option [value]="x">{{ x }}</option> }</select></div>
+                }
+                @case ('visite_planifiee') { <div><label class="label" for="d">Date et heure convenues</label><input id="d" name="d" type="datetime-local" class="input" [(ngModel)]="saisie.date" required></div> }
+                @case ('visite_realisee') {
+                  <div><label class="label" for="rv">Résultat de la visite</label>
+                    <select id="rv" name="rv" class="input" [(ngModel)]="saisie.resultat" required><option value="">Choisir…</option>@for (x of service.referentiel()?.resultatsVisite ?? []; track x) { <option [value]="x">{{ x }}</option> }</select></div>
+                }
+                @case ('orientation') {
+                  <div><label class="label" for="s">Structure</label>
+                    <select id="s" name="s" class="input" [(ngModel)]="saisie.structure" required>@for (x of service.referentiel()?.structures ?? []; track x.id) { <option [value]="x.id">{{ x.nom }}</option> }</select></div>
+                  <div><label class="label" for="p">Priorité</label>
+                    <select id="p" name="p" class="input" [(ngModel)]="saisie.priorite">@for (x of service.referentiel()?.priorites ?? []; track x) { <option [value]="x">{{ x }}</option> }</select></div>
+                  <div><label class="label" for="dc">Date conseillée</label><input id="dc" name="dc" type="date" class="input" [(ngModel)]="saisie.date"></div>
+                }
+                @case ('refus_report') {
+                  <div><label class="label" for="m">Motif</label>
+                    <select id="m" name="m" class="input" [(ngModel)]="saisie.motif" required><option value="">Choisir…</option>@for (x of service.referentiel()?.motifsRefus ?? []; track x) { <option [value]="x">{{ x }}</option> }</select></div>
+                  <div><label class="label" for="dr">Report au (facultatif)</label><input id="dr" name="dr" type="date" class="input" [(ngModel)]="saisie.date"></div>
+                }
+                @case ('urgence') {
+                  <p class="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:bg-rose-500/10 dark:text-rose-200"><i class="fa-solid fa-triangle-exclamation"></i> Ne gérez pas seul une urgence : orientez immédiatement vers la structure ({{ t.structure?.nom }}{{ t.structure?.telephone ? ', ' + t.structure?.telephone : '' }}). Le superviseur est alerté.</p>
+                }
+              }
+              <div><label class="label" for="com">Commentaire {{ f === 'demande_appui' ? '(obligatoire)' : '(facultatif, sans détail médical)' }}</label>
+                <textarea id="com" name="com" class="input" rows="2" [maxlength]="service.referentiel()?.commentaireMax ?? 280" [(ngModel)]="saisie.commentaire"></textarea></div>
+              <div class="flex justify-end gap-2">
+                <button type="button" class="btn-ghost" (click)="formulaire.set(null)">Annuler</button>
+                <button type="submit" class="btn-primary" [disabled]="envoi()">Enregistrer</button>
+              </div>
+            </form>
+          }
+
+          <!-- Historique de mes actions -->
+          <div class="card p-4">
+            <p class="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-100">Mes actions</p>
+            <ul class="space-y-1.5 text-sm">
+              @for (a of t.actions; track a.operationId) {
+                <li [class.text-rose-600]="a.conflit"><span class="text-xs text-slate-500">{{ a.le | date:'dd/MM HH:mm' }}</span> {{ libelleAction(a.type) }}
+                  @if (a.canal) { · {{ a.canal }} } @if (a.resultat) { · {{ a.resultat }} } @if (a.motif) { · {{ a.motif }} }
+                  @if (a.enAttente) { <span class="badge bg-amber-100 text-amber-800"><i class="fa-solid fa-cloud-arrow-up"></i> en attente</span> }
+                  @if (a.conflit) { <span class="badge bg-rose-100 text-rose-700">à arbitrer</span> }</li>
+              } @empty { <li class="text-slate-500">Aucune action pour l’instant.</li> }
+            </ul>
+          </div>
+        } @else {
+          <p class="text-sm text-slate-500">Tâche introuvable sur ce téléphone.</p>
+        }
+      }
+
+      <!-- ================= SIGNALEMENT ================= -->
+      @case ('signalement') {
+        <button type="button" class="btn-ghost -ml-2 text-sm" (click)="retour()"><i class="fa-solid fa-arrow-left"></i> Mes tâches</button>
+        <form class="card space-y-3 p-4" (ngSubmit)="signaler()">
+          <h1 class="text-lg font-bold text-slate-900 dark:text-white">Signaler une situation</h1>
+          <p class="text-xs text-slate-500">Personne de votre secteur qui a besoin d’un suivi (femme enceinte jamais vue au centre, enfant non vacciné…). Votre superviseur vérifie et rattache au dossier.</p>
+          <div><label class="label" for="sn">Nom de la personne <span class="req">*</span></label><input id="sn" name="sn" class="input" [(ngModel)]="signalement.nom" required></div>
+          <div><label class="label" for="sq">Quartier <span class="req">*</span></label><input id="sq" name="sq" class="input" [(ngModel)]="signalement.quartier" required></div>
+          <div><label class="label" for="sr">Repère</label><input id="sr" name="sr" class="input" [(ngModel)]="signalement.repere"></div>
+          <div><label class="label" for="st">Téléphone (si la personne est d’accord)</label><input id="st" name="st" class="input" type="tel" [(ngModel)]="signalement.telephone"></div>
+          <div><label class="label" for="sd">Type de suivi</label>
+            <select id="sd" name="sd" class="input" [(ngModel)]="signalement.domaine">@for (d of service.referentiel()?.domaines ?? []; track d) { <option [value]="d">{{ d }}</option> }</select></div>
+          <div><label class="label" for="sc">Commentaire (sans détail médical)</label><textarea id="sc" name="sc" class="input" rows="2" maxlength="280" [(ngModel)]="signalement.commentaire"></textarea></div>
+          <label class="flex items-center gap-2 text-sm font-medium text-rose-700"><input type="checkbox" name="su" [(ngModel)]="signalement.urgence"> Danger ou besoin urgent</label>
+          <button type="submit" class="btn-primary w-full">Envoyer le signalement</button>
+        </form>
+      }
+    }
+  </main>
+
+  <!-- Barre d'actions -->
+  @if (vue() === 'liste') {
+    <nav class="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/90 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90">
+      <div class="mx-auto max-w-2xl"><button type="button" class="btn-primary w-full" (click)="vue.set('signalement')"><i class="fa-solid fa-bullhorn"></i> Signaler une situation</button></div>
+    </nav>
+  }
+</div>
+
+<!-- Verrouillage automatique -->
+@if (service.verrouille()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-brand-950/95 px-4 backdrop-blur" role="dialog" aria-modal="true" aria-label="Application verrouillée">
+    <form class="w-full max-w-xs space-y-4 rounded-2xl bg-white p-6 text-center dark:bg-slate-900" (ngSubmit)="deverrouiller()">
+      <i class="fa-solid fa-lock text-3xl text-brand-600"></i>
+      <p class="text-sm text-slate-600 dark:text-slate-300">Application verrouillée après inactivité. Saisissez votre mot de passe.</p>
+      <input class="input" type="password" name="verrou" autocomplete="current-password" [(ngModel)]="mdp.verrou" autofocus>
+      @if (erreur()) { <p class="text-sm text-rose-600" role="alert">{{ erreur() }}</p> }
+      <button type="submit" class="btn-primary w-full" [disabled]="!mdp.verrou">Déverrouiller</button>
+      <button type="button" class="text-xs text-slate-500 underline" (click)="deconnecter()">Ce n’est pas mon compte</button>
+    </form>
+  </div>
+}

@@ -6,6 +6,8 @@ import { RouterModule, Routes } from '@angular/router';
 const routes: Routes = [
   { path: 'admin', loadChildren: () => import('./admin/admin.routes').then(m => m.ADMIN_ROUTES) },
   { path: 'maman', loadChildren: () => import('./maman/maman.routes').then(m => m.MAMAN_ROUTES) },
+  // Application des relais communautaires (RECO) : relance, utilisable hors connexion.
+  { path: 'reco', loadChildren: () => import('./reco/reco.routes').then(m => m.RECO_ROUTES) },
   { path: '', loadChildren: () => import('./public/public.routes').then(m => m.PUBLIC_ROUTES) },
   { path: '**', redirectTo: '' },
 ];

@@ -115,8 +115,9 @@ export class SessionService {
 
 /** Ajoute le jeton aux appels de l'API et renvoie vers la connexion s'il a expiré. */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
-  // Espace patiente : jeton de la patiente, ajouté par EspaceMamanService (jamais celui d'un soignant).
-  if (!req.url.startsWith(API_URL) || req.url.startsWith(`${API_URL}/espace-patiente`)) return next(req);
+  // Espace patiente et application RECO : leur propre jeton, ajouté par EspaceMamanService et
+  // RecoService (jamais celui d'un soignant).
+  if (!req.url.startsWith(API_URL) || req.url.startsWith(`${API_URL}/espace-patiente`) || req.url.startsWith(`${API_URL}/reco/`)) return next(req);
   const session = inject(SessionService);
   const jeton = session.jeton;
   const requete = jeton ? req.clone({ setHeaders: { Authorization: `Bearer ${jeton}` } }) : req;

@@ -29,6 +29,7 @@ import { SalleTravailComponent } from './pages/salle-travail/salle-travail.compo
 import { AccouchementComponent } from './pages/accouchement/accouchement.component';
 import { EnfantDetailComponent } from './pages/enfant-detail/enfant-detail.component';
 import { EnfantNewComponent } from './pages/enfant-new/enfant-new.component';
+import { RelanceComponent } from './pages/relance/relance.component';
 
 /** Pages réservées au superadmin. ⚠️ Côté client seulement : le serveur doit refuser aussi. */
 const superAdminGuard = () => UTILISATEUR.superAdmin || inject(Router).parseUrl('/admin/tableau-de-bord');
@@ -74,6 +75,8 @@ export const ADMIN_ROUTES: Routes = [
       // Enfant né hors plateforme (ni CPN ni accouchement ici) : tout le personnel (vaccination).
       { path: 'enfants/nouveau', component: EnfantNewComponent, canActivate: [connecteGuard], title: 'Enregistrer un enfant · AMI Santé Connect' },
       { path: 'enfants/:id', component: EnfantDetailComponent, canActivate: [connecteGuard], title: 'Carnet de l’enfant · AMI Santé Connect' },
+      // Relance communautaire du RECO : supervision, confirmation des prestations, paramétrage (droits vérifiés par le serveur).
+      { path: 'relance', component: RelanceComponent, canActivate: [connecteGuard], title: 'Relance communautaire · AMI Santé Connect' },
       { path: 'agents', component: AgentsComponent, title: 'Agents de vaccination · AMI Santé Connect' },
       { path: 'doublons', component: DuplicatesComponent, title: 'Doublons · AMI Santé Connect' },
       { path: 'synchronisation', component: SyncComponent, title: 'Synchronisation · AMI Santé Connect' },

@@ -1,0 +1,511 @@
+<div class="mx-auto max-w-7xl space-y-6">
+  <!-- En-tête -->
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Relance communautaire</h1>
+      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        Rendez-vous manqués, accouchements à clarifier, suivis postnatals et vaccinations en retard : chaque situation devient une tâche
+        attribuée au <strong class="font-medium text-slate-700 dark:text-slate-200">RECO</strong> du quartier, jusqu’à la confirmation de la prestation par la structure.
+      </p>
+    </div>
+    @if (droits().supervision) {
+      <button type="button" class="btn-secondary" (click)="lancerDetection()" [disabled]="envoi()" title="Vérifie maintenant les règles actives (sinon toutes les 30 minutes)">
+        <i class="fa-solid fa-magnifying-glass-chart"></i> Lancer la détection
+      </button>
+    }
+  </div>
+
+  @if (erreur()) {
+    <div class="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200" role="alert">
+      <i class="fa-solid fa-circle-exclamation mt-0.5"></i><span class="flex-1">{{ erreur() }}</span>
+      <button type="button" (click)="erreur.set('')" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+  }
+  @if (notification()) {
+    <div class="flex items-start gap-3 rounded-xl border border-accent-200 bg-accent-50 px-4 py-3 text-sm text-accent-900 dark:border-accent-500/30 dark:bg-accent-500/10 dark:text-accent-200" role="status">
+      <i class="fa-solid fa-circle-check mt-0.5 text-accent-600 dark:text-accent-400"></i><span class="flex-1">{{ notification() }}</span>
+      <button type="button" (click)="notification.set('')" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+  }
+
+  <!-- Onglets -->
+  <div class="flex gap-1 overflow-x-auto rounded-xl bg-slate-100 p-1 dark:bg-slate-800/70" role="tablist">
+    @if (droits().supervision) {
+      <button type="button" role="tab" class="onglet" [class.onglet-actif]="onglet() === 'tableau'" (click)="ouvrir('tableau')"><i class="fa-solid fa-chart-column"></i> Tableau de bord</button>
+    }
+    <button type="button" role="tab" class="onglet" [class.onglet-actif]="onglet() === 'taches'" (click)="ouvrir('taches')"><i class="fa-solid fa-list-check"></i> Tâches</button>
+    <button type="button" role="tab" class="onglet" [class.onglet-actif]="onglet() === 'alertes'" (click)="ouvrir('alertes')">
+      <i class="fa-solid fa-bell"></i> Alertes
+      @if (alertesOuvertes()) { <span class="badge bg-rose-600 text-white">{{ alertesOuvertes() }}</span> }
+    </button>
+    @if (droits().supervision) {
+      <button type="button" role="tab" class="onglet" [class.onglet-actif]="onglet() === 'recos'" (click)="ouvrir('recos')"><i class="fa-solid fa-people-group"></i> RECO</button>
+      <button type="button" role="tab" class="onglet" [class.onglet-actif]="onglet() === 'parametrage'" (click)="ouvrir('parametrage')"><i class="fa-solid fa-sliders"></i> Paramétrage</button>
+    }
+  </div>
+
+  @switch (onglet()) {
+    <!-- ================= TABLEAU DE BORD ================= -->
+    @case ('tableau') {
+      <div class="card p-4">
+        <form class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 lg:items-end" (ngSubmit)="chargerTableau()">
+          <div><label class="label" for="du">Du</label><input id="du" name="du" type="date" class="input" [(ngModel)]="periode.du"></div>
+          <div><label class="label" for="au">Au</label><input id="au" name="au" type="date" class="input" [(ngModel)]="periode.au"></div>
+          <div>
+            <label class="label" for="fp">Parcours</label>
+            <select id="fp" name="fp" class="input" [(ngModel)]="periode.parcours">
+              <option value="">Tous (présentés séparément)</option>
+              @for (c of referentiel()?.codesParcours ?? []; track c) { <option [value]="c">{{ c }}</option> }
+              <option value="aucun">Sans parcours (signalements)</option>
+            </select>
+          </div>
+          <div>
+            <label class="label" for="fd">Domaine</label>
+            <select id="fd" name="fd" class="input" [(ngModel)]="periode.domaine">
+              <option value="">Tous</option>
+              @for (d of referentiel()?.domaines ?? []; track d) { <option [value]="d">{{ d }}</option> }
+            </select>
+          </div>
+          <button type="submit" class="btn-primary" [disabled]="chargementTableau()"><i class="fa-solid fa-rotate"></i> Actualiser</button>
+        </form>
+        <p class="hint">Par défaut : tâches créées ces 90 derniers jours. Les taux « personnes » comptent des personnes uniques, les taux « tâches » des tâches.</p>
+      </div>
+
+      @if (tableau(); as tb) {
+        <!-- Charge de travail -->
+        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div class="card p-4"><p class="text-2xl font-bold text-slate-900 dark:text-white">{{ tb.charge.ouvertes }}</p><p class="text-xs text-slate-500 dark:text-slate-400">Tâches ouvertes</p></div>
+          <div class="card p-4"><p class="text-2xl font-bold text-rose-600">{{ tb.charge.enRetard }}</p><p class="text-xs text-slate-500 dark:text-slate-400">En retard</p></div>
+          <div class="card p-4"><p class="text-2xl font-bold text-amber-600">{{ tb.charge.nonAttribuees }}</p><p class="text-xs text-slate-500 dark:text-slate-400">Sans RECO attribué</p></div>
+          <div class="card p-4"><p class="text-2xl font-bold text-accent-600">{{ tb.performance.effectifs.reintegrees }}</p><p class="text-xs text-slate-500 dark:text-slate-400">Personnes réintégrées (confirmées)</p></div>
+        </div>
+
+        <!-- Performance du circuit -->
+        <div class="card">
+          <div class="card-header"><h2 class="card-title"><i class="fa-solid fa-gauge-high text-brand-600"></i> Performance du circuit</h2>
+            <span class="text-xs text-slate-500">{{ tb.performance.effectifs.personnes }} personne(s), {{ tb.performance.effectifs.taches }} tâche(s)</span></div>
+          <div class="grid gap-4 p-5 md:grid-cols-2">
+            @for (i of tb.performance.indicateurs; track i.code) {
+              <div class="rounded-xl border border-slate-100 p-3 dark:border-slate-800" [title]="i.formule">
+                <div class="flex items-baseline justify-between gap-2">
+                  <p class="text-sm font-medium text-slate-700 dark:text-slate-200">{{ i.libelle }}</p>
+                  <p class="text-lg font-bold text-slate-900 dark:text-white">
+                    @if (i.valeur == null) { — } @else if (i.unite === 'jours') { {{ i.valeur | number:'1.0-1' }} j } @else { {{ i.valeur | number:'1.0-1' }} % }
+                  </p>
+                </div>
+                @if (i.unite !== 'jours') {
+                  <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div class="h-full rounded-full bg-brand-600" [style.width.%]="largeur(i.valeur)"></div></div>
+                  <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ i.numerateur }} / {{ i.denominateur }} {{ i.unite }}</p>
+                } @else {
+                  <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ i.numerateur }} tâche(s) résolue(s)</p>
+                }
+              </div>
+            }
+          </div>
+          <p class="border-t border-slate-100 px-5 py-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
+            <i class="fa-solid fa-circle-info"></i> Indicateurs transversaux (exemples techniques). Les taux officiels RAC, ARC, RPC, IRC et TCC suivent la formule validée dans la fiche de chaque parcours.
+            Survolez un indicateur pour voir sa formule. {{ tb.performance.effectifs.reintegreesAvantContact }} personne(s) sont revenues avant tout contact du RECO.
+          </p>
+        </div>
+
+        <!-- Par parcours -->
+        <div class="card overflow-hidden">
+          <div class="card-header"><h2 class="card-title"><i class="fa-solid fa-route text-brand-600"></i> Par parcours (jamais confondus)</h2></div>
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
+              <thead class="bg-slate-50/70 dark:bg-slate-800/50"><tr>
+                <th class="table-th">Parcours</th><th class="table-th">Personnes</th><th class="table-th">Contact</th><th class="table-th">Réintégration</th><th class="table-th">Résolues</th><th class="table-th">En retard</th><th class="table-th">Non retrouvés</th>
+              </tr></thead>
+              <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                @for (p of tb.parParcours; track p.code) {
+                  <tr>
+                    <td class="table-td"><strong>{{ p.code ?? '—' }}</strong> <span class="text-xs text-slate-500">{{ p.libelle }}</span>
+                      @if (p.statut && p.statut !== 'Validé') { <span class="badge ml-1 bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">{{ p.statut }}</span> }</td>
+                    <td class="table-td">{{ p.effectifs.personnes }}</td>
+                    @for (code of ['contact', 'reintegration', 'resolues', 'retard', 'non_retrouves']; track code) {
+                      @let ind = indicateur(p, code);
+                      <td class="table-td">{{ ind?.valeur == null ? '—' : (ind!.valeur | number:'1.0-1') + ' %' }}</td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="grid gap-6 lg:grid-cols-2">
+          <!-- Continuum mère-enfant -->
+          <div class="card">
+            <div class="card-header"><h2 class="card-title"><i class="fa-solid fa-person-breastfeeding text-pink-500"></i> Continuum mère-enfant</h2></div>
+            <ul class="divide-y divide-slate-100 dark:divide-slate-800">
+              @for (c of tb.continuum; track c.domaine) {
+                <li class="flex items-center justify-between gap-3 px-5 py-3 text-sm">
+                  <span class="font-medium text-slate-700 dark:text-slate-200">{{ c.domaine }}</span>
+                  <span class="text-slate-500 dark:text-slate-400">{{ c.personnes }} pers. · {{ c.ouvertes }} ouv. · {{ c.reintegrees }} réint.
+                    <strong class="ml-1 text-slate-900 dark:text-white">{{ c.taux == null ? '—' : (c.taux | number:'1.0-1') + ' %' }}</strong></span>
+                </li>
+              }
+            </ul>
+          </div>
+
+          <!-- Charge par RECO -->
+          <div class="card">
+            <div class="card-header"><h2 class="card-title"><i class="fa-solid fa-people-group text-brand-600"></i> Charge par RECO</h2></div>
+            <ul class="divide-y divide-slate-100 dark:divide-slate-800">
+              @for (r of tb.charge.parReco; track r.id) {
+                <li class="flex items-center justify-between gap-3 px-5 py-3 text-sm">
+                  <span><span class="font-medium text-slate-700 dark:text-slate-200">{{ r.nom }}</span> <span class="text-xs text-slate-500">{{ r.matricule }}</span>
+                    @if (r.statut !== 'Actif') { <span class="badge bg-rose-50 text-rose-700">{{ r.statut }}</span> }</span>
+                  <span class="text-slate-500">{{ r.ouvertes }} ouverte(s) @if (r.enRetard) { · <strong class="text-rose-600">{{ r.enRetard }} en retard</strong> }</span>
+                </li>
+              } @empty { <li class="px-5 py-4 text-sm text-slate-500">Aucune tâche attribuée sur la période.</li> }
+            </ul>
+          </div>
+
+          <!-- Qualité des données -->
+          <div class="card">
+            <div class="card-header"><h2 class="card-title"><i class="fa-solid fa-clipboard-check text-brand-600"></i> Qualité des données</h2></div>
+            <ul class="divide-y divide-slate-100 text-sm dark:divide-slate-800">
+              <li class="flex justify-between px-5 py-2.5"><span>Doublons annulés</span><strong>{{ tb.qualite.doublonsAnnules }}</strong></li>
+              <li class="flex justify-between px-5 py-2.5"><span>Clôtures sans motif</span><strong>{{ tb.qualite.sansMotifCloture }}</strong></li>
+              <li class="flex justify-between px-5 py-2.5"><span>Sans RECO depuis plus de 2 jours</span><strong>{{ tb.qualite.sansRecoDepuisPlusDe2Jours }}</strong></li>
+              <li class="flex justify-between px-5 py-2.5"><span>Aire de santé manquante</span><strong>{{ tb.qualite.sansAireSante }}</strong></li>
+              @for (i of tb.qualite.incoherents; track i.libelle) {
+                <li class="flex justify-between px-5 py-2.5"><span>{{ i.libelle }}</span><strong [class.text-rose-600]="i.nombre">{{ i.nombre }}</strong></li>
+              }
+              <li class="flex justify-between px-5 py-2.5"><span>Conflits de synchronisation à arbitrer</span><strong [class.text-rose-600]="tb.qualite.conflitsEnAttente">{{ tb.qualite.conflitsEnAttente }}</strong></li>
+            </ul>
+          </div>
+
+          <!-- Équité -->
+          <div class="card">
+            <div class="card-header"><h2 class="card-title"><i class="fa-solid fa-scale-balanced text-brand-600"></i> Équité et désagrégation</h2></div>
+            <div class="space-y-4 p-5 text-sm">
+              @for (bloc of [{ titre: 'Par âge', lignes: tb.equite.parAge }, { titre: 'Par aire de santé', lignes: tb.equite.parAire }]; track bloc.titre) {
+                <div>
+                  <p class="mb-1 font-medium text-slate-700 dark:text-slate-200">{{ bloc.titre }}</p>
+                  @for (g of bloc.lignes; track g.groupe) {
+                    <div class="flex justify-between py-1 text-slate-600 dark:text-slate-300">
+                      <span>{{ g.groupe }}</span>
+                      <span>@if (g.masque) { <em class="text-slate-400">effectif &lt; {{ tb.equite.seuil }} masqué</em> } @else { {{ g.personnes }} pers. · {{ g.taux == null ? '—' : (g.taux | number:'1.0-1') + ' %' }} }</span>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- Traçabilité -->
+        <div class="card">
+          <div class="card-header"><h2 class="card-title"><i class="fa-solid fa-shield-halved text-brand-600"></i> Traçabilité</h2>
+            <a routerLink="/admin/audit" class="text-xs font-medium text-brand-700 hover:underline dark:text-brand-300">Journal d’audit</a></div>
+          <div class="grid gap-4 p-5 text-sm sm:grid-cols-4">
+            <div><p class="text-xl font-bold">{{ tb.tracabilite.reattributions }}</p><p class="text-xs text-slate-500">Réattributions</p></div>
+            <div><p class="text-xl font-bold">{{ tb.tracabilite.cloturesExceptionnelles }}</p><p class="text-xs text-slate-500">Clôtures exceptionnelles</p></div>
+            <div><p class="text-xl font-bold">{{ tb.tracabilite.actionsHorsLigne }}</p><p class="text-xs text-slate-500">Actions saisies hors connexion</p></div>
+            <div><p class="text-xl font-bold">{{ tb.tracabilite.actionsEnConflit }}</p><p class="text-xs text-slate-500">Actions reçues en conflit</p></div>
+          </div>
+          <ul class="divide-y divide-slate-100 border-t border-slate-100 text-sm dark:divide-slate-800 dark:border-slate-800">
+            @for (s of tb.tracabilite.synchronisations; track s.matricule) {
+              <li class="flex justify-between px-5 py-2.5"><span>{{ s.nom }} <span class="text-xs text-slate-500">{{ s.matricule }}</span></span>
+                <span class="text-slate-500">Dernière synchronisation : {{ s.derniereSynchronisation ? (s.derniereSynchronisation | date:'dd/MM/yyyy HH:mm') : 'jamais' }}</span></li>
+            }
+          </ul>
+        </div>
+      } @else if (chargementTableau()) {
+        <div class="card space-y-3 p-5"><div class="skeleton h-6 w-1/3"></div><div class="skeleton h-24"></div><div class="skeleton h-24"></div></div>
+      }
+    }
+
+    <!-- ================= TÂCHES ================= -->
+    @case ('taches') {
+      <div class="card overflow-hidden">
+        <form class="grid gap-3 border-b border-slate-100 p-4 dark:border-slate-800 sm:grid-cols-2 lg:grid-cols-6 lg:items-end" (ngSubmit)="chargerTaches()">
+          <div>
+            <label class="label" for="ts">Statut</label>
+            <select id="ts" name="ts" class="input" [(ngModel)]="filtres.statut">
+              <option value="ouvertes">Ouvertes</option>
+              <option value="supervision">À superviser</option>
+              <option value="">Toutes</option>
+              @for (s of referentiel()?.statuts ?? []; track s) { <option [value]="s">{{ s }}</option> }
+            </select>
+          </div>
+          <div>
+            <label class="label" for="td">Domaine</label>
+            <select id="td" name="td" class="input" [(ngModel)]="filtres.domaine">
+              <option value="">Tous</option>
+              @for (d of referentiel()?.domaines ?? []; track d) { <option [value]="d">{{ d }}</option> }
+            </select>
+          </div>
+          <div>
+            <label class="label" for="tp">Parcours</label>
+            <select id="tp" name="tp" class="input" [(ngModel)]="filtres.parcours">
+              <option value="">Tous</option>
+              @for (c of referentiel()?.codesParcours ?? []; track c) { <option [value]="c">{{ c }}</option> }
+              <option value="aucun">Sans parcours</option>
+            </select>
+          </div>
+          <div><label class="label" for="tr">N° de tâche</label><input id="tr" name="tr" class="input" placeholder="REL-…" [(ngModel)]="filtres.recherche"></div>
+          <div class="flex flex-col gap-1.5 text-sm">
+            <label class="flex items-center gap-2"><input type="checkbox" name="retard" [(ngModel)]="filtres.retard"> En retard</label>
+            <label class="flex items-center gap-2"><input type="checkbox" name="conflits" [(ngModel)]="filtres.conflits"> Conflits à arbitrer</label>
+          </div>
+          <button type="submit" class="btn-primary" [disabled]="chargementTaches()"><i class="fa-solid fa-filter"></i> Filtrer</button>
+        </form>
+        @if (!nominatif()) {
+          <p class="border-b border-slate-100 bg-sky-50 px-4 py-2.5 text-xs text-sky-800 dark:border-slate-800 dark:bg-sky-500/10 dark:text-sky-200">
+            <i class="fa-solid fa-circle-info"></i> En tant que prestataire, vous voyez uniquement les personnes orientées vers votre structure, pour confirmer la prestation.
+          </p>
+        }
+
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
+            <thead class="bg-slate-50/70 dark:bg-slate-800/50"><tr>
+              <th class="table-th">Tâche</th><th class="table-th">Personne</th><th class="table-th">Motif</th><th class="table-th">RECO</th><th class="table-th">Échéance</th><th class="table-th">Statut</th>
+            </tr></thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+              @for (t of taches(); track t.numero) {
+                <tr class="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40" (click)="voir(t.numero)">
+                  <td class="table-td whitespace-nowrap">
+                    <span class="font-mono text-xs font-semibold">{{ t.numero }}</span>
+                    <span class="badge ml-1" [class]="couleurPriorite(t.priorite)">{{ t.priorite }}</span>
+                    <p class="text-xs text-slate-500">{{ t.parcoursCode ?? 'Signalement' }} · {{ t.domaine }}</p>
+                  </td>
+                  <td class="table-td">
+                    <p class="font-medium text-slate-800 dark:text-slate-100">{{ t.personne.nom || '—' }}</p>
+                    <p class="text-xs text-slate-500">
+                      @if (t.personne.enfant) { Enfant {{ t.personne.enfant.prenom }} · } {{ t.personne.numero }} {{ t.personne.quartier }}
+                    </p>
+                  </td>
+                  <td class="table-td max-w-xs"><p class="truncate">{{ t.motif }}</p>
+                    @if (t.motifsLies) { <p class="text-xs text-slate-500">+ {{ t.motifsLies }} motif(s) relié(s)</p> }</td>
+                  <td class="table-td whitespace-nowrap">{{ t.reco?.nom ?? '—' }}</td>
+                  <td class="table-td whitespace-nowrap" [class.text-rose-600]="t.enRetard">{{ t.echeance | date:'dd/MM/yyyy' }} @if (t.enRetard) { <i class="fa-solid fa-clock" title="En retard"></i> }</td>
+                  <td class="table-td whitespace-nowrap"><span class="badge" [class]="couleurStatut(t.statut)">{{ t.statut }}</span>
+                    @if (t.conflitsEnAttente) { <span class="badge bg-rose-600 text-white" title="Conflit de synchronisation à arbitrer"><i class="fa-solid fa-code-merge"></i></span> }</td>
+                </tr>
+              } @empty {
+                <tr><td colspan="6" class="px-5 py-10 text-center text-sm text-slate-500">
+                  @if (chargementTaches()) { Chargement… } @else { Aucune tâche pour ces filtres. Les tâches apparaissent quand une règle validée et active détecte une situation. }
+                </td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        @if (total() > taches().length) { <p class="px-4 py-2 text-xs text-slate-500">{{ taches().length }} tâches affichées sur {{ total() }} : affinez les filtres.</p> }
+      </div>
+    }
+
+    <!-- ================= ALERTES ================= -->
+    @case ('alertes') {
+      <div class="card">
+        <div class="card-header"><h2 class="card-title"><i class="fa-solid fa-bell text-brand-600"></i> Alertes regroupées</h2>
+          <button type="button" class="btn-ghost text-xs" (click)="chargerAlertes()"><i class="fa-solid fa-rotate"></i> Actualiser</button></div>
+        <ul class="divide-y divide-slate-100 dark:divide-slate-800">
+          @for (a of alertes(); track a.id) {
+            <li class="flex flex-col gap-2 px-5 py-4 sm:flex-row sm:items-start sm:justify-between" [class.opacity-60]="!a.ouverte">
+              <div class="min-w-0">
+                <p class="font-medium text-slate-800 dark:text-slate-100">
+                  @if (a.type === 'urgence') { <i class="fa-solid fa-triangle-exclamation text-rose-600"></i> }
+                  {{ a.libelle }} <span class="text-xs font-normal text-slate-500">({{ a.taches.length }} tâche(s){{ a.occurrences > 1 ? ', ' + a.occurrences + ' signalements' : '' }})</span>
+                </p>
+                <p class="mt-1 flex flex-wrap gap-1">
+                  @for (n of a.taches.slice(0, 12); track n) {
+                    <button type="button" class="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-xs hover:bg-brand-50 dark:bg-slate-800" (click)="ouvrirTache(n)">{{ n }}</button>
+                  }
+                  @if (a.taches.length > 12) { <span class="text-xs text-slate-500">…</span> }
+                </p>
+                <p class="mt-1 text-xs text-slate-500">Depuis le {{ a.premiereLe | date:'dd/MM/yyyy HH:mm' }} · dernière le {{ a.derniereLe | date:'dd/MM/yyyy HH:mm' }}
+                  @if (!a.ouverte) { · lue par {{ a.accusePar?.nom }} le {{ a.accuseLe | date:'dd/MM/yyyy HH:mm' }} }</p>
+              </div>
+              @if (a.ouverte) {
+                <button type="button" class="btn-secondary shrink-0 text-xs" (click)="accuser(a)" [disabled]="envoi()"><i class="fa-solid fa-check"></i> Accusé de réception</button>
+              }
+            </li>
+          } @empty { <li class="px-5 py-10 text-center text-sm text-slate-500">Aucune alerte.</li> }
+        </ul>
+      </div>
+    }
+
+    @case ('recos') { <app-relance-recos /> }
+    @case ('parametrage') { <app-relance-parametrage /> }
+  }
+</div>
+
+<!-- ================= DÉTAIL D'UNE TÂCHE ================= -->
+@if (detail(); as t) {
+  <div class="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm" (click)="fermerDetail()" aria-hidden="true"></div>
+  <aside class="fixed inset-y-0 right-0 z-50 flex w-full max-w-2xl flex-col bg-white shadow-2xl dark:bg-slate-900" role="dialog" aria-modal="true" [attr.aria-label]="'Tâche ' + t.numero">
+    <div class="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+      <div>
+        <p class="font-mono text-sm font-semibold">{{ t.numero }} <span class="badge ml-1" [class]="couleurStatut(t.statut)">{{ t.statut }}</span> <span class="badge" [class]="couleurPriorite(t.priorite)">{{ t.priorite }}</span></p>
+        <p class="mt-1 text-xs text-slate-500">{{ t.parcoursCode ? t.parcoursCode + ' v' + t.parcoursVersion : 'Signalement' }} · {{ t.domaine }} · source : {{ t.source }}</p>
+      </div>
+      <button type="button" class="btn-ghost" (click)="fermerDetail()" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
+    <div class="flex-1 space-y-5 overflow-y-auto px-5 py-4 text-sm">
+      @if (erreur()) { <p class="rounded-lg bg-rose-50 px-3 py-2 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300" role="alert">{{ erreur() }}</p> }
+
+      <!-- Personne -->
+      <section>
+        <h3 class="section-titre"><i class="fa-solid fa-user"></i> Personne</h3>
+        <p class="font-medium">{{ t.personne.nom || '—' }}
+          @if (t.personne.patienteId) { <a [routerLink]="['/admin/patientes', t.personne.patienteId]" class="ml-2 text-xs text-brand-700 hover:underline dark:text-brand-300">{{ t.personne.numero }} — ouvrir le dossier</a> }</p>
+        @if (t.personne.enfant) { <p>Enfant : <a [routerLink]="['/admin/enfants', t.personne.enfant.id]" class="text-brand-700 hover:underline dark:text-brand-300">{{ t.personne.enfant.prenom }} ({{ t.personne.enfant.numero }})</a></p> }
+        <p class="text-slate-500">{{ t.personne.commune }} {{ t.personne.quartier }} {{ t.personne.avenue }} {{ t.personne.repere }}</p>
+        <p class="text-slate-500">RECO : {{ t.reco ? t.reco.nom + ' (' + t.reco.matricule + ')' : 'non attribué' }} · aire de santé : {{ t.aireSante || '—' }} · échéance : <span [class.text-rose-600]="t.enRetard">{{ t.echeance | date:'dd/MM/yyyy' }}</span></p>
+      </section>
+
+      <!-- Motifs -->
+      <section>
+        <h3 class="section-titre"><i class="fa-solid fa-flag"></i> Motifs</h3>
+        <ul class="space-y-1">
+          @for (m of t.motifs; track m.cle) {
+            <li><strong>{{ m.libelle }}</strong> <span class="text-slate-500">— {{ m.objet.libelle }}</span>
+              @if (m.regleCode) { <span class="text-xs text-slate-400">({{ m.regleCode }} v{{ m.regleVersion }})</span> }</li>
+          }
+        </ul>
+      </section>
+
+      <!-- Résultat -->
+      @if (t.confirmation || t.resolution || t.orientation || t.escalade) {
+        <section class="space-y-1">
+          <h3 class="section-titre"><i class="fa-solid fa-flag-checkered"></i> Résultat</h3>
+          @if (t.orientation) { <p>Orientée vers <strong>{{ t.orientation.structure }}</strong> ({{ t.orientation.priorite }}) le {{ t.orientation.le | date:'dd/MM/yyyy' }} par {{ t.orientation.par.nom }}</p> }
+          @if (t.escalade) { <p>Escaladée vers <strong>{{ t.escalade.vers }}</strong> le {{ t.escalade.le | date:'dd/MM/yyyy HH:mm' }} : {{ t.escalade.motif }}</p> }
+          @if (t.confirmation) { <p class="text-accent-700 dark:text-accent-300"><i class="fa-solid fa-circle-check"></i> {{ t.confirmation.source }} : {{ t.confirmation.type }} — {{ t.confirmation.reference }} ({{ t.confirmation.par.nom }}, {{ t.confirmation.le | date:'dd/MM/yyyy' }})
+            @if (t.confirmation.avantContact) { · revenue avant tout contact } </p> }
+          @if (t.resolution && t.resolution.statut !== 'Réintégration confirmée') { <p>Clôture : <strong>{{ t.resolution.resultat }}</strong> — {{ t.resolution.motif }} ({{ t.resolution.par.nom }}) @if (t.resolution.exceptionnelle) { <span class="badge bg-amber-50 text-amber-700">exceptionnelle</span> }</p> }
+          @if (t.doublonDe) { <p>Doublon de <button type="button" class="font-mono text-brand-700 hover:underline" (click)="voir(t.doublonDe)">{{ t.doublonDe }}</button></p> }
+        </section>
+      }
+
+      <!-- Conflits -->
+      @if (t.conflits.length) {
+        <section>
+          <h3 class="section-titre"><i class="fa-solid fa-code-merge"></i> Conflits de synchronisation</h3>
+          @for (c of t.conflits; track c.id) {
+            <div class="mb-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+              <p><strong>{{ c.motif }}</strong> <span class="text-xs text-slate-500">({{ c.le | date:'dd/MM/yyyy HH:mm' }}, opération {{ c.operationId }})</span></p>
+              @if (c.resolu) { <p class="text-slate-500">Arbitré par {{ c.resoluPar?.nom }} : {{ c.decision }}</p> }
+              @else if (droits().supervision) {
+                <div class="mt-2 flex gap-2"><input class="input" placeholder="Décision prise" [(ngModel)]="saisie.decision" name="decision">
+                  <button type="button" class="btn-primary shrink-0" [disabled]="!saisie.decision || envoi()" (click)="resoudre(c.id)">Arbitrer</button></div>
+              }
+            </div>
+          }
+        </section>
+      }
+
+      <!-- Actions du RECO -->
+      <section>
+        <h3 class="section-titre"><i class="fa-solid fa-person-walking"></i> Tentatives et visites ({{ t.tentativesEchouees }}/{{ t.parametres.tentativesMax }} sans contact)</h3>
+        <ul class="space-y-1.5">
+          @for (a of t.actions; track a.operationId) {
+            <li [class.text-rose-600]="a.conflit">
+              <span class="text-xs text-slate-500">{{ a.le | date:'dd/MM HH:mm' }}</span>
+              <strong>{{ libelleAction(a.type) }}</strong>
+              @if (a.canal) { · {{ a.canal }} } @if (a.resultat) { · {{ a.resultat }} } @if (a.motif) { · {{ a.motif }} }
+              @if (a.date) { · le {{ a.date | date:'dd/MM/yyyy' }} }
+              @if (a.commentaire) { <span class="text-slate-500">— « {{ a.commentaire }} »</span> }
+              <span class="text-xs text-slate-400">({{ a.par.nom }}@if (a.horsLigne) {, hors ligne}@if (a.conflit) {, en conflit})</span>
+            </li>
+          } @empty { <li class="text-slate-500">Aucune action du RECO pour l’instant.</li> }
+        </ul>
+      </section>
+
+      <!-- Historique -->
+      <section>
+        <h3 class="section-titre"><i class="fa-solid fa-clock-rotate-left"></i> Historique complet</h3>
+        <ol class="space-y-1.5 border-l-2 border-slate-200 pl-3 dark:border-slate-700">
+          @for (h of t.historique; track $index) {
+            <li><span class="text-xs text-slate-500">{{ h.le | date:'dd/MM/yyyy HH:mm' }}</span> <strong>{{ h.action }}</strong>
+              @if (h.ancienStatut !== h.nouveauStatut && h.nouveauStatut) { <span class="text-slate-500">{{ h.ancienStatut ?? '—' }} → {{ h.nouveauStatut }}</span> }
+              @if (h.motif) { <span class="text-slate-500">— {{ h.motif }}</span> }
+              <span class="text-xs text-slate-400">({{ h.par.nom }})</span></li>
+          }
+        </ol>
+        @if (t.controles.length) {
+          <p class="mt-2 text-xs text-slate-500">Contrôles : @for (c of t.controles; track $index) { {{ c.conforme ? 'conforme' : 'non conforme' }} ({{ c.par.nom }}, {{ c.le | date:'dd/MM/yyyy' }}){{ $last ? '' : ' · ' }} }</p>
+        }
+      </section>
+
+      <!-- Formulaire d'action -->
+      @if (formulaire(); as f) {
+        <form class="space-y-3 rounded-xl border border-brand-200 bg-brand-50/50 p-4 dark:border-brand-500/30 dark:bg-brand-500/5" (ngSubmit)="envoyer()">
+          @switch (f) {
+            @case ('attribuer') {
+              <div><label class="label" for="fr">RECO</label>
+                <select id="fr" name="fr" class="input" [(ngModel)]="saisie.recoId" required>
+                  <option value="">Choisir…</option>
+                  @for (r of recosDe(t); track r.id) { <option [value]="r.id">{{ r.prenom }} {{ r.nom }} ({{ r.matricule }}) — {{ r.zones.join(', ') || r.aireSante }} · {{ r.ouvertes }} tâche(s)</option> }
+                </select></div>
+              <div><label class="label" for="fm">Motif {{ t.reco ? '(obligatoire pour une réattribution)' : '' }}</label><input id="fm" name="fm" class="input" [(ngModel)]="saisie.motif"></div>
+              <div><label class="label" for="fe">Nouvelle échéance (facultatif)</label><input id="fe" name="fe" type="date" class="input" [(ngModel)]="saisie.echeance"></div>
+            }
+            @case ('confirmer') {
+              <p class="text-xs text-slate-600 dark:text-slate-300">La personne s’est présentée et la prestation est enregistrée. La déclaration du RECO seule ne suffit pas.</p>
+              <div><label class="label" for="ct">Prestation</label><input id="ct" name="ct" class="input" placeholder="Consultation CPN, vaccination, visite postnatale…" [(ngModel)]="saisie.type"></div>
+              <div><label class="label" for="cr">Référence <span class="req">*</span></label><input id="cr" name="cr" class="input" placeholder="N° de registre, date de la consultation, dose…" [(ngModel)]="saisie.reference" required></div>
+            }
+            @case ('cloturer') {
+              <div><label class="label" for="cs">Clôture</label>
+                <select id="cs" name="cs" class="input" [(ngModel)]="saisie.statut"><option>Clôturée sans réintégration</option><option>Doublon annulé</option></select></div>
+              @if (saisie.statut === 'Doublon annulé') {
+                <div><label class="label" for="cd">Tâche conservée</label><input id="cd" name="cd" class="input" placeholder="REL-…" [(ngModel)]="saisie.doublonDe" required></div>
+              } @else {
+                <div><label class="label" for="cres">Résultat</label>
+                  <select id="cres" name="cres" class="input" [(ngModel)]="saisie.resultat" required><option value="">Choisir…</option>
+                    @for (x of referentiel()?.resultatsCloture ?? []; track x) { <option [value]="x">{{ x }}</option> }</select></div>
+              }
+              <div><label class="label" for="cm">Motif <span class="req">*</span></label><textarea id="cm" name="cm" class="input" rows="2" [(ngModel)]="saisie.motif" required></textarea></div>
+              @if (!(referentiel()?.statutsSupervision ?? []).includes(t.statut)) { <p class="text-xs text-amber-700"><i class="fa-solid fa-triangle-exclamation"></i> Clôture exceptionnelle (tâche encore en cours chez le RECO) : elle sera signalée dans la traçabilité.</p> }
+            }
+            @case ('rouvrir') { <div><label class="label" for="ro">Motif de la réouverture <span class="req">*</span></label><input id="ro" name="ro" class="input" [(ngModel)]="saisie.motif" required></div> }
+            @case ('escalader') {
+              <div><label class="label" for="ev">Vers</label><input id="ev" name="ev" class="input" [(ngModel)]="saisie.vers"></div>
+              <div><label class="label" for="em">Motif <span class="req">*</span></label><input id="em" name="em" class="input" [(ngModel)]="saisie.motif" required></div>
+            }
+            @case ('controler') {
+              <div class="flex gap-4"><label class="flex items-center gap-2"><input type="radio" name="co" [value]="true" [(ngModel)]="saisie.conforme"> Conforme</label>
+                <label class="flex items-center gap-2"><input type="radio" name="co" [value]="false" [(ngModel)]="saisie.conforme"> Non conforme</label></div>
+              <div><label class="label" for="ob">Observation</label><input id="ob" name="ob" class="input" [(ngModel)]="saisie.observation"></div>
+            }
+            @case ('identifier') {
+              <div class="flex gap-2"><input class="input" name="rp" placeholder="Nom, téléphone ou n° AC-PAT…" [(ngModel)]="recherchePatiente">
+                <button type="button" class="btn-secondary shrink-0" (click)="chercherPatiente()">Chercher</button></div>
+              <ul class="divide-y divide-slate-100 dark:divide-slate-800">
+                @for (p of resultatsPatientes(); track p.id) {
+                  <li class="flex items-center justify-between py-2"><span>{{ p.prenom }} {{ p.nom }} <span class="text-xs text-slate-500">{{ p.numero }} · {{ p.quartier }}</span></span>
+                    <button type="button" class="btn-primary text-xs" (click)="identifier(p.id)" [disabled]="envoi()">Rattacher</button></li>
+                }
+              </ul>
+            }
+          }
+          <div class="flex justify-end gap-2">
+            <button type="button" class="btn-ghost" (click)="formulaire.set(null)">Annuler</button>
+            @if (f !== 'identifier') { <button type="submit" class="btn-primary" [disabled]="envoi()">Valider</button> }
+          </div>
+        </form>
+      }
+    </div>
+
+    <!-- Boutons d'action -->
+    <div class="flex flex-wrap gap-2 border-t border-slate-100 px-5 py-3 dark:border-slate-800">
+      @if (estOuverte(t)) {
+        <button type="button" class="btn-primary" (click)="preparer('confirmer')"><i class="fa-solid fa-circle-check"></i> Confirmer la prestation</button>
+        @if (droits().supervision) {
+          <button type="button" class="btn-secondary" (click)="preparer('attribuer')"><i class="fa-solid fa-user-tag"></i> {{ t.reco ? 'Réattribuer / reprendre' : 'Attribuer' }}</button>
+          <button type="button" class="btn-secondary" (click)="preparer('escalader')"><i class="fa-solid fa-arrow-up-right-dots"></i> Escalader</button>
+          <button type="button" class="btn-secondary" (click)="preparer('cloturer')"><i class="fa-solid fa-box-archive"></i> Clôturer</button>
+          @if (t.personne.type === 'Déclarée') { <button type="button" class="btn-secondary" (click)="preparer('identifier')"><i class="fa-solid fa-link"></i> Rattacher à un dossier</button> }
+        }
+      } @else if (droits().supervision && t.statut !== 'Réintégration confirmée') {
+        <button type="button" class="btn-secondary" (click)="preparer('rouvrir')"><i class="fa-solid fa-rotate-left"></i> Rouvrir</button>
+      }
+      @if (droits().supervision) { <button type="button" class="btn-ghost" (click)="preparer('controler')"><i class="fa-solid fa-clipboard-check"></i> Contrôle qualité</button> }
+    </div>
+  </aside>
+}
