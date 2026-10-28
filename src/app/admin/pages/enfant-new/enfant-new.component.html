@@ -10,6 +10,13 @@
     <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Pour un enfant né ailleurs : sa mère n’a pas suivi ses CPN ni accouché dans la plateforme. Son carnet PEV est calculé dès l’enregistrement et sa prochaine séance est programmée.</p>
   </div>
 
+  @if (!horsLigne.enLigne()) {
+    <div class="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100" role="status">
+      <i class="fa-solid fa-plane mt-0.5"></i>
+      <span><strong>Hors connexion</strong> : vous pouvez enregistrer quand même. L’enregistrement de l’enfant (et de sa mère si elle n’a pas de dossier) est gardé sur cet appareil (photos comprises) et envoyé automatiquement au serveur dès le retour du réseau ; son numéro sera attribué à ce moment-là. Suivi dans <a routerLink="/admin/synchronisation" class="font-semibold underline">Synchronisation</a>.</span>
+    </div>
+  }
+
   <!-- ============================== 1. MÈRE ============================== -->
   <section class="card p-5 sm:p-6 space-y-5">
     <h2 class="flex items-center gap-2 text-base font-semibold text-slate-900 dark:text-white"><span class="flex h-7 w-7 items-center justify-center rounded-full bg-brand-700 text-xs text-white">1</span> Mère</h2>

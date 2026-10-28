@@ -21,6 +21,12 @@ export interface Operation {
   formulaire: ChampFormulaire[] | null;
   /** Description lisible (« Consultation prénatale », « Surveillance du travail »…). */
   libelle: string;
+  /** Personne concernée par une création (« Ruth KABEYA », « Josué, enfant de … »). */
+  detail?: string;
+  /** Dossiers possiblement identiques signalés par le serveur à l'envoi (409). */
+  doublons?: DoublonEnvoi[];
+  /** Même adresse e-mail qu'un dossier existant : c'est forcément la même patiente (pas de création possible). */
+  emailExistant?: boolean;
   creeLe: string;
   /** Soignant qui a fait la saisie : elle n'est envoyée qu'avec sa propre session. */
   soignantId: string;
@@ -30,7 +36,31 @@ export interface Operation {
   tentatives: number;
 }
 
+/** Dossier existant qui ressemble à celui créé hors connexion. */
+export interface DoublonEnvoi { id: string; numero: string; nom: string; postnom?: string; prenom?: string; age?: number | null; commune?: string }
+
 const CLE_DERNIERE = 'ami-derniere-synchronisation';
+
+/** Erreur renvoyée à l'écran quand la saisie a été gardée sur l'appareil (hors connexion). */
+export function estMiseEnFile(err: unknown): boolean {
+  return err instanceof HttpErrorResponse && err.status === 0 && err.error?.horsLigne === true;
+}
+
+/** Nom de la personne d'une création (dossier patiente ou enfant), lu dans le formulaire gardé. */
+function detailOperation(url: string, formulaire: ChampFormulaire[] | null): string | undefined {
+  const brut = formulaire?.find(c => c.nom === 'donnees')?.valeur;
+  if (typeof brut !== 'string') return undefined;
+  try {
+    const d = JSON.parse(brut);
+    const nom = (p?: { prenom?: string; nom?: string; postnom?: string }) => [p?.prenom, p?.nom, p?.postnom].filter(Boolean).join(' ');
+    if (/\/patientes$/.test(url)) return nom(d.patiente) || undefined;
+    if (/\/enfants$/.test(url)) {
+      const mere = d.nouvelleMere ? ` · mère : ${nom(d.nouvelleMere)} (nouveau dossier)` : '';
+      return `${nom(d.enfant) || 'Enfant'}${mere}`;
+    }
+  } catch { /* formulaire illisible : pas de détail */ }
+  return undefined;
+}
 
 /**
  * Serveur injoignable : pas de réseau (0), ou passerelle sans réponse (502, 503, 504 — c'est aussi
@@ -127,6 +157,7 @@ export class HorsLigneService {
     const operation: Operation = {
       ...op,
       libelle: libelleOperation(op.methode, op.url),
+      detail: detailOperation(op.url, op.formulaire),
       creeLe: new Date().toISOString(),
       soignantId: s?.id ?? '',
       soignantNom: s ? `${s.prenom} ${s.nom}` : '',
@@ -171,6 +202,19 @@ export class HorsLigneService {
     await this.synchroniser();
   }
 
+  /**
+   * Doublon signalé à l'envoi, et le soignant confirme que ce n'est pas la même personne : la
+   * création repart avec la confirmation (même identifiant d'opération, jamais en double).
+   */
+  async confirmerMalgreDoublons(op: Operation): Promise<void> {
+    const formulaire = op.formulaire?.map(c => {
+      if (c.nom !== 'donnees' || typeof c.valeur !== 'string') return c;
+      return { ...c, valeur: JSON.stringify({ ...JSON.parse(c.valeur), confirmerMalgreDoublons: true }) };
+    }) ?? null;
+    await this.majOperation({ ...op, formulaire, etat: 'en attente', erreur: null, doublons: undefined, emailExistant: undefined });
+    await this.synchroniser();
+  }
+
   async supprimer(op: Operation): Promise<void> {
     await effacer('operations', op.operationId);
     this.operations.update(l => l.filter(o => o.operationId !== op.operationId));
@@ -202,7 +246,10 @@ export class HorsLigneService {
       const message = typeof e.error?.message === 'string' ? e.error.message : `Refusée par le serveur (erreur ${e.status}).`;
       // 409 « déjà en cours d'envoi » : l'opération est en train d'être traitée, on réessaiera.
       if (e.status === 409 && /déjà en cours d’envoi/.test(message)) return 'reseau';
-      await this.majOperation({ ...op, etat: 'échec', erreur: message, tentatives: op.tentatives + 1 });
+      // Dossiers ressemblants : mère (doublons) ou enfant déjà enregistré pour cette mère (enfantExistant).
+      const doublons = Array.isArray(e.error?.doublons) ? e.error.doublons as DoublonEnvoi[]
+        : e.error?.enfantExistant ? [{ nom: '', ...e.error.enfantExistant } as DoublonEnvoi] : undefined;
+      await this.majOperation({ ...op, etat: 'échec', erreur: message, doublons, emailExistant: e.error?.emailExistant === true, tentatives: op.tentatives + 1 });
       return 'echec';
     }
   }

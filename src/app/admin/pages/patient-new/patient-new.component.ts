@@ -9,6 +9,7 @@ import {
 import { EtablissementsService } from '../../data/etablissements.service';
 import { MesurePreventive, ReferentielsService, parGroupe } from '../../data/referentiels.service';
 import { SessionService, messageErreur } from '../../data/session.service';
+import { HorsLigneService, estMiseEnFile } from '../../data/hors-ligne/hors-ligne.service';
 import { enJpeg } from '../../components/prise-photo.component';
 
 interface Step {
@@ -100,6 +101,8 @@ export class PatientNewComponent implements OnDestroy {
   /** Les 26 provinces viennent du serveur (même liste que l'énumération du modèle Patiente). */
   referentiels = inject(ReferentielsService);
   private etablissementsService = inject(EtablissementsService);
+  /** Réseau : sans connexion, l'enregistrement est gardé sur l'appareil puis envoyé automatiquement. */
+  readonly horsLigne = inject(HorsLigneService);
   etablissementsActifs = computed(() => this.etablissementsService.etablissements().filter(e => e.statut === 'Actif'));
   chargementEtablissements = true;
   fmt = jourFr;
@@ -728,12 +731,19 @@ export class PatientNewComponent implements OnDestroy {
 
   async enregistrer(): Promise<void> {
     if (this.manquants.length || this.envoi || !this.photoFichier) return;
+    // Sans réseau, tout part en une seule saisie gardée sur l'appareil ; l'échographie (avec ses
+    // fichiers) s'ajoute depuis le dossier une fois la connexion revenue.
+    if (!this.horsLigne.enLigne() && this.echo.date) {
+      this.erreur = 'Hors connexion : l’échographie (étape 5) ne peut pas être gardée sur l’appareil avec ses fichiers. Videz l’étape 5 pour enregistrer maintenant, puis ajoutez l’échographie depuis le dossier une fois la connexion revenue.';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     this.envoi = true;
     this.erreur = '';
     const f = this.form;
     const fiche = profilCpnVersApi(this.fiche);
     try {
-      const { numero } = await this.service.creer({
+      const { numero, consultationId } = await this.service.creer({
         patiente: {
           ...fiche.patiente,
           nom: f.nom, postnom: f.postnom, prenom: f.prenom,
@@ -754,26 +764,31 @@ export class PatientNewComponent implements OnDestroy {
         rendezVous: f.prochainRdv ? { date: new Date(f.prochainRdv).toISOString(), motif: f.motifRdv } : null,
         compte: { motDePasse: f.motDePasse },
         confirmerMalgreDoublons: this.doublonsBloquants && this.confirmationDoublons,
+        // Mesures, laboratoire et référence : brouillon de la 1re CPN, créé dans la même requête
+        // (avec l'heure réelle de la saisie, même envoyée plus tard par la synchronisation).
+        premiereConsultation: this.mesuresOuLaboSaisis ? {
+          date: new Date().toISOString(), mesuresPreventives: this.mesures, laboratoire: this.labo,
+          reference: { motifs: this.motifsRetenus, precision: this.precisionReference.trim() },
+        } : null,
       }, this.photoFichier);
-      if (this.mesuresOuLaboSaisis || this.echo.date) {
-        // Échographie : enregistrée avec ses fichiers. Mesures, laboratoire et référence : brouillon de la 1re CPN.
+      if (this.echo.date) {
+        // Échographie : enregistrée avec ses fichiers (en ligne seulement).
         try {
           const dossier = await this.service.dossier(numero);
           const grossesse = dossier.grossesses.find(g => g.statut === 'En cours') ?? dossier.grossesses[0];
-          if (this.echo.date) await this.service.creerEchographie(grossesse.id, this.echo, this.fichiersEcho);
-          if (!this.mesuresOuLaboSaisis) throw new Error('aucune consultation à créer');
-          const c = await this.service.creerConsultation(grossesse.id, {
-            type: 'Première consultation prénatale', mesuresPreventives: this.mesures, laboratoire: this.labo,
-            reference: { motifs: this.motifsRetenus, precision: this.precisionReference.trim() },
-          });
-          this.router.navigate(['/admin/consultations', c.id]);
-          return;
+          await this.service.creerEchographie(grossesse.id, this.echo, this.fichiersEcho);
         } catch {
-          // Dossier créé : ce qui manque (échographie, mesures, examens) se complète depuis le dossier ou la consultation.
+          // Dossier créé : l'échographie se complète depuis le dossier.
         }
       }
-      this.router.navigate(['/admin/patientes', numero], { queryParams: { nouveau: 1 } });
+      if (consultationId) this.router.navigate(['/admin/consultations', consultationId]);
+      else this.router.navigate(['/admin/patientes', numero], { queryParams: { nouveau: 1 } });
     } catch (err) {
+      if (estMiseEnFile(err)) {
+        // Hors connexion : dossier gardé sur l'appareil, créé au retour du réseau (page Synchronisation).
+        this.router.navigate(['/admin/synchronisation']);
+        return;
+      }
       const doublons = doublonsDe(err);
       if (doublons) {
         this.doublons = doublons;

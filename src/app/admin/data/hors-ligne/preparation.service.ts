@@ -90,6 +90,8 @@ export class PreparationHorsLigneService {
       // Pages de liste telles qu'elles s'ouvrent, et référentiels des formulaires.
       await Promise.all([
         essayer(this.patientes.rechercher('', 'Tous', 1)),
+        // Établissements : liste du formulaire d'enregistrement CPN, utilisable sans réseau.
+        essayer(this.lire('etablissements')),
         ...['cpn', 'provinces', 'vaccination', ...(maternite ? ['accouchement'] : [])].map(r => essayer(this.lire(`referentiels/${r}`))),
       ]);
 

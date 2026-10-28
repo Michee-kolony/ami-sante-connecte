@@ -109,6 +109,18 @@ function correspond(f: Fiche, q: string): boolean {
 async function rechercheLocale(req: HttpRequest<unknown>, c: string): Promise<unknown> {
   const p = req.params;
   const q = p.get('q') ?? '';
+  // Doublons pendant un enregistrement sans réseau : même nom et même prénom ou même date de
+  // naissance, parmi les patientes copiées sur l'appareil (le serveur revérifie à l'envoi).
+  if (/^patientes\/doublons(\?|$)/.test(c)) {
+    const index = await lire<Lu<(Fiche & { id: string; dateNaissance?: string | null; age?: number | null; telephoneMasque?: string; commune?: string })[]>>('lectures', CLE_INDEX_PATIENTES).catch(() => undefined);
+    const norme = (v?: string | null) => (v ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+    const nom = norme(p.get('nom'));
+    if (!index || !nom) return [];
+    return index.corps
+      .filter(f => norme(f.nom) === nom && ((!!p.get('prenom') && norme(f.prenom) === norme(p.get('prenom'))) || (!!p.get('dateNaissance') && f.dateNaissance === p.get('dateNaissance'))))
+      .slice(0, 5)
+      .map(f => ({ id: f.id, numero: f.numero, nom: f.nom, postnom: f.postnom ?? '', prenom: f.prenom, age: f.age ?? null, telephoneMasque: f.telephoneMasque ?? '', commune: f.commune ?? '' }));
+  }
   if (/^patientes(\?|$)/.test(c)) {
     const index = await lire<Lu<(Fiche & { statut: string; province: string })[]>>('lectures', CLE_INDEX_PATIENTES).catch(() => undefined);
     if (!index) return undefined;

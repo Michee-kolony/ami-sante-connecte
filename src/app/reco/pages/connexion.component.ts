@@ -26,7 +26,7 @@ import { RecoService } from '../reco.service';
     <form class="space-y-5 rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900" (ngSubmit)="connecter()">
       <div>
         <label class="label" for="matricule">Matricule</label>
-        <input id="matricule" name="matricule" class="input font-mono uppercase" autocomplete="username" placeholder="RECO-0001" [(ngModel)]="matricule" required>
+        <input id="matricule" name="matricule" class="input font-mono uppercase" autocomplete="username" placeholder="Ex. RECO-731065" [(ngModel)]="matricule" required>
       </div>
       <div>
         <label class="label" for="mdp">Mot de passe</label>

@@ -9,6 +9,7 @@ import { DoseCalendrier, EnfantsService, MereEnfant, SaisieEnfantHorsPlateforme,
 import { Doublon, PatientesService, ResumePatiente, doublonsDe } from '../../data/patientes.service';
 import { aujourdhui } from '../../data/format';
 import { messageErreur } from '../../data/session.service';
+import { HorsLigneService, estMiseEnFile } from '../../data/hors-ligne/hors-ligne.service';
 
 const mereVide = (): NouvellePatienteAdmission => ({
   nom: '', postnom: '', prenom: '', dateNaissance: '', ageDeclare: null, telephone: '', email: '',
@@ -39,6 +40,8 @@ export class EnfantNewComponent implements OnInit {
   private service = inject(EnfantsService);
   private patientes = inject(PatientesService);
   private router = inject(Router);
+  /** Réseau : sans connexion, l'enregistrement est gardé sur l'appareil puis envoyé automatiquement. */
+  readonly horsLigne = inject(HorsLigneService);
   aujourdhui = aujourdhui();
 
   // Mère
@@ -191,6 +194,11 @@ export class EnfantNewComponent implements OnInit {
       const e = await this.service.enregistrerHorsPlateforme(this.enfant, mere, this.photo!, doses, confirmerMalgreDoublons);
       this.router.navigate(['/admin/enfants', e.numero]);
     } catch (err) {
+      if (estMiseEnFile(err)) {
+        // Hors connexion : enfant (et mère sans dossier) gardés sur l'appareil, créés au retour du réseau.
+        this.router.navigate(['/admin/synchronisation']);
+        return;
+      }
       const doublons = this.sansDossier ? doublonsDe(err) : null;
       if (doublons) this.doublons = doublons;
       else if (err instanceof HttpErrorResponse && err.status === 409 && err.error?.enfantExistant) {

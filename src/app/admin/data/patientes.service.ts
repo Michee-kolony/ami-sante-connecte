@@ -524,8 +524,11 @@ export class PatientesService {
     return firstValueFrom(this.http.get<Doublon[]>(`${this.url}/doublons`, { params }));
   }
 
-  /** Enregistrement multipart : données en JSON (« donnees ») et photo obligatoire. */
-  creer(corps: unknown, photo: File): Promise<{ id: string; numero: string }> {
+  /**
+   * Enregistrement multipart : données en JSON (« donnees ») et photo obligatoire. Hors connexion,
+   * la saisie est gardée sur l'appareil (HorsLigneService) et l'appel échoue avec horsLigne.
+   */
+  creer(corps: unknown, photo: File): Promise<{ id: string; numero: string; consultationId?: string | null }> {
     const f = new FormData();
     f.append('donnees', JSON.stringify(corps));
     f.append('photo', photo);

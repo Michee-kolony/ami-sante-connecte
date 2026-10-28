@@ -16,6 +16,12 @@
       <span class="font-mono font-semibold text-slate-900 dark:text-white">AC-PAT attribué à l’enregistrement</span>
     </div>
   </div>
+  @if (!horsLigne.enLigne()) {
+    <div class="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100" role="status">
+      <i class="fa-solid fa-plane mt-0.5"></i>
+      <span><strong>Hors connexion</strong> : vous pouvez enregistrer quand même. Le dossier (avec la première consultation) est gardé sur cet appareil (photos comprises) et envoyé automatiquement au serveur dès le retour du réseau ; son numéro sera attribué à ce moment-là. Suivi dans <a routerLink="/admin/synchronisation" class="font-semibold underline">Synchronisation</a>.</span>
+    </div>
+  }
 
   @if (erreur) {
     <div class="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200" role="alert">
