@@ -2,6 +2,8 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SessionService, messageErreur } from '../../data/session.service';
+import { AvatarComponent } from '../../components/avatar.component';
+import { PrisePhotoComponent } from '../../components/prise-photo.component';
 import { RelanceService, type Reco } from '../../data/relance.service';
 
 /**
@@ -11,7 +13,7 @@ import { RelanceService, type Reco } from '../../data/relance.service';
 @Component({
   selector: 'app-relance-recos',
   standalone: true,
-  imports: [DatePipe, FormsModule],
+  imports: [DatePipe, FormsModule, AvatarComponent, PrisePhotoComponent],
   template: `
 <div class="space-y-4">
   @if (erreur()) { <p class="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:bg-rose-500/10 dark:text-rose-200" role="alert">{{ erreur() }}</p> }
@@ -37,7 +39,16 @@ import { RelanceService, type Reco } from '../../data/relance.service';
         <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
           @for (r of recos(); track r.id) {
             <tr>
-              <td class="table-td"><p class="font-medium text-slate-800 dark:text-slate-100">{{ r.prenom }} {{ r.nom }}</p><p class="text-xs text-slate-500">{{ r.matricule }} · {{ r.telephone }}</p></td>
+              <td class="table-td">
+                <div class="flex items-center gap-3">
+                  <app-avatar [photo]="r.photo ?? undefined" [prenom]="r.prenom" [nomFamille]="r.nom" class="h-11 w-11 shrink-0 rounded-full text-sm ring-2 ring-white dark:ring-slate-900" />
+                  <div class="min-w-0">
+                    <p class="font-medium text-slate-800 dark:text-slate-100">{{ r.prenom }} {{ r.nom }}</p>
+                    <p class="text-xs text-slate-500">{{ r.matricule }} · {{ r.telephone }}</p>
+                    @if (!r.photo) { <p class="text-xs text-amber-600"><i class="fa-solid fa-camera"></i> Photo manquante</p> }
+                  </div>
+                </div>
+              </td>
               <td class="table-td"><p>{{ r.zones.join(', ') || '—' }}</p><p class="text-xs text-slate-500">{{ r.aireSante }}</p></td>
               <td class="table-td whitespace-nowrap">{{ r.ouvertes }} ouverte(s) @if (r.enRetard) { <span class="text-rose-600">· {{ r.enRetard }} en retard</span> }</td>
               <td class="table-td whitespace-nowrap text-xs">{{ r.derniereSynchronisation ? (r.derniereSynchronisation | date:'dd/MM/yyyy HH:mm') : 'jamais' }}</td>
@@ -58,6 +69,16 @@ import { RelanceService, type Reco } from '../../data/relance.service';
   @if (edition(); as e) {
     <form class="card space-y-4 p-5" (ngSubmit)="enregistrer()">
       <h3 class="card-title">{{ e.id ? 'Modifier ' + e.matricule : 'Nouveau RECO' }}</h3>
+      <div>
+        @if (e.id && e.photo && !photo) {
+          <div class="mb-3 flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
+            <img [src]="e.photo" alt="Photo actuelle du RECO" class="h-20 w-20 rounded-2xl object-cover shadow ring-1 ring-slate-200 dark:ring-slate-700">
+            <span>Photo actuelle. Prenez-en une nouvelle ci-dessous pour la remplacer.</span>
+          </div>
+        }
+        <app-prise-photo [(fichier)]="photo" libelle="Photo de profil du RECO" [requise]="!e.id || !e.photo"
+          aide="Obligatoire : de face, visage bien éclairé. Elle permet aux familles et au superviseur de reconnaître le relais. JPG, PNG ou WebP, 2 Mo max." />
+      </div>
       <div class="grid gap-4 sm:grid-cols-2">
         <div><label class="label" for="rp">Prénom <span class="req">*</span></label><input id="rp" name="rp" class="input" [(ngModel)]="e.prenom" required></div>
         <div><label class="label" for="rn">Nom <span class="req">*</span></label><input id="rn" name="rn" class="input" [(ngModel)]="e.nom" required></div>
@@ -89,6 +110,7 @@ export class RelanceRecosComponent implements OnInit {
   recos = signal<Reco[]>([]);
   edition = signal<Partial<Reco> | null>(null);
   zones = '';
+  photo: File | null = null;
   secret = signal<{ matricule: string; motDePasse: string } | null>(null);
   erreur = signal('');
   envoi = signal(false);
@@ -118,11 +140,13 @@ export class RelanceRecosComponent implements OnInit {
   async nouveau(): Promise<void> {
     const matricule = await this.faire(() => this.service.prochainMatricule());
     this.zones = '';
+    this.photo = null;
     this.edition.set({ prenom: '', nom: '', postnom: '', sexe: 'F', telephone: '', aireSante: '', matricule: matricule ?? '', etablissementId: this.session.etablissement()?.id });
   }
 
   modifier(r: Reco): void {
     this.zones = r.zones.join(', ');
+    this.photo = null;
     this.edition.set({ ...r });
   }
 
@@ -130,15 +154,22 @@ export class RelanceRecosComponent implements OnInit {
     const e = this.edition();
     if (!e) return;
     const donnees = { prenom: e.prenom, nom: e.nom, postnom: e.postnom, sexe: e.sexe, telephone: e.telephone, aireSante: e.aireSante, zones: this.zones.split(',').map(z => z.trim()).filter(Boolean) };
+    if (!this.photo && (!e.id || !e.photo)) {
+      this.erreur.set('La photo de profil du RECO est obligatoire.');
+      return;
+    }
+    const photo = this.photo;
     if (e.id) {
-      const r = await this.faire(() => this.service.modifierReco(e.id!, donnees));
-      if (r) this.recos.update(l => l.map(x => (x.id === r.id ? r : x)));
+      const r = await this.faire(() => this.service.modifierReco(e.id!, donnees, photo));
+      if (!r) return;
+      this.recos.update(l => l.map(x => (x.id === r.id ? { ...x, ...r } : x)));
     } else {
-      const r = await this.faire(() => this.service.creerReco({ ...donnees, matricule: e.matricule, etablissementId: e.etablissementId }));
+      const r = await this.faire(() => this.service.creerReco({ ...donnees, matricule: e.matricule, etablissementId: e.etablissementId }, photo!));
       if (!r) return;
       this.recos.update(l => [...l, r.reco]);
       if (r.motDePasse) this.secret.set({ matricule: r.reco.matricule, motDePasse: r.motDePasse });
     }
+    this.photo = null;
     this.edition.set(null);
   }
 

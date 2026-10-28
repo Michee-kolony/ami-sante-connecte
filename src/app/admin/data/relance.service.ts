@@ -39,7 +39,7 @@ export interface TacheResume {
   structure: string;
   aireSante: string;
   zone: string;
-  reco: { id: string; matricule: string; nom: string; statut: string } | null;
+  reco: { id: string; matricule: string; nom: string; statut: string; photo: string | null } | null;
   echeance: string;
   enRetard: boolean;
   dateEvenement: string | null;
@@ -104,6 +104,8 @@ export interface Reco {
   postnom: string;
   sexe: 'F' | 'M';
   telephone: string;
+  /** Photo de profil (URL publique), null pour un compte créé sans photo. */
+  photo: string | null;
   etablissementId: string;
   aireSante: string;
   zones: string[];
@@ -286,6 +288,14 @@ export function couleurPriorite(p: Priorite): string {
   return p === 'Urgente' ? 'bg-rose-600 text-white' : p === 'Prioritaire' ? 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300';
 }
 
+/** Données JSON dans « donnees », photo de profil dans « photo ». */
+function formulaire(donnees: object, photo?: File | null): FormData {
+  const f = new FormData();
+  f.append('donnees', JSON.stringify(donnees));
+  if (photo) f.append('photo', photo);
+  return f;
+}
+
 @Injectable({ providedIn: 'root' })
 export class RelanceService {
   private http = inject(HttpClient);
@@ -376,12 +386,14 @@ export class RelanceService {
     return this.get<{ matricule: string }>('/recos/prochain-matricule').then(r => r.matricule);
   }
 
-  creerReco(d: Partial<Reco> & { motDePasse?: string }): Promise<{ reco: Reco; motDePasse: string | null }> {
-    return this.post('/recos', d);
+  /** Création du compte : la photo de profil est obligatoire (formulaire multipart). */
+  creerReco(d: Partial<Reco> & { motDePasse?: string }, photo: File): Promise<{ reco: Reco; motDePasse: string | null }> {
+    return this.post('/recos', formulaire(d, photo));
   }
 
-  modifierReco(id: string, d: Partial<Reco>): Promise<Reco> {
-    return firstValueFrom(this.http.patch<Reco>(`${this.url}/recos/${id}`, d));
+  /** Modification ; la photo n'est envoyée que si elle est remplacée. */
+  modifierReco(id: string, d: Partial<Reco>, photo?: File | null): Promise<Reco> {
+    return firstValueFrom(this.http.patch<Reco>(`${this.url}/recos/${id}`, formulaire(d, photo)));
   }
 
   changerStatutReco(id: string, statut: 'Actif' | 'Suspendu'): Promise<Reco> {

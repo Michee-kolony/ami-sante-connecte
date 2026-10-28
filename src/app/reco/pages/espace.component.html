@@ -2,7 +2,12 @@
   <!-- En-tête -->
   <header class="sticky top-0 z-20 bg-brand-950 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-white shadow-lg">
     <div class="mx-auto flex max-w-2xl items-center justify-between gap-3">
-      <div class="min-w-0">
+      @if (service.reco()?.photo; as photo) {
+        <img [src]="photo" alt="" class="h-10 w-10 shrink-0 rounded-full object-cover ring-2 ring-white/30">
+      } @else {
+        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-sm font-semibold">{{ (service.reco()?.prenom ?? '').charAt(0) }}{{ (service.reco()?.nom ?? '').charAt(0) }}</span>
+      }
+      <div class="min-w-0 flex-1">
         <p class="truncate text-sm font-semibold">{{ service.reco()?.prenom }} {{ service.reco()?.nom }} <span class="font-mono text-xs text-slate-300">{{ service.reco()?.matricule }}</span></p>
         <p class="truncate text-xs text-slate-300">{{ service.reco()?.structure?.nom ?? 'Relais communautaire' }}</p>
       </div>

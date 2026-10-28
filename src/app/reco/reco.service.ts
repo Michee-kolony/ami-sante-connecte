@@ -19,6 +19,7 @@ export interface ProfilReco {
   nom: string;
   postnom: string;
   telephone: string;
+  photo: string | null;
   aireSante: string;
   zones: string[];
   doitChangerMotDePasse: boolean;
