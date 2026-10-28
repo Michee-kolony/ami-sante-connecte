@@ -1,10 +1,11 @@
-import { Component, OnInit, inject, input, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SessionService, messageErreur } from '../../data/session.service';
 import { AvatarComponent } from '../../components/avatar.component';
 import { PrisePhotoComponent } from '../../components/prise-photo.component';
 import { RelanceService, type Reco } from '../../data/relance.service';
+import { EtablissementsService } from '../../data/etablissements.service';
 
 /**
  * Comptes des relais communautaires (RECO) : création, secteur couvert (attribution automatique
@@ -89,6 +90,12 @@ import { RelanceService, type Reco } from '../../data/relance.service';
         <div><label class="label" for="rs">Sexe <span class="req">*</span></label>
           <select id="rs" name="rs" class="input" [(ngModel)]="e.sexe" required><option value="F">Femme</option><option value="M">Homme</option></select></div>
         <div><label class="label" for="rt">Téléphone <span class="req">*</span></label><input id="rt" name="rt" class="input" [(ngModel)]="e.telephone" required></div>
+        <div class="sm:col-span-2"><label class="label" for="re">Structure de rattachement <span class="req">*</span></label>
+          <select id="re" name="re" class="input" [(ngModel)]="e.etablissementId" required [disabled]="!!session.etablissement()">
+            <option [ngValue]="undefined" disabled>Choisir le centre de santé…</option>
+            @for (s of structures(); track s.id) { <option [ngValue]="s.id">{{ s.nom }} ({{ s.code }}){{ s.aireSante ? ' — aire ' + s.aireSante : '' }}</option> }
+          </select>
+          <p class="hint">{{ session.etablissement() ? 'Structure de votre session : vous ne gérez que ses RECO.' : 'Le RECO reçoit les tâches des personnes suivies par cette structure.' }}</p></div>
         <div><label class="label" for="ra">Aire de santé</label><input id="ra" name="ra" class="input" [(ngModel)]="e.aireSante" placeholder="Celle de la structure par défaut"></div>
         <div class="sm:col-span-2"><label class="label" for="rz">Secteur couvert (quartiers, villages, avenues)</label>
           <input id="rz" name="rz" class="input" [(ngModel)]="zones" placeholder="Salongo, Kemi, Livulu">
@@ -160,7 +167,10 @@ import { RelanceService, type Reco } from '../../data/relance.service';
 })
 export class RelanceRecosComponent implements OnInit {
   private service = inject(RelanceService);
-  private session = inject(SessionService);
+  readonly session = inject(SessionService);
+  private etablissements = inject(EtablissementsService);
+  /** Structures actives proposées comme rattachement. */
+  readonly structures = computed(() => this.etablissements.etablissements().filter(s => s.statut === 'Actif'));
 
   /** Suppression définitive : médecin chef de service et médecin directeur (le serveur vérifie aussi). */
   peutSupprimer = input(false);
@@ -177,6 +187,7 @@ export class RelanceRecosComponent implements OnInit {
 
   ngOnInit(): void {
     this.charger();
+    this.etablissements.charger().catch(() => {});
   }
 
   private async faire<T>(action: () => Promise<T>): Promise<T | undefined> {
@@ -200,7 +211,7 @@ export class RelanceRecosComponent implements OnInit {
   nouveau(): void {
     this.zones = '';
     this.photo = null;
-    this.edition.set({ prenom: '', nom: '', postnom: '', sexe: 'F', telephone: '', aireSante: '', etablissementId: this.session.etablissement()?.id });
+    this.edition.set({ prenom: '', nom: '', postnom: '', sexe: 'F', telephone: '', aireSante: '', etablissementId: this.session.etablissement()?.id ?? (this.structures().length === 1 ? this.structures()[0].id : undefined) });
   }
 
   modifier(r: Reco): void {
@@ -212,7 +223,11 @@ export class RelanceRecosComponent implements OnInit {
   async enregistrer(): Promise<void> {
     const e = this.edition();
     if (!e) return;
-    const donnees = { prenom: e.prenom, nom: e.nom, postnom: e.postnom, sexe: e.sexe, telephone: e.telephone, aireSante: e.aireSante, zones: this.zones.split(',').map(z => z.trim()).filter(Boolean) };
+    if (!e.etablissementId) {
+      this.erreur.set('Choisissez la structure de rattachement du RECO.');
+      return;
+    }
+    const donnees = { etablissementId: e.etablissementId, prenom: e.prenom, nom: e.nom, postnom: e.postnom, sexe: e.sexe, telephone: e.telephone, aireSante: e.aireSante, zones: this.zones.split(',').map(z => z.trim()).filter(Boolean) };
     if (!this.photo && (!e.id || !e.photo)) {
       this.erreur.set('La photo de profil du RECO est obligatoire.');
       return;
@@ -223,7 +238,7 @@ export class RelanceRecosComponent implements OnInit {
       if (!r) return;
       this.recos.update(l => l.map(x => (x.id === r.id ? { ...x, ...r } : x)));
     } else {
-      const r = await this.faire(() => this.service.creerReco({ ...donnees, etablissementId: e.etablissementId }, photo!));
+      const r = await this.faire(() => this.service.creerReco(donnees, photo!));
       if (!r) return;
       this.recos.update(l => [...l, r.reco]);
       if (r.motDePasse) this.secret.set({ matricule: r.reco.matricule, motDePasse: r.motDePasse });
