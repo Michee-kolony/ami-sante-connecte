@@ -30,6 +30,7 @@ import { AccouchementComponent } from './pages/accouchement/accouchement.compone
 import { EnfantDetailComponent } from './pages/enfant-detail/enfant-detail.component';
 import { EnfantNewComponent } from './pages/enfant-new/enfant-new.component';
 import { RelanceComponent } from './pages/relance/relance.component';
+import { DossiersLocauxComponent } from './pages/hors-ligne/dossiers-locaux.component';
 
 /** Pages réservées au superadmin. ⚠️ Côté client seulement : le serveur doit refuser aussi. */
 const superAdminGuard = () => UTILISATEUR.superAdmin || inject(Router).parseUrl('/admin/tableau-de-bord');
@@ -79,6 +80,9 @@ export const ADMIN_ROUTES: Routes = [
       { path: 'relance', component: RelanceComponent, canActivate: [connecteGuard], title: 'Relance communautaire · AMI Santé Connect' },
       { path: 'agents', component: AgentsComponent, title: 'Agents de vaccination · AMI Santé Connect' },
       { path: 'doublons', component: DuplicatesComponent, title: 'Doublons · AMI Santé Connect' },
+      // Dossiers créés sans réseau : consultables et complétables sur l'appareil avant leur synchronisation.
+      { path: 'hors-ligne', component: DossiersLocauxComponent, canActivate: [connecteGuard], title: 'Dossiers hors connexion · AMI Santé Connect' },
+      { path: 'hors-ligne/:localId', component: DossiersLocauxComponent, canActivate: [connecteGuard], title: 'Dossier hors connexion · AMI Santé Connect' },
       { path: 'synchronisation', component: SyncComponent, title: 'Synchronisation · AMI Santé Connect' },
       { path: 'etablissements', component: EtablissementsComponent, canActivate: [superAdminGuard], title: 'Établissements sanitaires · AMI Santé Connect' },
       { path: 'soignants', component: SoignantsComponent, canActivate: [superAdminGuard, connecteGuard], title: 'Médecins et infirmiers · AMI Santé Connect' },

@@ -14,6 +14,7 @@ import { AvatarComponent } from '../components/avatar.component';
 import { ConversationsFlottantesComponent } from '../components/conversations-flottantes.component';
 import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
 import { RappelsRdvComponent } from '../components/rappels-rdv.component';
+import { VerrouillageComponent } from '../components/verrouillage.component';
 
 interface NavItem {
   label: string;
@@ -29,7 +30,7 @@ interface NavItem {
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [DatePipe, RouterOutlet, RouterLink, RouterLinkActive, ThemeToggleComponent, NotificationsMessagesComponent, AvatarComponent, ConversationsFlottantesComponent, RappelsRdvComponent],
+  imports: [DatePipe, RouterOutlet, RouterLink, RouterLinkActive, ThemeToggleComponent, NotificationsMessagesComponent, AvatarComponent, ConversationsFlottantesComponent, RappelsRdvComponent, VerrouillageComponent],
   templateUrl: './shell.component.html',
 })
 export class ShellComponent {
@@ -95,7 +96,7 @@ export class ShellComponent {
   /** Travail hors connexion : état du réseau et saisies en attente d'envoi. */
   horsLigne = inject(HorsLigneService);
   /** Copie automatique des dossiers actifs sur l'appareil (démarrée avec l'espace administrateur). */
-  private preparation = inject(PreparationHorsLigneService);
+  preparation = inject(PreparationHorsLigneService);
   get pending(): number {
     return this.horsLigne.enAttente() + this.horsLigne.enEchec();
   }
@@ -155,6 +156,7 @@ export class ShellComponent {
 
   navAdmin: NavItem[] = [
     { label: 'Synchronisation', icon: 'fa-arrows-rotate', path: '/admin/synchronisation' },
+    { label: 'Dossiers hors connexion', icon: 'fa-floppy-disk', path: '/admin/hors-ligne' },
     { label: 'Journal d’audit', icon: 'fa-shield-halved', path: '/admin/audit' },
   ];
 

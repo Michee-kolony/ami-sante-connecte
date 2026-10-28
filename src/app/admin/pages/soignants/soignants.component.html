@@ -180,6 +180,9 @@
                     <span class="sr-only">{{ m.statut === 'Actif' ? 'Suspendre' : 'Réactiver' }}</span>
                   </button>
                   @if (!estMoi(m)) {
+                    <button type="button" class="btn-ghost px-2.5 py-1.5" title="Appareil perdu : révoquer les sessions" (click)="demanderRevocation(m)">
+                      <i class="fa-solid fa-mobile-screen-button text-amber-500"></i><span class="sr-only">Appareil perdu : révoquer les sessions</span>
+                    </button>
                     <button type="button" class="btn-ghost px-2.5 py-1.5" title="Supprimer du système" (click)="demanderSuppression(m)">
                       <i class="fa-solid fa-trash text-rose-500"></i><span class="sr-only">Supprimer du système</span>
                     </button>
@@ -558,6 +561,43 @@
         </button>
       </div>
     </form>
+  </div>
+}
+
+<!-- Appareil perdu : révocation des sessions -->
+@if (aRevoquer; as s) {
+  <div class="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center" role="alertdialog" aria-modal="true"
+       aria-labelledby="titre-revocation" (keydown.escape)="annulerRevocation()">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" (click)="annulerRevocation()"></div>
+    <div class="relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 dark:bg-slate-900 dark:ring-white/10">
+      <div class="h-1.5 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400"></div>
+      <div class="p-6">
+        <div class="flex items-start gap-4">
+          <div class="flex h-12 w-12 flex-none items-center justify-center rounded-full bg-amber-100 ring-8 ring-amber-50 dark:bg-amber-500/15 dark:ring-amber-500/5">
+            <i class="fa-solid fa-mobile-screen-button text-xl text-amber-600 dark:text-amber-400"></i>
+          </div>
+          <div class="min-w-0 flex-1">
+            <h2 id="titre-revocation" class="text-lg font-semibold text-slate-900 dark:text-white">Appareil perdu ou volé ?</h2>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ nomComplet(s) }} · <span class="font-mono">{{ s.matricule }}</span></p>
+          </div>
+        </div>
+        <ul class="mt-4 space-y-1.5 text-sm text-slate-600 dark:text-slate-300">
+          <li class="flex items-start gap-2"><i class="fa-solid fa-ban mt-0.5 w-4 text-rose-500"></i> Toutes les sessions ouvertes de ce compte sont refusées immédiatement par le serveur.</li>
+          <li class="flex items-start gap-2"><i class="fa-solid fa-eraser mt-0.5 w-4 text-rose-500"></i> Au prochain contact avec le serveur, l’appareil efface sa base locale chiffrée et sa clé.</li>
+          <li class="flex items-start gap-2"><i class="fa-solid fa-triangle-exclamation mt-0.5 w-4 text-amber-500"></i> Les saisies hors connexion non encore synchronisées sur cet appareil sont perdues.</li>
+          <li class="flex items-start gap-2"><i class="fa-solid fa-key mt-0.5 w-4 text-brand-500"></i> Pensez aussi à réinitialiser son mot de passe ; il pourra se reconnecter sur un nouvel appareil.</li>
+        </ul>
+        @if (erreurRevocation) {
+          <p class="mt-4 rounded-xl bg-rose-50 px-3 py-2.5 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300" role="alert">{{ erreurRevocation }}</p>
+        }
+      </div>
+      <div class="flex flex-col-reverse gap-2 border-t border-slate-100 bg-slate-50/60 px-6 py-4 dark:border-slate-800 dark:bg-slate-900/60 sm:flex-row sm:justify-end">
+        <button type="button" class="btn-secondary" (click)="annulerRevocation()" [disabled]="revocation">Annuler</button>
+        <button type="button" class="btn bg-amber-600 text-white shadow-sm hover:bg-amber-700 disabled:opacity-50" [disabled]="revocation" (click)="confirmerRevocation()">
+          <i class="fa-solid" [class]="revocation ? 'fa-spinner fa-spin' : 'fa-ban'"></i> {{ revocation ? 'Révocation…' : 'Révoquer les sessions' }}
+        </button>
+      </div>
+    </div>
   </div>
 }
 

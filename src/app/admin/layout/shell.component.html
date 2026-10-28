@@ -228,6 +228,15 @@
     </div>
   </nav>
 
+<!-- Première utilisation : l'appareil n'est pas encore prêt à fonctionner sans connexion -->
+@if (session.connecte() && !preparation.appareilPret()) {
+  <a routerLink="/admin/synchronisation" role="status"
+     class="fixed bottom-20 right-4 z-40 hidden max-w-xs items-start gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900 shadow-lg ring-1 ring-amber-200 dark:bg-amber-500/15 dark:text-amber-100 dark:ring-amber-500/30 sm:flex lg:bottom-6">
+    <i class="fa-solid fa-hourglass-half mt-0.5"></i>
+    <span>@if (horsLigne.enLigne()) { Préparation de l’appareil pour le travail hors connexion@if (preparation.enCours()) { ({{ preparation.progression().fait }}/{{ preparation.progression().total }})}… gardez la connexion. } @else { Appareil pas encore prêt hors connexion : une première utilisation en ligne complète est nécessaire. }</span>
+  </a>
+}
+
 <!-- Saisie faite hors connexion : gardée sur l'appareil, envoyée à la synchronisation -->
 @if (annonceHorsLigne(); as libelle) {
   <a routerLink="/admin/synchronisation" role="status"
@@ -237,3 +246,6 @@
   </a>
 }
 </div>
+
+<!-- Verrouillage par inactivité et limite de travail hors connexion -->
+<app-verrouillage />

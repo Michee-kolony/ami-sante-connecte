@@ -206,6 +206,11 @@ export class SoignantsService {
     this.remplacer(await firstValueFrom(this.http.patch<Soignant>(`${this.url}/${id}/statut`, {})));
   }
 
+  /** Appareil perdu ou volé : toutes les sessions ouvertes du compte sont refusées ; l'appareil efface ses données au prochain contact. */
+  async revoquerSessions(id: string): Promise<void> {
+    await firstValueFrom(this.http.post(`${this.url}/${id}/revoquer-sessions`, {}));
+  }
+
   /** Un soignant : depuis la liste déjà chargée, sinon depuis le serveur. */
   async obtenir(id: string): Promise<Soignant> {
     const connu = this.soignants().find(s => s.id === id);

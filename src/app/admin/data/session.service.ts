@@ -3,9 +3,20 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, firstValueFrom, throwError } from 'rxjs';
 import { API_URL } from '../../shared/api';
+import { Empreinte, hacherMotDePasse, verifierMotDePasse } from '../../shared/mot-de-passe';
 import type { RoleSoignant, Soignant } from './soignants.service';
+import { toutEffacer } from './hors-ligne/stockage';
 
 const CLE_STOCKAGE = 'ami-session';
+const CLE_CONTACT = 'ami-dernier-contact-serveur';
+const CLE_ACTIVITE = 'ami-derniere-activite';
+/** Verrouillage de l'écran après 10 minutes sans activité (déverrouillage par le mot de passe, sans réseau). */
+export const VERROUILLAGE_MS = 10 * 60_000;
+/**
+ * Durée maximale de travail sans contact avec le serveur : au-delà, une connexion en ligne est
+ * exigée (droits et comptes revérifiés). Les saisies en attente restent sur l'appareil.
+ */
+export const HORS_LIGNE_MAX_MS = 7 * 24 * 3600_000;
 
 /** Rôles autorisés à ajouter et gérer le personnel (le serveur applique la même règle). */
 export const ROLES_GESTION: RoleSoignant[] = ['Médecin chef de service'];
@@ -28,12 +39,28 @@ interface Session {
   jeton: string;
   soignant: Soignant;
   etablissement: EtablissementSession | null;
+  /** Empreinte salée du mot de passe (PBKDF2) : déverrouillage de l'écran sans réseau. Jamais le mot de passe. */
+  verrou?: Empreinte;
 }
 
 /** Réponse du serveur quand le soignant doit d'abord choisir son établissement. */
 interface ChoixEtablissement {
   choixEtablissement: true;
   etablissements: EtablissementSession[];
+}
+
+function lireLocal(cle: string): string | null {
+  try {
+    return localStorage.getItem(cle);
+  } catch {
+    return null;
+  }
+}
+
+function ecrireLocal(cle: string, valeur: string): void {
+  try {
+    localStorage.setItem(cle, valeur);
+  } catch { /* stockage indisponible */ }
 }
 
 function lireSession(): Session | null {
@@ -64,6 +91,63 @@ export class SessionService {
   /** Salle de travail et dossier d'accouchement : médecins et sages-femmes (règle du serveur). */
   readonly estMaternite = computed(() => this.estMedecin() || !!this.soignant()?.role.startsWith('Sage-femme'));
 
+  /** Écran verrouillé (inactivité) : mot de passe demandé, vérifié sur l'appareil. */
+  readonly verrouille = signal(false);
+  /** Dernier contact réussi avec le serveur (durée maximale hors ligne). */
+  readonly dernierContactServeur = signal<number>(Number(lireLocal(CLE_CONTACT)) || Date.now());
+  /** Trop longtemps sans contact avec le serveur : connexion en ligne exigée. */
+  readonly horsLigneTropLongtemps = computed(() => this.connecte() && Date.now() - this.dernierContactServeur() > HORS_LIGNE_MAX_MS);
+
+  private minuterieVerrou: ReturnType<typeof setTimeout> | null = null;
+
+  constructor() {
+    // Application rouverte après une longue inactivité (même hors ligne) : écran verrouillé.
+    const derniere = Number(lireLocal(CLE_ACTIVITE)) || 0;
+    if (this.connecte() && derniere && Date.now() - derniere > VERROUILLAGE_MS) this.verrouille.set(true);
+    for (const e of ['pointerdown', 'keydown', 'touchstart']) window.addEventListener(e, () => this.activite(), { passive: true });
+    this.activite();
+  }
+
+  /** Activité de l'utilisateur : le compte à rebours du verrouillage repart. */
+  private activite(): void {
+    if (this.verrouille() || !this.connecte()) return;
+    ecrireLocal(CLE_ACTIVITE, String(Date.now()));
+    if (this.minuterieVerrou) clearTimeout(this.minuterieVerrou);
+    this.minuterieVerrou = setTimeout(() => this.connecte() && this.verrouille.set(true), VERROUILLAGE_MS);
+  }
+
+  /** Déverrouillage par le mot de passe, vérifié sur l'appareil (empreinte PBKDF2), sans réseau. */
+  async deverrouiller(motDePasse: string): Promise<boolean> {
+    const e = this.session()?.verrou;
+    const ok = !!e && await verifierMotDePasse(motDePasse, e).catch(() => false);
+    if (ok) {
+      this.verrouille.set(false);
+      this.activite();
+    }
+    return ok;
+  }
+
+  /** Réponse du serveur reçue : le compteur de la durée hors ligne repart. */
+  marquerContactServeur(): void {
+    const maintenant = Date.now();
+    if (maintenant - this.dernierContactServeur() < 60_000) return;
+    this.dernierContactServeur.set(maintenant);
+    ecrireLocal(CLE_CONTACT, String(maintenant));
+  }
+
+  /**
+   * Appareil révoqué (perte, vol) ou compte suspendu : effacement sécurisé de toutes les données
+   * gardées sur l'appareil (dossiers, saisies, clé de chiffrement), puis retour à la connexion.
+   */
+  async effacerAppareil(): Promise<void> {
+    await toutEffacer();
+    for (const cle of ['ami-derniere-synchronisation', 'ami-preparation-hors-ligne', CLE_CONTACT, CLE_ACTIVITE]) {
+      try { localStorage.removeItem(cle); } catch { /* stockage indisponible */ }
+    }
+    this.deconnecter();
+    location.reload();
+  }
+
   get jeton(): string | null {
     return this.session()?.jeton ?? null;
   }
@@ -76,7 +160,13 @@ export class SessionService {
     const r = await firstValueFrom(this.http.post<Session | ChoixEtablissement>(
       `${API_URL}/auth/connexion`, { email, motDePasse, etablissementId }));
     if ('choixEtablissement' in r) return r.etablissements;
-    this.enregistrer(r);
+    // Empreinte du mot de passe pour le déverrouillage sans réseau (le mot de passe n'est pas gardé).
+    const verrou = await hacherMotDePasse(motDePasse).catch(() => undefined);
+    this.enregistrer({ ...r, verrou });
+    this.verrouille.set(false);
+    this.dernierContactServeur.set(Date.now());
+    ecrireLocal(CLE_CONTACT, String(Date.now()));
+    this.activite();
     return null;
   }
 
@@ -122,7 +212,9 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const jeton = session.jeton;
   const requete = jeton ? req.clone({ setHeaders: { Authorization: `Bearer ${jeton}` } }) : req;
   return next(requete).pipe(catchError((err: HttpErrorResponse) => {
-    if (err.status === 401 && jeton) session.deconnecter();
+    // Sessions révoquées (appareil perdu) ou compte suspendu : les données de l'appareil sont effacées.
+    if (err.status === 401 && jeton && err.error?.revoque === true) session.effacerAppareil();
+    else if (err.status === 401 && jeton) session.deconnecter();
     return throwError(() => err);
   }));
 };

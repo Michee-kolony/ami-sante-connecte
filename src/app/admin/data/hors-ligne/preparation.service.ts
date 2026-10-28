@@ -1,5 +1,5 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Injectable, effect, inject, signal, untracked } from '@angular/core';
+import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { API_URL } from '../../../shared/api';
 import { AccouchementsService } from '../accouchements.service';
@@ -8,7 +8,7 @@ import { PageRecherche, PatientesService, ResumePatiente } from '../patientes.se
 import { SessionService } from '../session.service';
 import { HorsLigneService } from './hors-ligne.service';
 import { CLE_INDEX_PATIENTES } from './hors-ligne.interceptor';
-import { ecrire, lire } from './stockage';
+import { applicationEnCache, ecrire, lire } from './stockage';
 const CLE_PREPARATION = 'meta:preparation';
 /** Nouvelle préparation automatique au plus toutes les 30 minutes. */
 const INTERVALLE_MS = 30 * 60_000;
@@ -43,6 +43,10 @@ export class PreparationHorsLigneService {
   readonly progression = signal({ fait: 0, total: 0 });
   readonly bilan = signal<BilanPreparation | null>(null);
   readonly erreur = signal<string | null>(null);
+  /** Application entièrement en cache (ouverture sans réseau possible). */
+  readonly applicationPrete = signal(false);
+  /** Appareil prêt pour le hors connexion : application en cache et dossiers copiés. */
+  readonly appareilPret = computed(() => this.applicationPrete() && !!this.bilan());
   /** Date de la dernière copie lue (pas de nouvelle copie avant). */
   private pret = false;
 
@@ -58,7 +62,21 @@ export class PreparationHorsLigneService {
     effect(() => {
       if (this.horsLigne.enLigne()) untracked(() => this.preparerSiNecessaire());
     });
+    // Après l'envoi des saisies : télécharger les mises à jour du serveur (numéros définitifs, alertes recalculées).
+    effect(() => {
+      if (this.horsLigne.fileVidee() > 0) untracked(() => this.pret && this.preparer());
+    });
     setInterval(() => this.preparerSiNecessaire(), INTERVALLE_MS);
+    this.surveillerCache();
+  }
+
+  /** Vérifie la copie de l'application dans le cache jusqu'à ce qu'elle soit complète (première visite). */
+  private async surveillerCache(): Promise<void> {
+    if (await applicationEnCache()) {
+      this.applicationPrete.set(true);
+      return;
+    }
+    setTimeout(() => this.surveillerCache(), 3000);
   }
 
   private async chargerBilan(): Promise<void> {

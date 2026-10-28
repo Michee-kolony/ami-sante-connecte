@@ -9,7 +9,7 @@ import {
 import { EtablissementsService } from '../../data/etablissements.service';
 import { MesurePreventive, ReferentielsService, parGroupe } from '../../data/referentiels.service';
 import { SessionService, messageErreur } from '../../data/session.service';
-import { HorsLigneService, estMiseEnFile } from '../../data/hors-ligne/hors-ligne.service';
+import { HorsLigneService, estMiseEnFile, localIdDe } from '../../data/hors-ligne/hors-ligne.service';
 import { enJpeg } from '../../components/prise-photo.component';
 
 interface Step {
@@ -786,7 +786,7 @@ export class PatientNewComponent implements OnDestroy {
     } catch (err) {
       if (estMiseEnFile(err)) {
         // Hors connexion : dossier gardé sur l'appareil, créé au retour du réseau (page Synchronisation).
-        this.router.navigate(['/admin/synchronisation']);
+        this.router.navigate(localIdDe(err) ? ['/admin/hors-ligne', localIdDe(err)] : ['/admin/synchronisation']);
         return;
       }
       const doublons = doublonsDe(err);

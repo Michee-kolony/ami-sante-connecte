@@ -1,4 +1,5 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
+import { applicationEnCache } from '../../data/hors-ligne/stockage';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { ThemeToggleComponent } from '../../../shared/theme-toggle.component';
@@ -22,6 +23,17 @@ export class LoginComponent {
   /** Établissements proposés quand le soignant en a plusieurs (2e étape). */
   choix: EtablissementSession[] | null = null;
   etablissementId = '';
+
+  /** État réel de l'appareil pour le travail hors connexion (affiché sous le formulaire). */
+  readonly reseau = navigator.onLine;
+  readonly appareilPret = signal(false);
+  readonly appareil = (() => {
+    try { return localStorage.getItem('ami-appareil'); } catch { return null; }
+  })();
+
+  constructor() {
+    applicationEnCache().then(ok => this.appareilPret.set(ok));
+  }
 
   async login(): Promise<void> {
     if (this.connexion || (this.choix && !this.etablissementId)) return;

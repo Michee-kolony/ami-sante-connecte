@@ -160,6 +160,35 @@ export class SoignantsComponent implements OnDestroy {
     }
   }
 
+  // --- Appareil perdu : révocation des sessions -----------------------------------
+  aRevoquer: Soignant | null = null;
+  revocation = false;
+  erreurRevocation = '';
+
+  demanderRevocation(s: Soignant): void {
+    this.aRevoquer = s;
+    this.erreurRevocation = '';
+  }
+
+  annulerRevocation(): void {
+    if (!this.revocation) this.aRevoquer = null;
+  }
+
+  async confirmerRevocation(): Promise<void> {
+    const s = this.aRevoquer;
+    if (!s || this.revocation) return;
+    this.revocation = true;
+    try {
+      await this.service.revoquerSessions(s.id);
+      this.aRevoquer = null;
+      this.notifier(`Sessions de ${this.nomComplet(s)} révoquées : ses appareils effaceront leurs données au prochain contact avec le serveur.`);
+    } catch (err) {
+      this.erreurRevocation = messageErreur(err);
+    } finally {
+      this.revocation = false;
+    }
+  }
+
   // --- Suppression ---------------------------------------------------------------
   aSupprimer: Soignant | null = null;
   suppression = false;

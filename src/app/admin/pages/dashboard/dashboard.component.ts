@@ -1,6 +1,9 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { EtablissementsService } from '../../data/etablissements.service';
 import { SessionService } from '../../data/session.service';
+import { HorsLigneService } from '../../data/hors-ligne/hors-ligne.service';
+import { PreparationHorsLigneService } from '../../data/hors-ligne/preparation.service';
+import { DatePipe } from '@angular/common';
 import { SoignantsService, categorieDuRole } from '../../data/soignants.service';
 import { RouterLink } from '@angular/router';
 import { AvatarComponent } from '../../components/avatar.component';
@@ -16,12 +19,15 @@ const MOIS_COURTS = ['', 'jan', 'fév', 'mar', 'avr', 'mai', 'juin', 'juil', 'ao
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [RouterLink, AvatarComponent, CarteRdcComponent, EnLigneComponent, RepartitionSexeComponent],
+  imports: [DatePipe, RouterLink, AvatarComponent, CarteRdcComponent, EnLigneComponent, RepartitionSexeComponent],
   templateUrl: './dashboard.component.html',
 })
 export class DashboardComponent {
   // --- Chiffres du système (soignants et établissements enregistrés sur le serveur) ---
   session = inject(SessionService);
+  /** Hors connexion : les chiffres viennent de la copie locale (bandeau « non synchronisées »). */
+  horsLigne = inject(HorsLigneService);
+  preparation = inject(PreparationHorsLigneService);
   soignantsService = inject(SoignantsService);
   private etablissementsService = inject(EtablissementsService);
   private statistiquesService = inject(StatistiquesService);

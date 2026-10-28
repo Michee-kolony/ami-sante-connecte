@@ -1,0 +1,263 @@
+<div class="mx-auto max-w-6xl space-y-6">
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <nav class="mb-1 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+        <a routerLink="/admin/synchronisation" class="hover:text-brand-700 dark:hover:text-brand-300">Synchronisation</a>
+        <i class="fa-solid fa-chevron-right text-[9px]"></i>
+        <a routerLink="/admin/hors-ligne" class="hover:text-brand-700 dark:hover:text-brand-300">Dossiers créés hors connexion</a>
+      </nav>
+      <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ dossier() ? nom(dossier()) : 'Dossiers créés hors connexion' }}</h1>
+      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Dossiers enregistrés sur cet appareil sans réseau. Ils sont consultables et complétables ici ; le serveur leur attribue un numéro à la synchronisation.</p>
+    </div>
+    <span class="badge self-start" [class]="hl.enLigne() ? 'bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300' : 'bg-slate-900 text-white'">
+      <i class="fa-solid" [class]="hl.enLigne() ? 'fa-wifi' : 'fa-plane'"></i> {{ hl.enLigne() ? 'Serveur joignable' : 'Hors connexion' }}
+    </span>
+  </div>
+
+  @if (message()) { <p class="rounded-xl bg-accent-50 px-4 py-3 text-sm text-accent-800 dark:bg-accent-500/10 dark:text-accent-200" role="status"><i class="fa-solid fa-circle-check"></i> {{ message() }}</p> }
+  @if (erreur()) { <p class="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300" role="alert">{{ erreur() }}</p> }
+
+  @if (!ouvert()) {
+    <!-- ======================= LISTE ======================= -->
+    <div class="card overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
+          <thead class="bg-slate-50/70 dark:bg-slate-800/50"><tr>
+            <th class="table-th">Dossier</th><th class="table-th">Type</th><th class="table-th">Créé le</th><th class="table-th">Statut</th><th class="table-th">Numéro serveur</th>
+          </tr></thead>
+          <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+            @for (l of dossiers(); track l.localId) {
+              <tr class="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40" [routerLink]="['/admin/hors-ligne', l.localId]">
+                <td class="table-td"><p class="font-medium text-slate-900 dark:text-white">{{ nom(l) }}</p><p class="font-mono text-[11px] text-slate-400">{{ l.localId }}</p></td>
+                <td class="table-td">{{ l.type }}</td>
+                <td class="table-td whitespace-nowrap">{{ l.creeLe | date: 'dd/MM/yyyy HH:mm' }}</td>
+                <td class="table-td"><span class="badge" [class]="couleurStatut(l.statut)">{{ libelleStatut(l.statut) }}</span></td>
+                <td class="table-td font-mono text-xs">{{ l.serverNumero ?? '—' }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="5" class="table-td py-10 text-center text-slate-500">Aucun dossier créé hors connexion sur cet appareil.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  } @else if (dossier()) {
+    @let l = dossier()!;
+    <!-- ======================= DOSSIER ======================= -->
+    <div class="card p-5">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">{{ l.type }} · créé le {{ l.creeLe | date: 'dd/MM/yyyy HH:mm' }} sur cet appareil</p>
+          <p class="mt-1 font-mono text-xs text-slate-400">Identifiant local : {{ l.localId }}</p>
+        </div>
+        <span class="badge" [class]="couleurStatut(l.statut)">{{ libelleStatut(l.statut) }}</span>
+      </div>
+      @if (l.serverId) {
+        <div class="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-accent-50 px-4 py-3 text-sm text-accent-900 dark:bg-accent-500/10 dark:text-accent-100">
+          <span><i class="fa-solid fa-circle-check"></i> Synchronisé le {{ l.derniereSyncLe | date: 'dd/MM/yyyy HH:mm' }} : numéro <strong class="font-mono">{{ l.serverNumero ?? l.serverId }}</strong>. Le dossier complet est maintenant sur le serveur.</span>
+          @if (lienServeur(l); as lien) { <a class="btn-primary py-1.5 text-xs" [routerLink]="lien">Ouvrir le dossier complet</a> }
+        </div>
+      } @else {
+        <p class="mt-3 rounded-xl bg-amber-50 px-4 py-2.5 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">
+          <i class="fa-solid fa-clock"></i> En attente de synchronisation. Les calculs affichés ici (DPA, zone du partogramme, doses dues) sont faits sur l’appareil, à titre indicatif : le serveur les refait et ses résultats font foi. Les données cliniques restent à valider par un professionnel.
+        </p>
+      }
+
+      @switch (l.type) {
+        <!-- ---------------- Patiente ---------------- -->
+        @case ('Patiente') {
+          @let r = $any(l.resume);
+          <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-3">
+            <div><dt class="text-xs text-slate-500">Date de naissance / âge</dt><dd class="font-medium">{{ r.dateNaissance ? jourFr(r.dateNaissance) : (r.ageDeclare ? r.ageDeclare + ' ans' : '—') }}</dd></div>
+            <div><dt class="text-xs text-slate-500">Téléphone</dt><dd class="font-medium">{{ r.telephone || '—' }}</dd></div>
+            <div><dt class="text-xs text-slate-500">Résidence</dt><dd class="font-medium">{{ r.adresse?.commune }} {{ r.adresse?.quartier }} {{ r.adresse?.province }}</dd></div>
+            <div><dt class="text-xs text-slate-500">DDR</dt><dd class="font-medium">{{ $any(grossesseDe(l)?.resume)?.datation?.ddr ? jourFr($any(grossesseDe(l)?.resume)?.datation?.ddr) : 'Non datée' }}</dd></div>
+            <div><dt class="text-xs text-slate-500">DPA estimée (Naegele)</dt><dd class="font-medium">{{ dpa(l) ? jourFr(dpa(l)) : '—' }}</dd></div>
+            <div><dt class="text-xs text-slate-500">1re CPN saisie à l’enregistrement</dt><dd class="font-medium">{{ r.premiereConsultation ? 'Oui (brouillon)' : 'Non' }}</dd></div>
+          </dl>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <button type="button" class="btn-primary py-2 text-xs" (click)="ouvrirFormulaire('consultation')"><i class="fa-solid fa-stethoscope"></i> Consultation CPN</button>
+            <button type="button" class="btn-secondary py-2 text-xs" (click)="ouvrirFormulaire('rendezVous')"><i class="fa-solid fa-calendar-plus"></i> Rendez-vous</button>
+            <button type="button" class="btn-secondary py-2 text-xs" (click)="ouvrirFormulaire('admission')"><i class="fa-solid fa-bed-pulse"></i> Admettre en salle de travail</button>
+            <button type="button" class="btn-secondary py-2 text-xs" (click)="enregistrerEnfant(l)"><i class="fa-solid fa-baby"></i> Enregistrer un enfant (vaccination)</button>
+          </div>
+          @for (e of enfantsDe(l); track e.localId) { <p class="mt-2 text-sm"><i class="fa-solid fa-baby text-brand-600"></i> Enfant : <a class="text-brand-700 hover:underline dark:text-brand-300" [routerLink]="['/admin/hors-ligne', e.localId]">{{ nom(e) }}</a> <span class="badge ml-1" [class]="couleurStatut(e.statut)">{{ libelleStatut(e.statut) }}</span></p> }
+          @for (a of accouchementsDe(l); track a.localId) { <p class="mt-2 text-sm"><i class="fa-solid fa-bed-pulse text-rose-600"></i> <a class="text-brand-700 hover:underline dark:text-brand-300" [routerLink]="['/admin/hors-ligne', a.localId]">Salle de travail (admise le {{ $any(a.resume).admission?.admiseLe | date: 'dd/MM HH:mm' }})</a></p> }
+        }
+
+        <!-- ---------------- Accouchement ---------------- -->
+        @case ('Accouchement') {
+          @let r = $any(l.resume);
+          <p class="mt-4 text-sm">Patiente : @if (local(l.parent); as m) { <a class="font-medium text-brand-700 hover:underline dark:text-brand-300" [routerLink]="['/admin/hors-ligne', m.localId]">{{ nom(m) }}</a> } @else { <span class="font-medium">dossier {{ l.parent }}</span> } · admise le {{ r.admission?.admiseLe | date: 'dd/MM/yyyy HH:mm' }} · {{ r.admission?.motif }}</p>
+          @for (a of alertes(l); track $index) {
+            <p class="mt-2 rounded-lg px-3 py-2 text-sm" [class]="a.niveau === 'Critique' ? 'bg-rose-600 text-white' : 'bg-amber-100 text-amber-900'" role="alert"><i class="fa-solid fa-triangle-exclamation"></i> <strong>{{ a.code }}</strong> · {{ a.le | date: 'HH:mm' }} · {{ a.message }}</p>
+          }
+          <div class="mt-4 overflow-x-auto">
+            <table class="min-w-full text-sm">
+              <thead><tr class="text-left text-xs text-slate-500"><th class="py-1 pr-3">Heure</th><th class="pr-3">Dilatation</th><th class="pr-3">Zone</th><th class="pr-3">BCF</th><th class="pr-3">Contractions /10 min</th><th>TA · pouls · T°</th></tr></thead>
+              <tbody>
+                @for (s of surveillances(l); track $index) {
+                  @let p = pointDe(l, s.le);
+                  <tr class="border-t border-slate-100 dark:border-slate-800">
+                    <td class="py-1.5 pr-3 whitespace-nowrap">{{ s.le | date: 'dd/MM HH:mm' }}</td>
+                    <td class="pr-3">{{ s.dilatationCm != null ? s.dilatationCm + ' cm' : '—' }}</td>
+                    <td class="pr-3">@if (p) { <span class="badge" [class]="p.zone === 'Rouge' ? 'bg-rose-600 text-white' : p.zone === 'Jaune' ? 'bg-amber-200 text-amber-900' : 'bg-accent-100 text-accent-800'">{{ p.zone }} · {{ p.heures }} h</span> } @else { <span class="text-xs text-slate-400">{{ (s.dilatationCm ?? 0) < phaseActiveCm ? 'latence' : '—' }}</span> }</td>
+                    <td class="pr-3" [class.font-bold]="bcfAnormal($any(s.bcf))" [class.text-rose-600]="bcfAnormal($any(s.bcf))">{{ s.bcf ?? '—' }}</td>
+                    <td class="pr-3">{{ $any(s).contractions10min ?? '—' }}</td>
+                    <td>{{ $any(s).taSystolique ? $any(s).taSystolique + '/' + $any(s).taDiastolique : '—' }} · {{ $any(s).pouls ?? '—' }} · {{ $any(s).temperature ?? '—' }}</td>
+                  </tr>
+                } @empty { <tr><td colspan="6" class="py-3 text-slate-500">Aucune surveillance saisie.</td></tr> }
+              </tbody>
+            </table>
+            <p class="mt-1 text-xs text-slate-500">Zones calculées sur l’appareil (ligne d’alerte 1 cm/h depuis 4 cm, ligne d’action 4 h à droite). Le graphe complet du partogramme s’affiche dans le dossier après synchronisation.</p>
+          </div>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <button type="button" class="btn-primary py-2 text-xs" (click)="ouvrirFormulaire('surveillance')"><i class="fa-solid fa-wave-square"></i> Surveillance du travail</button>
+            <button type="button" class="btn-secondary py-2 text-xs" (click)="ouvrirFormulaire('accouchement')"><i class="fa-solid fa-person-pregnant"></i> Accouchement et délivrance</button>
+            <button type="button" class="btn-secondary py-2 text-xs" (click)="ouvrirFormulaire('nouveauNe')"><i class="fa-solid fa-baby"></i> Nouveau-né</button>
+          </div>
+          @for (e of enfantsDe(l); track e.localId) { <p class="mt-2 text-sm"><i class="fa-solid fa-baby text-brand-600"></i> Nouveau-né : <a class="text-brand-700 hover:underline dark:text-brand-300" [routerLink]="['/admin/hors-ligne', e.localId]">{{ nom(e) }}</a> <span class="badge ml-1" [class]="couleurStatut(e.statut)">{{ libelleStatut(e.statut) }}</span></p> }
+        }
+
+        <!-- ---------------- Enfant ---------------- -->
+        @case ('Enfant') {
+          @let r = $any(l.resume);
+          @let mere = local(l.mere ?? l.parent);
+          <p class="mt-4 text-sm">
+            {{ r.sexe }} · @if (r.dateNaissance) { né(e) le {{ jourFr(r.dateNaissance) }} } @else { né(e) à la maternité (accouchement saisi sur l’appareil) }
+            · Mère : @if (mere) { <a class="font-medium text-brand-700 hover:underline dark:text-brand-300" [routerLink]="['/admin/hors-ligne', mere.localId]">{{ mere.type === 'Accouchement' ? nom(local(mere.parent)) : nom(mere) }}</a> } @else if (r.nouvelleMere) { {{ r.nouvelleMere.prenom }} {{ r.nouvelleMere.nom }} (nouveau dossier) } @else { dossier {{ l.parent }} }
+          </p>
+          <div class="mt-4">
+            <p class="mb-2 text-sm font-semibold">Carnet de vaccination (calculé sur l’appareil)</p>
+            <div class="flex flex-wrap gap-1.5">
+              @for (d of carnet(l); track d.code) {
+                @if (d.type === 'Vaccin' && d.statut !== 'À venir') {
+                  <span class="badge" [class]="d.statut === 'Faite' ? 'bg-accent-50 text-accent-700' : d.statut === 'En retard' ? 'bg-rose-50 text-rose-700' : d.statut === 'À faire' ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-500'" [title]="d.seance + ' · prévue le ' + d.datePrevue">{{ d.libelle }} · {{ d.statut }}</span>
+                }
+              } @empty { <span class="text-xs text-slate-500">Calendrier non disponible sur cet appareil (connectez-vous une fois avec internet).</span> }
+            </div>
+          </div>
+          <div class="mt-4"><button type="button" class="btn-primary py-2 text-xs" (click)="ouvrirFormulaire('vaccination')"><i class="fa-solid fa-syringe"></i> Enregistrer une vaccination</button></div>
+        }
+      }
+    </div>
+
+    <!-- Formulaire de saisie -->
+    @if (formulaire(); as f) {
+      <form class="card space-y-4 p-5" (ngSubmit)="0">
+        @switch (f) {
+          @case ('consultation') {
+            <h2 class="card-title"><i class="fa-solid fa-stethoscope text-brand-600"></i> Consultation prénatale</h2>
+            <div class="grid gap-3 sm:grid-cols-3">
+              <div><label class="label">Type</label><select class="input" name="t" [(ngModel)]="saisie['type']"><option>Première consultation prénatale</option><option>Suivi prénatal</option><option>Consultation non programmée</option></select></div>
+              <div><label class="label">Date et heure</label><input class="input" type="datetime-local" name="d" [(ngModel)]="saisie['date']"></div>
+              <div><label class="label">Motif</label><input class="input" name="m" [(ngModel)]="saisie['motif']"></div>
+              <div><label class="label">Poids (kg)</label><input class="input" type="number" name="p" [(ngModel)]="saisie['poidsKg']"></div>
+              <div><label class="label">TA (mmHg)</label><div class="flex gap-1"><input class="input" type="number" name="ts" placeholder="sys" [(ngModel)]="saisie['taSystolique']"><input class="input" type="number" name="td" placeholder="dia" [(ngModel)]="saisie['taDiastolique']"></div></div>
+              <div><label class="label">Température (°C)</label><input class="input" type="number" step="0.1" name="te" [(ngModel)]="saisie['temperature']"></div>
+              <div><label class="label">Hauteur utérine (cm)</label><input class="input" type="number" name="hu" [(ngModel)]="saisie['hauteurUterineCm']"></div>
+              <div><label class="label">BCF</label><input class="input" type="number" name="b" [(ngModel)]="saisie['bcf']"></div>
+            </div>
+            <div><label class="label">Conseils donnés</label><textarea class="input" rows="2" name="c" [(ngModel)]="saisie['conseils']"></textarea></div>
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="f" [(ngModel)]="saisie['finaliser']"> Finaliser et signer (sinon brouillon, modifiable en ligne)</label>
+            <div class="flex justify-end gap-2"><button type="button" class="btn-ghost" (click)="formulaire.set(null)">Annuler</button><button type="button" class="btn-primary" [disabled]="envoi()" (click)="enregistrerConsultation(l)">Enregistrer</button></div>
+          }
+          @case ('rendezVous') {
+            <h2 class="card-title"><i class="fa-solid fa-calendar-plus text-brand-600"></i> Rendez-vous</h2>
+            <div class="grid gap-3 sm:grid-cols-2">
+              <div><label class="label">Date et heure</label><input class="input" type="datetime-local" name="rd" [(ngModel)]="saisie['date']"></div>
+              <div><label class="label">Motif</label><input class="input" name="rm" [(ngModel)]="saisie['motif']"></div>
+            </div>
+            <p class="hint">Le rappel sur le téléphone de la patiente partira après la synchronisation.</p>
+            <div class="flex justify-end gap-2"><button type="button" class="btn-ghost" (click)="formulaire.set(null)">Annuler</button><button type="button" class="btn-primary" [disabled]="envoi()" (click)="enregistrerRendezVous(l)">Enregistrer</button></div>
+          }
+          @case ('admission') {
+            <h2 class="card-title"><i class="fa-solid fa-bed-pulse text-rose-600"></i> Admission en salle de travail</h2>
+            <div class="grid gap-3 sm:grid-cols-2">
+              <div><label class="label">Admise le</label><input class="input" type="datetime-local" name="aa" [(ngModel)]="saisie['admiseLe']"></div>
+              <div><label class="label">Motif</label><input class="input" name="am" [(ngModel)]="saisie['motif']"></div>
+            </div>
+            <div class="flex justify-end gap-2"><button type="button" class="btn-ghost" (click)="formulaire.set(null)">Annuler</button><button type="button" class="btn-primary" [disabled]="envoi()" (click)="admettre(l)">Admettre</button></div>
+          }
+          @case ('surveillance') {
+            <h2 class="card-title"><i class="fa-solid fa-wave-square text-brand-600"></i> Surveillance du travail</h2>
+            <div class="grid gap-3 sm:grid-cols-4">
+              <div class="sm:col-span-2"><label class="label">Heure de la mesure</label><input class="input" type="datetime-local" name="sl" [(ngModel)]="saisie['le']"></div>
+              <div><label class="label">Dilatation (cm)</label><input class="input" type="number" min="0" max="10" name="sd" [(ngModel)]="saisie['dilatationCm']"></div>
+              <div><label class="label">BCF (bpm)</label><input class="input" type="number" name="sb" [(ngModel)]="saisie['bcf']"></div>
+              <div><label class="label">Contractions /10 min</label><input class="input" type="number" name="sc" [(ngModel)]="saisie['contractions10min']"></div>
+              <div><label class="label">Durée (s)</label><input class="input" type="number" name="sdu" [(ngModel)]="saisie['dureeContractionsSec']"></div>
+              <div><label class="label">Membranes</label><select class="input" name="sm" [(ngModel)]="saisie['membranes']"><option value="">—</option><option>Intactes</option><option>Rompues</option></select></div>
+              <div><label class="label">Liquide amniotique</label><select class="input" name="sla" [(ngModel)]="saisie['liquideAmniotique']"><option value="">—</option><option>Clair</option><option>Verdâtre</option><option>Sanguinolent</option><option>Jaunâtre</option><option>Purulent</option></select></div>
+              <div><label class="label">TA</label><div class="flex gap-1"><input class="input" type="number" name="sts" placeholder="sys" [(ngModel)]="saisie['taSystolique']"><input class="input" type="number" name="std" placeholder="dia" [(ngModel)]="saisie['taDiastolique']"></div></div>
+              <div><label class="label">Pouls</label><input class="input" type="number" name="sp" [(ngModel)]="saisie['pouls']"></div>
+              <div><label class="label">Température</label><input class="input" type="number" step="0.1" name="ste" [(ngModel)]="saisie['temperature']"></div>
+            </div>
+            <div class="flex justify-end gap-2"><button type="button" class="btn-ghost" (click)="formulaire.set(null)">Annuler</button><button type="button" class="btn-primary" [disabled]="envoi()" (click)="surveiller(l)">Enregistrer</button></div>
+          }
+          @case ('accouchement') {
+            <h2 class="card-title"><i class="fa-solid fa-person-pregnant text-rose-600"></i> Accouchement et délivrance</h2>
+            <div class="grid gap-3 sm:grid-cols-3">
+              <div><label class="label">Heure</label><input class="input" type="datetime-local" name="ah" [(ngModel)]="saisie['heure']"></div>
+              <div><label class="label">Type</label><select class="input" name="amo" [(ngModel)]="saisie['mode']"><option>Normal</option><option>Ventouse</option><option>Forceps</option><option>Symphyséotomie</option><option>Césarienne</option></select></div>
+              <div><label class="label">Nombre d’enfants</label><input class="input" type="number" min="1" max="6" name="an" [(ngModel)]="saisie['nombreEnfants']"></div>
+              @if (saisie['mode'] === 'Césarienne') { <div class="sm:col-span-3"><label class="label">Indication de la césarienne</label><input class="input" name="ai" [(ngModel)]="saisie['indicationCesarienne']"></div> }
+              <div><label class="label">Délivrance</label><select class="input" name="ad" [(ngModel)]="saisie['delivranceMode']"><option>Spontanée</option><option>Artificielle</option></select></div>
+              <div><label class="label">Pertes de sang (ml)</label><input class="input" type="number" name="ap" [(ngModel)]="saisie['pertesSangMl']"></div>
+              <label class="mt-6 flex items-center gap-2 text-sm"><input type="checkbox" name="apc" [(ngModel)]="saisie['placentaComplet']"> Placenta complet</label>
+            </div>
+            @if ((saisie['pertesSangMl'] ?? 0) > 500) { <p class="rounded-lg bg-rose-600 px-3 py-2 text-sm text-white"><i class="fa-solid fa-triangle-exclamation"></i> Plus de 500 ml : hémorragie pathologique. Appelez le médecin.</p> }
+            <div class="flex justify-end gap-2"><button type="button" class="btn-ghost" (click)="formulaire.set(null)">Annuler</button><button type="button" class="btn-primary" [disabled]="envoi()" (click)="accoucher(l)">Enregistrer</button></div>
+          }
+          @case ('nouveauNe') {
+            <h2 class="card-title"><i class="fa-solid fa-baby text-brand-600"></i> Nouveau-né</h2>
+            <div class="grid gap-3 sm:grid-cols-3">
+              <div><label class="label">Prénom</label><input class="input" name="np" [(ngModel)]="saisie['prenom']"></div>
+              <div><label class="label">Sexe</label><select class="input" name="ns" [(ngModel)]="saisie['sexe']"><option>Féminin</option><option>Masculin</option><option>Indéterminé</option></select></div>
+              <div><label class="label">État</label><select class="input" name="ne" [(ngModel)]="saisie['etatNaissance']"><option>Vivant</option><option>Mort-né</option></select></div>
+              <div><label class="label">Poids (g)</label><input class="input" type="number" name="npo" [(ngModel)]="saisie['poidsG']"></div>
+              <div><label class="label">Taille (cm)</label><input class="input" type="number" name="nt" [(ngModel)]="saisie['tailleCm']"></div>
+              <div><label class="label">Périmètre crânien (cm)</label><input class="input" type="number" name="npc" [(ngModel)]="saisie['perimetreCranienCm']"></div>
+              <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="nms" [(ngModel)]="saisie['miseAuSeinMoins1h']"> Mise au sein &lt; 1 h</label>
+              <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="nvk" [(ngModel)]="saisie['vitamineK1']"> Vitamine K1</label>
+            </div>
+            <app-prise-photo [(fichier)]="photo" libelle="Photo du nouveau-né" icone="fa-baby" [requise]="saisie['etatNaissance'] === 'Vivant'" />
+            <p class="hint">APGAR, réanimation et soins détaillés : à compléter dans le dossier après synchronisation.</p>
+            <div class="flex justify-end gap-2"><button type="button" class="btn-ghost" (click)="formulaire.set(null)">Annuler</button><button type="button" class="btn-primary" [disabled]="envoi()" (click)="ajouterNouveauNe(l)">Enregistrer</button></div>
+          }
+          @case ('vaccination') {
+            <h2 class="card-title"><i class="fa-solid fa-syringe text-brand-600"></i> Vaccination</h2>
+            <div class="flex flex-wrap gap-2">
+              @for (d of dosesDues(l); track d.code) {
+                <label class="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-sm dark:border-slate-700"><input type="checkbox" [name]="'v-' + d.code" [(ngModel)]="saisie['codes'][d.code]"> {{ d.libelle }} <span class="text-xs" [class.text-rose-600]="d.statut === 'En retard'">({{ d.statut }})</span></label>
+              } @empty { <p class="text-sm text-slate-500">Aucune dose due aujourd’hui selon le calendrier.</p> }
+            </div>
+            <div class="grid gap-3 sm:grid-cols-4">
+              <div><label class="label">Date</label><input class="input" type="date" name="vd" [(ngModel)]="saisie['date']"></div>
+              <div><label class="label">Lot</label><input class="input" name="vl" [(ngModel)]="saisie['lot']"></div>
+              <div><label class="label">Site</label><input class="input" name="vs" [(ngModel)]="saisie['site']"></div>
+              <div><label class="label">Lieu</label><input class="input" name="vli" [(ngModel)]="saisie['lieu']"></div>
+            </div>
+            <div class="flex justify-end gap-2"><button type="button" class="btn-ghost" (click)="formulaire.set(null)">Annuler</button><button type="button" class="btn-primary" [disabled]="envoi()" (click)="vacciner(l)">Enregistrer</button></div>
+          }
+        }
+      </form>
+    }
+
+    <!-- Saisies sur ce dossier -->
+    <div class="card overflow-hidden">
+      <div class="card-header"><h2 class="card-title"><i class="fa-solid fa-list-check text-brand-600"></i> Saisies sur ce dossier</h2></div>
+      <ul class="divide-y divide-slate-100 dark:divide-slate-800">
+        @for (e of evenements(l); track e.operationId) {
+          <li class="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm">
+            <span><strong>{{ e.libelle }}</strong> <span class="text-xs text-slate-500">· saisie le {{ e.le | date: 'dd/MM/yyyy HH:mm' }}</span>
+              @if (e.erreur) { <span class="block text-xs text-rose-600">{{ e.erreur }}</span> }</span>
+            <span class="badge" [class]="couleurStatut(e.statut)">{{ libelleStatut(e.statut) }}</span>
+          </li>
+        } @empty { <li class="px-5 py-4 text-sm text-slate-500">Aucune autre saisie pour l’instant.</li> }
+      </ul>
+    </div>
+  } @else {
+    <p class="card p-6 text-sm text-slate-500">Dossier introuvable sur cet appareil. <a routerLink="/admin/hors-ligne" class="text-brand-700 underline">Retour à la liste</a></p>
+  }
+</div>

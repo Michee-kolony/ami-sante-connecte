@@ -9,7 +9,7 @@ import { DoseCalendrier, EnfantsService, MereEnfant, SaisieEnfantHorsPlateforme,
 import { Doublon, PatientesService, ResumePatiente, doublonsDe } from '../../data/patientes.service';
 import { aujourdhui } from '../../data/format';
 import { messageErreur } from '../../data/session.service';
-import { HorsLigneService, estMiseEnFile } from '../../data/hors-ligne/hors-ligne.service';
+import { HorsLigneService, estMiseEnFile, localIdDe } from '../../data/hors-ligne/hors-ligne.service';
 
 const mereVide = (): NouvellePatienteAdmission => ({
   nom: '', postnom: '', prenom: '', dateNaissance: '', ageDeclare: null, telephone: '', email: '',
@@ -76,6 +76,16 @@ export class EnfantNewComponent implements OnInit {
       this.recues = Object.fromEntries(calendrier.map(d => [d.code, { coche: false, date: '', lieu: '' }]));
     } catch (err) {
       this.erreur = messageErreur(err);
+    }
+    // Mère créée hors connexion (pas encore connue du serveur) : reprise depuis l'appareil.
+    const locale = this.mere?.startsWith('local-') ? this.horsLigne.locaux().find(l => l.localId === this.mere) : null;
+    if (locale) {
+      const r = locale.resume as Record<string, string>;
+      this.choisir({
+        id: locale.serverId ?? locale.localId, numero: locale.serverNumero ?? 'En attente de synchronisation', nom: (r['nom'] ?? '').toUpperCase(),
+        postnom: (r['postnom'] ?? '').toUpperCase(), prenom: r['prenom'] ?? '', photoUrl: null, grossesse: null,
+      } as unknown as ResumePatiente);
+      return;
     }
     if (this.mere) {
       this.recherche = this.mere;
@@ -196,7 +206,7 @@ export class EnfantNewComponent implements OnInit {
     } catch (err) {
       if (estMiseEnFile(err)) {
         // Hors connexion : enfant (et mère sans dossier) gardés sur l'appareil, créés au retour du réseau.
-        this.router.navigate(['/admin/synchronisation']);
+        this.router.navigate(localIdDe(err) ? ['/admin/hors-ligne', localIdDe(err)] : ['/admin/synchronisation']);
         return;
       }
       const doublons = this.sansDossier ? doublonsDe(err) : null;
