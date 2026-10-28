@@ -58,7 +58,7 @@ import { RelanceService, type Reco } from '../../data/relance.service';
                 <button type="button" class="btn-ghost px-2 text-xs" (click)="motDePasse(r)" title="Nouveau mot de passe temporaire"><i class="fa-solid fa-key"></i></button>
                 <button type="button" class="btn-ghost px-2 text-xs" (click)="revoquer(r)" title="Téléphone perdu : révoquer les sessions"><i class="fa-solid fa-mobile-screen-button"></i></button>
                 @if (peutSupprimer()) {
-                  <button type="button" class="btn-ghost px-2 text-xs text-rose-600" (click)="supprimer(r)" title="Supprimer définitivement"><i class="fa-solid fa-trash"></i></button>
+                  <button type="button" class="btn-ghost px-2 text-xs text-rose-600" (click)="demanderSuppression(r)" title="Supprimer définitivement"><i class="fa-solid fa-trash"></i></button>
                 }
                 <button type="button" class="btn-ghost px-2 text-xs" (click)="basculer(r)" [title]="r.statut === 'Actif' ? 'Suspendre' : 'Réactiver'"><i class="fa-solid" [class]="r.statut === 'Actif' ? 'fa-user-lock' : 'fa-user-check'"></i></button>
               </td>
@@ -104,7 +104,62 @@ import { RelanceService, type Reco } from '../../data/relance.service';
     </form>
   }
 </div>
+
+<!-- Confirmation de suppression -->
+@if (aSupprimer(); as r) {
+  <div class="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center" role="dialog" aria-modal="true" aria-labelledby="titre-suppression">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" (click)="annulerSuppression()" aria-hidden="true"></div>
+    <div class="relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800">
+      <div class="flex items-start gap-4 p-6">
+        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full"
+              [class]="r.ouvertes ? 'bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400' : 'bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400'">
+          <i class="fa-solid text-lg" [class]="r.ouvertes ? 'fa-triangle-exclamation' : 'fa-trash'"></i>
+        </span>
+        <div class="min-w-0 flex-1">
+          <h2 id="titre-suppression" class="text-lg font-semibold text-slate-900 dark:text-white">
+            {{ r.ouvertes ? 'Suppression impossible pour le moment' : 'Supprimer ce RECO ?' }}
+          </h2>
+          <div class="mt-3 flex items-center gap-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-800/60">
+            <app-avatar [photo]="r.photo ?? undefined" [prenom]="r.prenom" [nomFamille]="r.nom" class="h-11 w-11 shrink-0 rounded-full text-sm" />
+            <div class="min-w-0">
+              <p class="truncate font-medium text-slate-800 dark:text-slate-100">{{ r.prenom }} {{ r.nom }}</p>
+              <p class="text-xs text-slate-500">{{ r.matricule }} · {{ r.zones.join(', ') || r.aireSante || 'secteur non renseigné' }}</p>
+            </div>
+          </div>
+          @if (r.ouvertes) {
+            <p class="mt-3 text-sm text-slate-600 dark:text-slate-300">
+              Ce relais a encore <strong>{{ r.ouvertes }} tâche(s) ouverte(s)</strong>. Réattribuez-les à un autre RECO (onglet <strong>Tâches</strong>) pour qu’aucune famille ne reste sans suivi, puis revenez ici.
+            </p>
+          } @else {
+            <ul class="mt-3 space-y-1.5 text-sm text-slate-600 dark:text-slate-300">
+              <li class="flex gap-2"><i class="fa-solid fa-xmark mt-1 text-rose-500"></i> Il ne pourra plus se connecter à l’application RECO.</li>
+              <li class="flex gap-2"><i class="fa-solid fa-xmark mt-1 text-rose-500"></i> Sa photo de profil sera effacée.</li>
+              <li class="flex gap-2"><i class="fa-solid fa-check mt-1 text-accent-600"></i> L’historique des tâches déjà traitées est conservé.</li>
+            </ul>
+            <p class="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">
+              Action définitive. Pour un arrêt temporaire (congé, téléphone perdu), préférez <strong>Suspendre</strong>.
+            </p>
+          }
+          @if (erreurSuppression()) {
+            <p class="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300" role="alert">{{ erreurSuppression() }}</p>
+          }
+        </div>
+      </div>
+      <div class="flex flex-col-reverse gap-2 border-t border-slate-100 bg-slate-50/70 px-6 py-4 dark:border-slate-800 dark:bg-slate-800/40 sm:flex-row sm:justify-end">
+        <button type="button" class="btn-secondary" (click)="annulerSuppression()" [disabled]="envoi()">{{ r.ouvertes ? 'Fermer' : 'Annuler' }}</button>
+        @if (r.ouvertes) {
+          <button type="button" class="btn-secondary" (click)="basculer(r); annulerSuppression()"><i class="fa-solid fa-user-lock"></i> Suspendre à la place</button>
+        } @else {
+          <button type="button" class="btn bg-rose-600 text-white shadow-sm hover:bg-rose-700 dark:bg-rose-600 dark:hover:bg-rose-500" (click)="confirmerSuppression()" [disabled]="envoi()">
+            @if (envoi()) { <i class="fa-solid fa-spinner fa-spin"></i> Suppression… } @else { <i class="fa-solid fa-trash"></i> Supprimer définitivement }
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+}
   `,
+  host: { '(document:keydown.escape)': 'annulerSuppression()' },
 })
 export class RelanceRecosComponent implements OnInit {
   private service = inject(RelanceService);
@@ -113,6 +168,9 @@ export class RelanceRecosComponent implements OnInit {
   /** Suppression définitive : médecin chef de service et médecin directeur (le serveur vérifie aussi). */
   peutSupprimer = input(false);
   recos = signal<Reco[]>([]);
+  /** RECO dont la suppression est demandée (fenêtre de confirmation ouverte). */
+  aSupprimer = signal<Reco | null>(null);
+  erreurSuppression = signal('');
   edition = signal<Partial<Reco> | null>(null);
   zones = '';
   photo: File | null = null;
@@ -196,13 +254,29 @@ export class RelanceRecosComponent implements OnInit {
     if (x) this.recos.update(l => l.map(y => (y.id === x.id ? x : y)));
   }
 
-  async supprimer(r: Reco): Promise<void> {
-    if (r.ouvertes) {
-      this.erreur.set(`${r.prenom} ${r.nom} a encore ${r.ouvertes} tâche(s) ouverte(s) : réattribuez-les (onglet Tâches, filtre RECO) avant de supprimer le compte.`);
-      return;
+  /** Ouvre la fenêtre de confirmation (elle explique le blocage s'il reste des tâches ouvertes). */
+  demanderSuppression(r: Reco): void {
+    this.erreurSuppression.set('');
+    this.aSupprimer.set(r);
+  }
+
+  annulerSuppression(): void {
+    if (!this.envoi()) this.aSupprimer.set(null);
+  }
+
+  async confirmerSuppression(): Promise<void> {
+    const r = this.aSupprimer();
+    if (!r) return;
+    this.envoi.set(true);
+    this.erreurSuppression.set('');
+    try {
+      await this.service.supprimerReco(r.id);
+      this.recos.update(l => l.filter(x => x.id !== r.id));
+      this.aSupprimer.set(null);
+    } catch (err) {
+      this.erreurSuppression.set(messageErreur(err));
+    } finally {
+      this.envoi.set(false);
     }
-    if (!confirm(`Supprimer définitivement le compte de ${r.prenom} ${r.nom} (${r.matricule}) ? Il ne pourra plus se connecter et sa photo sera effacée. L’historique des tâches déjà traitées est conservé. Pour un arrêt temporaire, préférez « Suspendre ».`)) return;
-    const ok = await this.faire(() => this.service.supprimerReco(r.id));
-    if (ok) this.recos.update(l => l.filter(x => x.id !== r.id));
   }
 }
