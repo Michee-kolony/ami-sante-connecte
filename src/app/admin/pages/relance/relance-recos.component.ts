@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, input, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SessionService, messageErreur } from '../../data/session.service';
@@ -57,6 +57,9 @@ import { RelanceService, type Reco } from '../../data/relance.service';
                 <button type="button" class="btn-ghost px-2 text-xs" (click)="modifier(r)" title="Modifier"><i class="fa-solid fa-pen"></i></button>
                 <button type="button" class="btn-ghost px-2 text-xs" (click)="motDePasse(r)" title="Nouveau mot de passe temporaire"><i class="fa-solid fa-key"></i></button>
                 <button type="button" class="btn-ghost px-2 text-xs" (click)="revoquer(r)" title="Téléphone perdu : révoquer les sessions"><i class="fa-solid fa-mobile-screen-button"></i></button>
+                @if (peutSupprimer()) {
+                  <button type="button" class="btn-ghost px-2 text-xs text-rose-600" (click)="supprimer(r)" title="Supprimer définitivement"><i class="fa-solid fa-trash"></i></button>
+                }
                 <button type="button" class="btn-ghost px-2 text-xs" (click)="basculer(r)" [title]="r.statut === 'Actif' ? 'Suspendre' : 'Réactiver'"><i class="fa-solid" [class]="r.statut === 'Actif' ? 'fa-user-lock' : 'fa-user-check'"></i></button>
               </td>
             </tr>
@@ -107,6 +110,8 @@ export class RelanceRecosComponent implements OnInit {
   private service = inject(RelanceService);
   private session = inject(SessionService);
 
+  /** Suppression définitive : médecin chef de service et médecin directeur (le serveur vérifie aussi). */
+  peutSupprimer = input(false);
   recos = signal<Reco[]>([]);
   edition = signal<Partial<Reco> | null>(null);
   zones = '';
@@ -189,5 +194,15 @@ export class RelanceRecosComponent implements OnInit {
     if (statut === 'Suspendu' && !confirm(`Suspendre ${r.prenom} ${r.nom} ? Ses ${r.ouvertes} tâche(s) ouverte(s) devront être réattribuées (le superviseur est alerté).`)) return;
     const x = await this.faire(() => this.service.changerStatutReco(r.id, statut));
     if (x) this.recos.update(l => l.map(y => (y.id === x.id ? x : y)));
+  }
+
+  async supprimer(r: Reco): Promise<void> {
+    if (r.ouvertes) {
+      this.erreur.set(`${r.prenom} ${r.nom} a encore ${r.ouvertes} tâche(s) ouverte(s) : réattribuez-les (onglet Tâches, filtre RECO) avant de supprimer le compte.`);
+      return;
+    }
+    if (!confirm(`Supprimer définitivement le compte de ${r.prenom} ${r.nom} (${r.matricule}) ? Il ne pourra plus se connecter et sa photo sera effacée. L’historique des tâches déjà traitées est conservé. Pour un arrêt temporaire, préférez « Suspendre ».`)) return;
+    const ok = await this.faire(() => this.service.supprimerReco(r.id));
+    if (ok) this.recos.update(l => l.filter(x => x.id !== r.id));
   }
 }

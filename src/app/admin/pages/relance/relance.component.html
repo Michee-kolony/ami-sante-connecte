@@ -328,7 +328,7 @@
       </div>
     }
 
-    @case ('recos') { <app-relance-recos /> }
+    @case ('recos') { <app-relance-recos [peutSupprimer]="droits().responsable" /> }
     @case ('parametrage') { <app-relance-parametrage /> }
   }
 </div>

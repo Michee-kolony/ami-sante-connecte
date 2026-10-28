@@ -404,6 +404,11 @@ export class RelanceService {
     return this.post(`/recos/${id}/mot-de-passe`);
   }
 
+  /** Suppression définitive (responsables) ; refusée tant que le RECO a des tâches ouvertes. */
+  supprimerReco(id: string): Promise<{ id: string; matricule: string; supprime: true }> {
+    return firstValueFrom(this.http.delete<{ id: string; matricule: string; supprime: true }>(`${this.url}/recos/${id}`));
+  }
+
   revoquerSessions(id: string): Promise<{ revoqueesLe: string }> {
     return this.post(`/recos/${id}/revoquer-sessions`);
   }
