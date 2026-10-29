@@ -36,6 +36,18 @@
     </div>
   }
 
+  <!-- Synthèse opérationnelle AMI (cahier de spécifications du tableau de bord) -->
+  @if (session.connecte()) {
+    <app-synthese-ami class="block" />
+
+    <div class="flex flex-wrap items-end justify-between gap-x-4 gap-y-1 pt-2">
+      <div class="min-w-0">
+        <h2 class="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Suivi prénatal de la structure</h2>
+        <p class="text-sm text-slate-500 dark:text-slate-400">Patientes, grossesses, rendez-vous et dossiers récents.</p>
+      </div>
+    </div>
+  }
+
   <!-- KPI du suivi prénatal -->
   <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
     @for (k of kpis(); track k.label) {
@@ -405,4 +417,9 @@
       <div class="h-2 w-16 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div class="h-full rounded-full bg-sky-500 transition-all" [style.width.%]="stats()?.qualite?.completude ?? 0"></div></div>
     </div>
   </div>
+
+  <!-- Indicateurs détaillés par module, qualité, références et pied de page (version des définitions) -->
+  @if (session.connecte()) {
+    <app-indicateurs-modules class="block" />
+  }
 </div>

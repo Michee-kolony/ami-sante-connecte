@@ -1,0 +1,286 @@
+<section class="space-y-6" aria-label="Synthèse opérationnelle">
+  <!-- Bandeau : période | province / aire de santé | actualiser | export | état de connexion -->
+  <div class="card flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-between">
+    <div class="flex flex-wrap items-center gap-2">
+      <div class="inline-flex flex-wrap rounded-xl bg-slate-100 p-1 dark:bg-slate-800" role="group" aria-label="Période">
+        @for (p of periodes; track p.code) {
+          <button type="button" class="onglet px-3 py-1.5" [class.onglet-actif]="etat.filtres().periode === p.code"
+                  [attr.aria-pressed]="etat.filtres().periode === p.code" (click)="choisirPeriode(p.code)">{{ p.libelle }}</button>
+        }
+      </div>
+      @if (etat.filtres().periode === 'perso') {
+        <div class="flex items-center gap-2">
+          <input type="date" class="input w-auto py-1.5" [(ngModel)]="du" aria-label="Début de période" />
+          <span class="text-xs text-slate-400">au</span>
+          <input type="date" class="input w-auto py-1.5" [(ngModel)]="au" aria-label="Fin de période" />
+          <button type="button" class="btn-secondary py-1.5" [disabled]="!du || !au" (click)="appliquerPerso()">Appliquer</button>
+        </div>
+      }
+      <select class="input w-auto py-1.5" [ngModel]="etat.filtres().province ?? ''" (ngModelChange)="changerProvince($event)" aria-label="Province">
+        <option value="">Toutes les provinces</option>
+        @for (p of provinces; track p) { <option [value]="p">{{ p }}</option> }
+      </select>
+      @if (s()?.filtres?.aires?.length) {
+        <select class="input w-auto py-1.5" [ngModel]="etat.filtres().aire ?? ''" (ngModelChange)="changerAire($event)" aria-label="Aire de santé">
+          <option value="">Toutes les aires de santé</option>
+          @for (a of s()!.filtres.aires; track a) { <option [value]="a">{{ a }}</option> }
+        </select>
+      }
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      @if (!horsLigne.enLigne()) {
+        <span class="badge bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-300"><i class="fa-solid fa-wifi"></i> Hors ligne · données locales</span>
+      } @else if (horsLigne.synchronisation()) {
+        <span class="badge bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300"><i class="fa-solid fa-rotate fa-spin"></i> Synchronisation en cours</span>
+      } @else {
+        <span class="badge bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300"><i class="fa-solid fa-circle text-[7px]"></i> En ligne</span>
+      }
+      @if (horsLigne.enAttente()) {
+        <a routerLink="/admin/synchronisation" class="badge bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">{{ horsLigne.enAttente() }} non synchronisée(s)</a>
+      }
+      @if (s()) {
+        <span class="text-xs text-slate-500 dark:text-slate-400" title="Date de calcul des indicateurs">Mis à jour {{ dateHeure(s()!.genereLe) }}</span>
+      }
+      <button type="button" class="btn-ghost px-2.5 py-1.5" (click)="actualiser()" [disabled]="etat.chargement()" title="Actualiser">
+        <i class="fa-solid fa-arrows-rotate" [class.fa-spin]="etat.chargement()"></i>
+      </button>
+      <button type="button" class="btn-secondary py-1.5" (click)="exporterCsv()" [disabled]="!s()" title="Export agrégé, sans donnée nominative">
+        <i class="fa-solid fa-file-csv"></i> Exporter
+      </button>
+    </div>
+  </div>
+
+  @if (etat.erreur()) {
+    <div class="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200" role="alert">
+      <i class="fa-solid fa-circle-exclamation mt-0.5"></i>
+      <span class="flex-1">{{ etat.erreur() }}</span>
+      <button type="button" class="font-semibold underline" (click)="actualiser()">Réessayer</button>
+    </div>
+  }
+
+  <!-- Ligne 1 : six cartes prioritaires -->
+  <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+    @if (attente()) {
+      @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+        <div class="card p-5" aria-hidden="true"><div class="skeleton h-10 w-10 rounded-xl"></div><div class="skeleton mt-4 h-8 w-16"></div><div class="skeleton mt-2 h-4 w-32"></div><div class="skeleton mt-1.5 h-3 w-24"></div></div>
+      }
+    }
+    @for (k of s()?.prioritaires ?? []; track k.code) {
+      <a [routerLink]="k.lien ?? null" class="card group flex flex-col p-5 transition hover:-translate-y-0.5 hover:shadow-lg" [title]="infobulle(k)">
+        <div class="flex items-start justify-between gap-2">
+          <div class="flex h-10 w-10 items-center justify-center rounded-xl {{ ton(k.ton) }}"><i class="fa-solid {{ k.icone }}"></i></div>
+          @if (k.aValider) {
+            <span class="badge bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300" title="Définition proposée, à valider par les responsables métier"><i class="fa-solid fa-flask text-[10px]"></i> À valider</span>
+          } @else if (variation(k)) {
+            <span class="badge bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">{{ variation(k) }}</span>
+          }
+        </div>
+        <p class="mt-4 text-3xl font-bold tracking-tight tabular-nums" [class]="k.valeur == null ? 'text-slate-300 dark:text-slate-600' : 'text-slate-900 dark:text-white'">{{ valeur(k) }}</p>
+        <p class="mt-1 text-sm font-medium text-slate-700 dark:text-slate-200">{{ k.libelle }}</p>
+        @if (k.detail) { <p class="text-xs text-slate-500 dark:text-slate-400">{{ k.detail }}</p> }
+        <p class="mt-auto pt-2 text-[11px] text-slate-400 dark:text-slate-500"><i class="fa-regular fa-clock mr-0.5"></i>{{ portee(k) }} · {{ k.source }}</p>
+      </a>
+    }
+  </div>
+
+  <!-- Ligne 2 : évolution des activités (petits multiples) et comparaison par aire de santé -->
+  <div class="grid gap-6 xl:grid-cols-5">
+    <div class="card xl:col-span-3">
+      <div class="card-header">
+        <h2 class="card-title"><i class="fa-solid fa-chart-column text-brand-600 dark:text-brand-400"></i> Évolution des activités</h2>
+        <span class="text-xs text-slate-500 dark:text-slate-400">6 derniers mois · une échelle par activité</span>
+      </div>
+      <div class="grid gap-x-6 gap-y-5 p-5 sm:grid-cols-2">
+        @if (attente()) {
+          @for (i of [1, 2, 3, 4]; track i) { <div class="skeleton h-32 w-full rounded-xl" aria-hidden="true"></div> }
+        }
+        @for (serie of s()?.tendance?.series ?? []; track serie.code) {
+          <div>
+            <div class="flex items-baseline justify-between gap-2">
+              <h3 class="text-sm font-medium text-slate-700 dark:text-slate-200">{{ serie.libelle }}</h3>
+              <span class="text-xs tabular-nums text-slate-500 dark:text-slate-400"><strong class="text-base text-slate-900 dark:text-white">{{ dernier(serie.valeurs) }}</strong> ce mois · {{ ecartMois(serie.valeurs) }}</span>
+            </div>
+            <div class="mt-2 flex h-24 items-end gap-1.5 border-b border-slate-200 dark:border-slate-700" role="img" [attr.aria-label]="serie.libelle + ' par mois : ' + serie.valeurs.join(', ')">
+              @for (v of serie.valeurs; track $index; let last = $last) {
+                <div class="group/barre relative flex h-full flex-1 flex-col justify-end" [title]="s()!.tendance.mois[$index] + ' : ' + v">
+                  <div class="w-full rounded-t transition-all"
+                       [class]="last ? 'bg-brand-700 dark:bg-brand-400' : 'bg-brand-200 group-hover/barre:bg-brand-300 dark:bg-brand-800 dark:group-hover/barre:bg-brand-700'"
+                       [style.height.%]="v ? (v / maxSerie(serie.valeurs)) * 100 : 1"></div>
+                </div>
+              }
+            </div>
+            <div class="mt-1 flex gap-1.5">
+              @for (m of s()!.tendance.mois; track $index) { <span class="flex-1 text-center text-[10px] text-slate-400">{{ m }}</span> }
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="card overflow-hidden xl:col-span-2">
+      <div class="card-header">
+        <h2 class="card-title"><i class="fa-solid fa-map-location-dot text-accent-600 dark:text-accent-400"></i> Comparaison par aire de santé</h2>
+        <span class="text-xs text-slate-500 dark:text-slate-400">Instantané</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-slate-100 text-sm dark:divide-slate-800">
+          <thead class="bg-slate-50/70 dark:bg-slate-800/50">
+            <tr>
+              <th class="table-th">Aire</th>
+              <th class="table-th text-right" title="Grossesses en cours">Gross.</th>
+              <th class="table-th text-right" title="Rendez-vous CPN en retard">CPN ret.</th>
+              <th class="table-th text-right" title="Enfants en retard de vaccination">Vacc. ret.</th>
+              <th class="table-th text-right" title="Tâches RECO ouvertes">RECO</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+            @for (a of s()?.comparaisonAires ?? []; track a.aire) {
+              <tr>
+                <td class="table-td">
+                  <span class="block max-w-[11rem] truncate font-medium text-slate-800 dark:text-slate-100" [title]="a.aire">{{ a.aire }}</span>
+                  <span class="mt-1 block h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800" [title]="'Charge à traiter : ' + (a.cpnEnRetard + a.enfantsEnRetard + a.tachesOuvertes)">
+                    <span class="block h-full rounded-full bg-brand-600 dark:bg-brand-400" [style.width.%]="((a.cpnEnRetard + a.enfantsEnRetard + a.tachesOuvertes) / maxAire()) * 100"></span>
+                  </span>
+                </td>
+                <td class="table-td text-right tabular-nums">{{ a.grossessesEnCours }}</td>
+                <td class="table-td text-right tabular-nums">{{ a.cpnEnRetard }}</td>
+                <td class="table-td text-right tabular-nums">{{ a.enfantsEnRetard }}</td>
+                <td class="table-td text-right tabular-nums">{{ a.tachesOuvertes }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="5" class="table-td py-8 text-center text-slate-500 dark:text-slate-400">{{ attente() ? 'Chargement…' : 'Aucune donnée disponible.' }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <p class="border-t border-slate-100 px-5 py-2.5 text-[11px] text-slate-400 dark:border-slate-800">Aire de résidence de la patiente. Effectifs affichés : prudence avec les petits nombres.</p>
+    </div>
+  </div>
+
+  <!-- Ligne 3 : entonnoir du continuum mère-enfant et flux de relance RECO -->
+  <div class="grid gap-6 lg:grid-cols-2">
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title"><i class="fa-solid fa-filter text-brand-600 dark:text-brand-400"></i> Continuum mère-enfant</h2>
+        <span class="text-xs text-slate-500 dark:text-slate-400">Grossesses enregistrées sur 12 mois</span>
+      </div>
+      <ol class="space-y-3 p-5">
+        @if (attente()) { @for (i of [1, 2, 3, 4, 5, 6]; track i) { <li class="skeleton h-7 w-full" aria-hidden="true"></li> } }
+        @for (e of continuum(); track e.etape) {
+          <li [title]="e.etape + ' : ' + e.n + (e.partPrecedente != null ? ' (' + e.partPrecedente + ' % de l’étape précédente)' : '')">
+            <div class="mb-1 flex items-baseline justify-between gap-3 text-sm">
+              <span class="text-slate-700 dark:text-slate-200">{{ e.etape }}</span>
+              <span class="tabular-nums text-slate-500 dark:text-slate-400">
+                <strong class="text-slate-900 dark:text-white">{{ e.n }}</strong>
+                @if (e.partPrecedente != null) { · {{ e.partPrecedente }} % }
+                @if (e.perte) { <span class="text-rose-600 dark:text-rose-400">(−{{ e.perte }})</span> }
+              </span>
+            </div>
+            <div class="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+              <div class="h-full rounded-full bg-brand-600 transition-all dark:bg-brand-400" [style.width.%]="e.largeur"></div>
+            </div>
+          </li>
+        }
+      </ol>
+      <p class="border-t border-slate-100 px-5 py-2.5 text-[11px] text-slate-400 dark:border-slate-800">Toutes les étapes ne sont pas encore dues pour les grossesses récentes : une perte n’est pas forcément un abandon.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title"><i class="fa-solid fa-people-arrows text-accent-600 dark:text-accent-400"></i> Flux de relance RECO</h2>
+        <a routerLink="/admin/relance" class="text-xs font-semibold text-brand-600 hover:text-brand-800 dark:text-brand-400">Relance <i class="fa-solid fa-arrow-right ml-0.5"></i></a>
+      </div>
+      <ol class="space-y-3 p-5">
+        @if (attente()) { @for (i of [1, 2, 3, 4, 5]; track i) { <li class="skeleton h-7 w-full" aria-hidden="true"></li> } }
+        @for (e of flux(); track e.etape) {
+          <li [title]="e.etape + ' : ' + e.n + ' personne(s)'">
+            <div class="mb-1 flex items-baseline justify-between gap-3 text-sm">
+              <span class="text-slate-700 dark:text-slate-200">{{ e.etape }}</span>
+              <span class="tabular-nums text-slate-500 dark:text-slate-400">
+                <strong class="text-slate-900 dark:text-white">{{ e.n }}</strong>
+                @if (e.perte) { <span class="text-rose-600 dark:text-rose-400">(−{{ e.perte }})</span> }
+              </span>
+            </div>
+            <div class="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+              <div class="h-full rounded-full bg-accent-600 transition-all dark:bg-accent-400" [style.width.%]="e.largeur"></div>
+            </div>
+          </li>
+        }
+        @if (s() && !s()!.fluxReco[0].n) {
+          <li class="text-sm text-slate-500 dark:text-slate-400">Aucune tâche de relance créée sur la période.</li>
+        }
+      </ol>
+      @if (s(); as d) {
+        <div class="grid grid-cols-2 gap-px border-t border-slate-100 bg-slate-100 text-center text-xs dark:border-slate-800 dark:bg-slate-800 sm:grid-cols-4">
+          <div class="bg-white p-2.5 dark:bg-slate-900"><p class="text-base font-semibold tabular-nums text-slate-900 dark:text-white">{{ d.issuesReco.reintegrees }}</p><p class="text-slate-500">réintégrées</p></div>
+          <div class="bg-white p-2.5 dark:bg-slate-900"><p class="text-base font-semibold tabular-nums text-slate-900 dark:text-white">{{ d.issuesReco.orientees }}</p><p class="text-slate-500">orientées</p></div>
+          <div class="bg-white p-2.5 dark:bg-slate-900"><p class="text-base font-semibold tabular-nums text-slate-900 dark:text-white">{{ d.issuesReco.nonRetrouvees }}</p><p class="text-slate-500">non retrouvées</p></div>
+          <div class="bg-white p-2.5 dark:bg-slate-900"><p class="text-base font-semibold tabular-nums text-slate-900 dark:text-white">{{ d.issuesReco.clotureesSansReintegration }}</p><p class="text-slate-500">clôturées sans réint.</p></div>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Ligne 4 : à traiter maintenant -->
+  <div class="card overflow-hidden">
+    <div class="card-header flex-wrap">
+      <h2 class="card-title"><i class="fa-solid fa-list-check text-rose-500"></i> À traiter maintenant
+        @if (s()) { <span class="badge bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">{{ s()!.aTraiter.total }}</span> }
+      </h2>
+      <div class="flex flex-wrap gap-1.5">
+        <button type="button" class="badge border transition" [class]="!typeATraiter() ? 'border-brand-300 bg-brand-50 text-brand-800 dark:border-brand-500/40 dark:bg-brand-500/10 dark:text-brand-200' : 'border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300'" (click)="typeATraiter.set('')">Tout</button>
+        @for (t of typesATraiter(); track t.type) {
+          <button type="button" class="badge border transition" [class]="typeATraiter() === t.type ? 'border-brand-300 bg-brand-50 text-brand-800 dark:border-brand-500/40 dark:bg-brand-500/10 dark:text-brand-200' : 'border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300'" (click)="typeATraiter.set(t.type)">{{ t.type }} · {{ t.n }}</button>
+        }
+      </div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-slate-100 text-sm dark:divide-slate-800">
+        <thead class="bg-slate-50/70 dark:bg-slate-800/50">
+          <tr>
+            <th class="table-th">Priorité</th>
+            <th class="table-th">Motif</th>
+            <th class="table-th">Personne</th>
+            <th class="table-th">Détecté le</th>
+            <th class="table-th">Échéance</th>
+            <th class="table-th">Responsable</th>
+            <th class="table-th text-right">Action</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+          @if (attente()) {
+            @for (i of [1, 2, 3, 4]; track i) { <tr aria-hidden="true"><td colspan="7" class="table-td"><div class="skeleton h-4 w-full"></div></td></tr> }
+          }
+          @for (l of lignesATraiter(); track $index) {
+            <tr class="transition hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+              <td class="table-td whitespace-nowrap"><span class="badge {{ prioriteClass(l.priorite) }}"><i class="fa-solid {{ prioriteIcone(l.priorite) }} text-[10px]"></i>{{ l.priorite }}</span></td>
+              <td class="table-td">
+                <span class="block text-xs font-semibold uppercase tracking-wide text-slate-400">{{ l.type }}</span>
+                <span class="block text-slate-800 dark:text-slate-100">{{ l.motif }}</span>
+              </td>
+              <td class="table-td">
+                @if (l.personne) {
+                  <span class="block font-medium text-slate-900 dark:text-white">{{ l.personne.nom }}</span>
+                  <span class="block font-mono text-xs text-slate-500 dark:text-slate-400">{{ l.personne.numero }}</span>
+                } @else { <span class="text-slate-400">—</span> }
+              </td>
+              <td class="table-td whitespace-nowrap text-slate-600 dark:text-slate-300">{{ l.detecteLe | date: 'dd/MM/yyyy' }}</td>
+              <td class="table-td whitespace-nowrap" [class]="enRetard(l) ? 'text-rose-600 dark:text-rose-400' : 'text-slate-600 dark:text-slate-300'">{{ l.echeance ? (l.echeance | date: 'dd/MM/yyyy') : '—' }}</td>
+              <td class="table-td text-slate-600 dark:text-slate-300">{{ l.responsable }}</td>
+              <td class="table-td text-right">
+                <a [routerLink]="l.lien" [queryParams]="l.requete ?? null" class="btn-secondary whitespace-nowrap px-3 py-1.5 text-xs">{{ l.action }} <i class="fa-solid fa-arrow-right"></i></a>
+              </td>
+            </tr>
+          } @empty {
+            @if (s()) {
+              <tr><td colspan="7" class="table-td py-8 text-center text-slate-500 dark:text-slate-400"><i class="fa-solid fa-circle-check mr-1 text-accent-500"></i>Rien d’urgent à traiter.</td></tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+    @if ((s()?.aTraiter?.total ?? 0) > (s()?.aTraiter?.lignes?.length ?? 0)) {
+      <p class="border-t border-slate-100 px-5 py-2.5 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">{{ s()!.aTraiter.lignes.length }} premières lignes sur {{ s()!.aTraiter.total }}, triées par priorité puis ancienneté.</p>
+    }
+  </div>
+</section>
