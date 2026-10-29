@@ -34,7 +34,8 @@ export interface Article {
   contenu: string;
   cible: CibleArticle;
   medias: MediaArticle[];
-  auteur: Auteur;
+  /** photoUrl : photo de profil du médecin auteur (lien signé), null s'il n'en a pas. */
+  auteur: Auteur & { photoUrl?: string | null };
   /** « En attente » jusqu'à l'approbation du médecin chef (visible de l'auteur et du chef seulement). */
   statut: 'En attente' | 'Approuvé';
   approbation?: { par: Auteur; le: string };

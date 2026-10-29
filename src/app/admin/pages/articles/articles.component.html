@@ -98,7 +98,11 @@
     @for (a of articles; track a.id) {
       <article class="card overflow-hidden">
         <header class="flex items-start gap-3 p-5 pb-3">
-          <span class="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-gradient-to-br from-brand-100 to-accent-50 text-sm font-semibold text-brand-700 dark:from-brand-500/20 dark:to-accent-500/10 dark:text-brand-300">{{ initiales(a.auteur.nom) }}</span>
+          @if (a.auteur.photoUrl) {
+            <img [src]="a.auteur.photoUrl" [alt]="'Photo de ' + dr(a.auteur.nom, a.auteur.role)" class="h-10 w-10 flex-none rounded-full object-cover">
+          } @else {
+            <span class="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-gradient-to-br from-brand-100 to-accent-50 text-sm font-semibold text-brand-700 dark:from-brand-500/20 dark:to-accent-500/10 dark:text-brand-300">{{ initiales(a.auteur.nom) }}</span>
+          }
           <div class="min-w-0 flex-1">
             <p class="text-sm font-semibold text-slate-900 dark:text-white">{{ dr(a.auteur.nom, a.auteur.role) }} @if (!estAutre(a.auteur.id)) { <span class="badge ml-1 bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">vous</span> }</p>
             <p class="text-xs text-slate-500 dark:text-slate-400">{{ a.auteur.role }} · {{ dateHeure(a.createdAt) }}</p>
