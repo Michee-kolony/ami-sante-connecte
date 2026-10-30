@@ -60,10 +60,7 @@
         </div>
 
         <div>
-          <div class="flex items-center justify-between">
-            <label class="label" for="password">Mot de passe</label>
-            <a href="#" class="mb-1.5 text-xs font-medium text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300">Mot de passe oublié ?</a>
-          </div>
+          <label class="label" for="password">Mot de passe</label>
           <div class="relative">
             <i class="fa-solid fa-lock pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
             <input id="password" [type]="showPassword ? 'text' : 'password'" class="input px-10" placeholder="••••••••" autocomplete="current-password" name="motDePasse" [(ngModel)]="motDePasse" required [readonly]="!!choix">
