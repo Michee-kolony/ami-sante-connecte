@@ -362,10 +362,12 @@
               <div class="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label class="label" for="structure">Établissement sanitaire <span class="req">*</span></label>
-                  <select id="structure" name="etablissementId" class="input" [(ngModel)]="form.etablissementId" (ngModelChange)="choisirEtablissement()" [disabled]="!etablissementsActifs().length">
-                    <option value="" disabled>{{ chargementEtablissements ? 'Chargement des établissements…' : etablissementsActifs().length ? 'Choisir l’établissement' : 'Aucun établissement actif' }}</option>
+                  <!-- Toujours l'établissement de connexion : le serveur refuse tout autre choix (cloisonnement des dossiers). -->
+                  <select id="structure" name="etablissementId" class="input" [(ngModel)]="form.etablissementId" disabled>
+                    <option value="" disabled>{{ chargementEtablissements ? 'Chargement des établissements…' : 'Aucun établissement de connexion' }}</option>
                     @for (e of etablissementsActifs(); track e.id) { <option [value]="e.id">{{ e.nom }} · {{ e.province }}</option> }
                   </select>
+                  <p class="hint">Établissement choisi à votre connexion.</p>
                 </div>
                 <div><label class="label" for="aire">Aire de santé (A.S.)</label><input id="aire" name="aire" class="input" [(ngModel)]="form.aire" [placeholder]="session.etablissement()?.aireSante || 'ex. AS Camp Tshatshi'"></div>
               </div>
