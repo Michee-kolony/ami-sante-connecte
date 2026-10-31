@@ -373,9 +373,11 @@ export class UrgencesComponent implements AfterViewInit, OnDestroy {
   choixAmbulance = '';
   choixInfirmier = '';
 
-  /** Infirmier·ères et sages-femmes actifs, qui peuvent accompagner l'ambulance. */
+  /** Infirmier·ères et sages-femmes actifs de l'établissement de connexion (le serveur refuse les autres). */
   infirmiers(): Soignant[] {
-    return this.soignants.soignants().filter(s => s.statut === 'Actif' && /^(Infirmier|Sage-femme)/.test(s.role));
+    const id = this.session.etablissement()?.id;
+    return this.soignants.soignants().filter(s => s.statut === 'Actif' && /^(Infirmier|Sage-femme)/.test(s.role)
+      && s.affectations.some(a => a.etablissementId === id));
   }
 
   /** Alertes en attente de prise en charge, de la plus ancienne à la plus récente. */

@@ -38,8 +38,14 @@ export class DashboardComponent {
   /** Squelette tant que rien n'est reçu (une liste déjà chargée ailleurs s'affiche aussitôt). */
   systemeEnChargement = computed(() => !this.systemeRecu() && !this.soignantsService.soignants().length);
 
+  /** Personnel affecté à l'établissement de connexion (chaque établissement voit le sien). */
+  personnel = computed(() => {
+    const id = this.session.etablissement()?.id;
+    return id ? this.soignantsService.soignants().filter(s => s.affectations.some(a => a.etablissementId === id)) : [];
+  });
+
   tuilesSysteme = computed(() => {
-    const soignants = this.soignantsService.soignants();
+    const soignants = this.personnel();
     const etablissements = this.etablissementsService.etablissements();
     const medecins = soignants.filter(s => categorieDuRole(s.role) === 'Médecin').length;
     const infirmiers = soignants.filter(s => categorieDuRole(s.role) === 'Infirmier').length;
@@ -48,7 +54,7 @@ export class DashboardComponent {
     const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`;
     return [
       {
-        label: 'Soignants ajoutés', valeur: soignants.length, lien: '/admin/soignants', icone: 'fa-users',
+        label: 'Soignants de l’établissement', valeur: soignants.length, lien: '/admin/soignants', icone: 'fa-users',
         detail: `${pluriel(medecins, 'médecin')} · ${pluriel(infirmiers, 'infirmier')} · ${sagesFemmes} sage${sagesFemmes > 1 ? 's' : ''}-femme${sagesFemmes > 1 ? 's' : ''}`,
         couleur: 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',
       },

@@ -107,7 +107,7 @@
     }
   </div>
   @if (session.connecte() && !systemeErreur()) {
-    <app-repartition-sexe class="block lg:col-span-2" [personnel]="soignantsService.soignants()" [chargement]="systemeEnChargement()" />
+    <app-repartition-sexe class="block lg:col-span-2" [personnel]="personnel()" [chargement]="systemeEnChargement()" />
   }
   </div>
 
