@@ -142,13 +142,17 @@ export interface SyntheseTableauBord {
   donneesManquantes: string[];
 }
 
-/** CPN1 à CPN4 d'un mois (GET /api/statistiques/cpn-mensuel). */
-export interface CpnMensuel {
+/** Analyses mensuelles du tableau de bord : CPN1 à CPN4, VAT 1 à 5 et SP 1 à 3. */
+export type RouteAnalyseMensuelle = 'cpn-mensuel' | 'preventions-mensuel';
+
+/** Analyse d'un mois (GET /api/statistiques/cpn-mensuel ou /preventions-mensuel). */
+export interface AnalyseMensuelle {
   mois: string;
   moisCourant: string;
   /** Les 6 mois se terminant par le mois choisi (clés AAAA-MM et libellés courts). */
   historique: { cles: string[]; mois: string[] };
-  rangs: { rang: string; n: number; precedent: number; valeurs: number[] }[];
+  /** Nombre de femmes du mois (n), du mois précédent et des 6 mois (valeurs). */
+  lignes: { code: string; libelle: string; groupe?: string; repere?: string; n: number; precedent: number; valeurs: number[] }[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -167,13 +171,13 @@ export class StatistiquesService {
     return firstValueFrom(this.http.get<SyntheseTableauBord>(`${API_URL}/statistiques/synthese`, { params }));
   }
 
-  /** Femmes ayant fait la CPN1, 2, 3, 4 dans le mois `mois` (AAAA-MM ; mois en cours si vide). */
-  cpnMensuel(mois: string, province?: string, aire?: string): Promise<CpnMensuel> {
+  /** Analyse mensuelle (CPN, VAT/SP) du mois `mois` (AAAA-MM ; mois en cours si vide). */
+  analyseMensuelle(route: RouteAnalyseMensuelle, mois: string, province?: string, aire?: string): Promise<AnalyseMensuelle> {
     const params: Record<string, string> = {};
     if (mois) params['mois'] = mois;
     if (province) params['province'] = province;
     if (aire) params['aire'] = aire;
-    return firstValueFrom(this.http.get<CpnMensuel>(`${API_URL}/statistiques/cpn-mensuel`, { params }));
+    return firstValueFrom(this.http.get<AnalyseMensuelle>(`${API_URL}/statistiques/${route}`, { params }));
   }
 
   patientes(): Promise<StatistiquesPatientes> {
