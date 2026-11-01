@@ -90,6 +90,9 @@
   <app-analyse-mensuelle class="block" route="preventions-mensuel" titre="VAT et SP (TPI) du mois" icone="fa-syringe"
     description="Femmes de l’établissement ayant reçu chaque dose (première fois cochée « Oui » pour la grossesse)" action="femme(s) ayant reçu"
     [lignesAttendues]="LIGNES_PREVENTIONS" />
+  <app-analyse-mensuelle class="block" route="prevention-mensuel" titre="Prévention du mois" icone="fa-shield-heart"
+    description="Femmes de l’établissement pour qui chaque mesure a été cochée « Oui » (première fois pour la grossesse)" action="femme(s) —"
+    [lignesAttendues]="LIGNES_PREVENTION" />
 
   <!-- Ligne 2 : évolution des activités (petits multiples) et comparaison par aire de santé -->
   <div class="grid gap-6 xl:grid-cols-5">

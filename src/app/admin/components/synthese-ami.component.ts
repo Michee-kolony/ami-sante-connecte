@@ -71,6 +71,11 @@ export class SyntheseAmiComponent {
     ...[1, 2, 3, 4, 5].map(n => ({ code: `vat${n}`, libelle: `VAT ${n}`, groupe: 'VAT' })),
     ...[1, 2, 3].map(n => ({ code: `sp${n}`, libelle: `SP ${n}`, groupe: 'SP (TPI)' })),
   ];
+  readonly LIGNES_PREVENTION = [
+    { code: 'mild', libelle: 'Dort sous MILD', groupe: 'Prévention' },
+    { code: 'micronutriments', libelle: 'Supplémentation en micronutriments', groupe: 'Prévention' },
+    { code: 'mebendazole', libelle: 'Vermifuge : mébendazole (2e trimestre)', groupe: 'Prévention' },
+  ];
 
   constructor() {
     // Recalcul à chaque ouverture, avec les derniers filtres choisis (l'affichage précédent reste visible entre-temps).

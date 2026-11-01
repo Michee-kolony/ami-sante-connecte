@@ -142,8 +142,8 @@ export interface SyntheseTableauBord {
   donneesManquantes: string[];
 }
 
-/** Analyses mensuelles du tableau de bord : CPN1 à CPN4, VAT 1 à 5 et SP 1 à 3. */
-export type RouteAnalyseMensuelle = 'cpn-mensuel' | 'preventions-mensuel';
+/** Analyses mensuelles du tableau de bord : CPN1 à CPN4, VAT 1 à 5 et SP 1 à 3, MILD, micronutriments, mébendazole. */
+export type RouteAnalyseMensuelle = 'cpn-mensuel' | 'preventions-mensuel' | 'prevention-mensuel';
 
 /** Analyse d'un mois (GET /api/statistiques/cpn-mensuel ou /preventions-mensuel). */
 export interface AnalyseMensuelle {
