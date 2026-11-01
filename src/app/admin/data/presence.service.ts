@@ -7,7 +7,7 @@ import type { RoleSoignant } from './soignants.service';
 /** Serveur socket.io : même hôte que l'API, sans le préfixe /api. */
 const SERVEUR_URL = API_URL.replace(/\/api\/?$/, '');
 
-/** Soignant ayant au moins une page de l'espace administrateur ouverte. */
+/** Soignant du même établissement de connexion ayant au moins une page de l'espace administrateur ouverte. */
 export interface SoignantEnLigne {
   id: string;
   prenom: string;
@@ -36,7 +36,10 @@ export class PresenceService implements OnDestroy {
   /** Abonnements aux autres événements temps réel (discussions…), conservés entre deux connexions. */
   private ecouteurs = new Map<string, Set<(donnees: any) => void>>();
 
+  /** Soignants en ligne dans l'établissement de connexion (liste détaillée du tableau de bord). */
   readonly enLigne = signal<SoignantEnLigne[]>([]);
+  /** Tous les soignants en ligne, tous établissements confondus (identifiants seulement). */
+  readonly soignantsEnLigne = signal<Set<string>>(new Set());
   /** Patientes connectées à l'application mobile (identifiants seulement). */
   readonly patientesEnLigne = signal<Set<string>>(new Set());
   /** Chauffeurs connectés à l'application ami-connecte-chauffeur (identifiants seulement). */
@@ -60,7 +63,7 @@ export class PresenceService implements OnDestroy {
 
   /** Soignant ou patiente (application mobile) actuellement en ligne. */
   estEnLigne(id: string): boolean {
-    return this.enLigne().some(s => s.id === id) || this.patientesEnLigne().has(id);
+    return this.soignantsEnLigne().has(id) || this.enLigne().some(s => s.id === id) || this.patientesEnLigne().has(id);
   }
 
   /** S'abonne à un événement temps réel ; renvoie la fonction de désabonnement. */
@@ -100,6 +103,7 @@ export class PresenceService implements OnDestroy {
       this.enLigne.set(liste);
       this.charge.set(true);
     });
+    this.socket.on('presence:ids', (ids: string[]) => this.soignantsEnLigne.set(new Set(ids)));
     this.socket.on('presence:patientes', (ids: string[]) => this.patientesEnLigne.set(new Set(ids)));
     this.socket.on('presence:chauffeurs', (ids: string[]) => this.chauffeursEnLigne.set(new Set(ids)));
     this.socket.on('connect', () => this.zone.run(() => this.aLaConnexion.forEach(f => f())));
@@ -111,6 +115,7 @@ export class PresenceService implements OnDestroy {
     this.socket?.disconnect();
     this.socket = undefined;
     this.enLigne.set([]);
+    this.soignantsEnLigne.set(new Set());
     this.patientesEnLigne.set(new Set());
     this.chauffeursEnLigne.set(new Set());
     this.charge.set(false);
