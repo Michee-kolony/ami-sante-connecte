@@ -36,6 +36,9 @@
     </div>
   }
 
+  <!-- Personnel connecté à l'instant (même établissement de connexion), en tête du tableau de bord -->
+  <app-en-ligne />
+
   <!-- Synthèse opérationnelle AMI (cahier de spécifications du tableau de bord) -->
   @if (session.connecte()) {
     <app-synthese-ami class="block" />
@@ -74,9 +77,6 @@
       </a>
     }
   </div>
-
-  <!-- Personnel connecté à l'instant -->
-  <app-en-ligne />
 
   <!-- Chiffres du système (serveur) et répartition femmes / hommes -->
   <div class="grid gap-6 lg:grid-cols-3">
