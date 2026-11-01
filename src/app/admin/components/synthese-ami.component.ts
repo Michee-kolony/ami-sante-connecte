@@ -77,6 +77,7 @@ export class SyntheseAmiComponent {
     { code: 'mebendazole', libelle: 'Vermifuge : mébendazole (2e trimestre)', groupe: 'Prévention' },
     { code: 'dcip', libelle: 'DCIP de la femme : conseil', groupe: 'PTME' },
   ];
+  readonly LIGNES_ECHO = [1, 2, 3].map(n => ({ code: `echo${n}`, libelle: `Écho ${n}` }));
   readonly LIGNES_TDR = [
     { code: 'tdrPalu', libelle: 'TDR palu réalisé', groupe: 'Laboratoire' },
     { code: 'tdrPaluPositif', libelle: 'TDR palu positif', groupe: 'Laboratoire' },

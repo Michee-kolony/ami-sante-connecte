@@ -93,6 +93,9 @@
   <app-analyse-mensuelle class="block" route="prevention-mensuel" titre="Prévention et PTME du mois" icone="fa-shield-heart"
     description="Femmes de l’établissement pour qui la mesure a été cochée « Oui » (comptée une fois par grossesse)"
     [lignesAttendues]="LIGNES_PREVENTION" />
+  <app-analyse-mensuelle class="block" route="echographies-mensuel" titre="Échographies du mois" icone="fa-wave-square"
+    description="Femmes de l’établissement ayant réalisé chaque échographie de la grossesse (1re, 2e, 3e par ordre de date)"
+    [rapporterAuPremier]="true" [lignesAttendues]="LIGNES_ECHO" />
   <app-analyse-mensuelle class="block" route="tdr-palu-mensuel" titre="TDR palu du mois" icone="fa-vial"
     description="Femmes de l’établissement ayant eu un TDR palu noté sur une consultation (positif : résultat noté positif)"
     [rapporterAuPremier]="true" [lignesAttendues]="LIGNES_TDR" />
