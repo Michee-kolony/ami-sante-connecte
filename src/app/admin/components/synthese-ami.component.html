@@ -85,13 +85,13 @@
 
   <!-- Analyses mensuelles de l'établissement (mois en cours par défaut, mois passés consultables) -->
   <app-analyse-mensuelle class="block" route="cpn-mensuel" titre="CPN du mois" icone="fa-person-pregnant"
-    description="Femmes de l’établissement ayant fait chaque CPN" action="femme(s) ayant fait la"
+    description="Femmes de l’établissement ayant fait chaque CPN"
     [rapporterAuPremier]="true" [lignesAttendues]="LIGNES_CPN" />
   <app-analyse-mensuelle class="block" route="preventions-mensuel" titre="VAT et SP (TPI) du mois" icone="fa-syringe"
-    description="Femmes de l’établissement ayant reçu chaque dose (première fois cochée « Oui » pour la grossesse)" action="femme(s) ayant reçu"
+    description="Femmes de l’établissement ayant reçu chaque dose (comptée une fois par grossesse)"
     [lignesAttendues]="LIGNES_PREVENTIONS" />
   <app-analyse-mensuelle class="block" route="prevention-mensuel" titre="Prévention du mois" icone="fa-shield-heart"
-    description="Femmes de l’établissement pour qui chaque mesure a été cochée « Oui » (première fois pour la grossesse)" action="femme(s) —"
+    description="Femmes de l’établissement pour qui la mesure a été cochée « Oui » (comptée une fois par grossesse)"
     [lignesAttendues]="LIGNES_PREVENTION" />
 
   <!-- Ligne 2 : évolution des activités (petits multiples) et comparaison par aire de santé -->

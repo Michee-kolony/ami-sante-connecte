@@ -41,32 +41,79 @@ const MOIS_LONGS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juil
           <button type="button" class="ml-1 font-semibold underline" (click)="charger()">Réessayer</button>
         </p>
       }
-      <div class="space-y-4 p-5" [class.opacity-60]="chargement()">
+      <div class="space-y-5 p-5 transition-opacity" [class.opacity-60]="chargement()">
         @for (g of groupes(); track g.nom) {
-          <div>
-            @if (g.nom) { <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ g.nom }}</p> }
-            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-5">
+          <section [attr.aria-label]="g.nom || titre()">
+            @if (g.nom && groupes().length > 1) {
+              <div class="mb-3 flex items-center gap-3">
+                <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ g.nom }}</h3>
+                <span class="h-px flex-1 bg-slate-100 dark:bg-slate-800"></span>
+              </div>
+            }
+            <div class="grid gap-4 sm:grid-cols-2" [class]="colonnes(g.cartes.length)">
               @for (c of g.cartes; track c.code) {
-                <div class="rounded-xl border border-slate-100 p-4 dark:border-slate-800">
-                  <div class="flex items-start justify-between gap-2">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-brand-600 dark:text-brand-400">{{ c.libelle }}</p>
-                    @if (c.ecart) { <span class="badge bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">{{ c.ecart }}</span> }
+                <article class="group flex flex-col rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md
+                                dark:border-slate-800 dark:bg-slate-900 dark:hover:border-brand-500/40">
+                  <!-- Libellé et repère -->
+                  <div class="flex items-start gap-3">
+                    <span class="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">
+                      <i class="fa-solid {{ icone() }} text-sm"></i>
+                    </span>
+                    <div class="min-w-0">
+                      <h4 class="text-sm font-semibold leading-snug text-slate-800 dark:text-slate-100">{{ c.libelle }}</h4>
+                      @if (c.repere) {
+                        <span class="mt-1 inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                          <i class="fa-regular fa-clock text-[10px]"></i>{{ c.repere }}
+                        </span>
+                      }
+                    </div>
                   </div>
-                  @if (chargement() && !donnees()) {
-                    <div class="skeleton mt-2 h-8 w-16" aria-hidden="true"></div>
-                  } @else {
-                    <p class="mt-1 text-3xl font-bold tracking-tight tabular-nums" [class]="c.n == null ? 'text-slate-300 dark:text-slate-600' : 'text-slate-900 dark:text-white'">{{ c.n ?? '—' }}</p>
-                  }
-                  <p class="text-sm text-slate-600 dark:text-slate-300">{{ action() }} {{ c.libelle }}</p>
-                  @if (c.repere) { <p class="text-[11px] text-slate-400 dark:text-slate-500">{{ c.repere }}</p> }
+
+                  <!-- Valeur du mois et variation -->
+                  <div class="mt-4 flex items-end justify-between gap-2">
+                    @if (chargement() && !donnees()) {
+                      <div class="skeleton h-9 w-20" aria-hidden="true"></div>
+                    } @else {
+                      <p class="leading-none">
+                        <span class="text-4xl font-bold tracking-tight tabular-nums" [class]="c.n == null ? 'text-slate-300 dark:text-slate-600' : 'text-slate-900 dark:text-white'">{{ c.n ?? '—' }}</span>
+                        <span class="ml-1 text-sm text-slate-500 dark:text-slate-400">{{ unite() }}</span>
+                      </p>
+                    }
+                    @if (c.variation; as v) {
+                      <span class="inline-flex flex-none items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold" [class]="v.classe" [title]="v.titre">
+                        <i class="fa-solid {{ v.icone }} text-[10px]"></i>{{ v.texte }}
+                      </span>
+                    }
+                  </div>
+
+                  <!-- Part de la première ligne (CPN2 / CPN1…) -->
                   @if (c.largeur != null) {
-                    <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div class="h-full rounded-full bg-brand-600 dark:bg-brand-400" [style.width.%]="c.largeur"></div></div>
+                    <div class="mt-3">
+                      <div class="h-1.5 overflow-hidden rounded-full bg-brand-100 dark:bg-brand-500/15"><div class="h-full rounded-full bg-brand-600 dark:bg-brand-400" [style.width.%]="c.largeur"></div></div>
+                      @if (c.part != null) { <p class="mt-1 text-[11px] text-slate-500 dark:text-slate-400">{{ c.part }} % du nombre de {{ c.reference }}</p> }
+                    </div>
                   }
-                  @if (c.part != null) { <p class="mt-1 text-[11px] text-slate-400 dark:text-slate-500">{{ c.part }} % du nombre de {{ c.reference }}</p> }
-                </div>
+
+                  <!-- Tendance sur 6 mois : mois choisi en couleur, mois précédents atténués -->
+                  @if (c.barres.length) {
+                    <div class="mt-auto pt-4">
+                      <div class="flex h-10 items-end gap-1" role="img" [attr.aria-label]="c.libelle + ' sur 6 mois : ' + c.resume">
+                        @for (b of c.barres; track $index; let last = $last) {
+                          <div class="flex h-full flex-1 items-end" [title]="b.mois + ' : ' + b.v + ' ' + unite()">
+                            <div class="w-full rounded-t-[4px]" [style.height.%]="b.hauteur"
+                                 [class]="last ? 'bg-brand-600 dark:bg-brand-400' : 'bg-slate-200 group-hover:bg-slate-300 dark:bg-slate-700 dark:group-hover:bg-slate-600'"></div>
+                          </div>
+                        }
+                      </div>
+                      <div class="mt-1 flex justify-between text-[10px] text-slate-400 dark:text-slate-500">
+                        <span>{{ c.barres[0].mois }}</span><span class="font-medium text-slate-600 dark:text-slate-300">{{ c.barres[c.barres.length - 1].mois }}</span>
+                      </div>
+                    </div>
+                  }
+                </article>
               }
             </div>
-          </div>
+          </section>
         }
       </div>
       @if (donnees(); as d) {
@@ -105,8 +152,8 @@ export class AnalyseMensuelleComponent {
   icone = input('fa-chart-simple');
   /** Phrase d'introduction, complétée par « en <mois> ». */
   description = input('');
-  /** Début du texte sous chaque nombre, suivi du libellé de la ligne (« femme(s) ayant fait la » CPN1). */
-  action = input('femme(s) :');
+  /** Unité affichée à côté de chaque nombre. */
+  unite = input('femme(s)');
   /** Barres et pourcentages rapportés à la première ligne de chaque groupe (ex. CPN2 / CPN1). */
   rapporterAuPremier = input(false);
   /** Lignes attendues avant la réponse du serveur (cartes « — »). */
@@ -163,11 +210,33 @@ export class AnalyseMensuelleComponent {
     return groupes;
   });
 
-  private carte(l: { code: string; libelle: string; repere?: string; n: number | null; precedent: number | null }, premier: { libelle: string; n: number | null } | null) {
+  /** Colonnes de la grille selon le nombre de cartes du groupe. */
+  colonnes(n: number): string {
+    return n <= 3 ? 'lg:grid-cols-3' : n === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3 2xl:grid-cols-5';
+  }
+
+  /** Variation par rapport au mois précédent : hausse (verte), baisse (rose) ou stable (grise). */
+  private variation(n: number | null, precedent: number | null) {
+    if (n == null || precedent == null) return null;
+    const moisPrec = this.donnees()?.historique.mois.at(-2) ?? 'mois préc.';
+    const e = n - precedent;
+    const titre = `${moisPrec} : ${precedent} ${this.unite()}`;
+    if (e > 0) return { texte: `+${e}`, icone: 'fa-arrow-trend-up', titre, classe: 'bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300' };
+    if (e < 0) return { texte: `−${-e}`, icone: 'fa-arrow-trend-down', titre, classe: 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300' };
+    return { texte: 'Stable', icone: 'fa-equals', titre, classe: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400' };
+  }
+
+  private carte(l: { code: string; libelle: string; repere?: string; n: number | null; precedent: number | null; valeurs?: number[] }, premier: { libelle: string; n: number | null } | null) {
     const ref = this.rapporterAuPremier() ? (premier?.n ?? l.n ?? 0) : 0;
+    const valeurs = l.valeurs ?? [];
+    const max = Math.max(1, ...valeurs);
+    const mois = this.donnees()?.historique.mois ?? [];
+    const barres = valeurs.map((v, i) => ({ v, mois: mois[i] ?? '', hauteur: v ? Math.max(8, (v / max) * 100) : 4 }));
     return {
       ...l,
-      ecart: l.n != null && l.precedent != null ? `${l.n - l.precedent >= 0 ? '+' : '−'}${Math.abs(l.n - l.precedent)} vs mois préc.` : null,
+      variation: this.variation(l.n, l.precedent),
+      barres,
+      resume: barres.map(b => `${b.mois} ${b.v}`).join(', '),
       largeur: this.rapporterAuPremier() ? (ref && l.n != null ? Math.min(100, (l.n / ref) * 100) : 0) : null,
       part: this.rapporterAuPremier() && premier && ref && l.n != null ? Math.round((l.n / ref) * 100) : null,
       reference: premier?.libelle ?? '',
