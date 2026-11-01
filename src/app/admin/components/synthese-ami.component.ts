@@ -1,11 +1,11 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { HorsLigneService } from '../data/hors-ligne/hors-ligne.service';
 import { PROVINCES_RDC } from '../data/carte-rdc';
 import { dateHeureChiffres, jourChiffres } from '../data/format';
-import { Indicateur, LigneATraiter, PeriodeSynthese, SyntheseEtatService } from '../data/statistiques.service';
+import { CpnMensuel, Indicateur, LigneATraiter, PeriodeSynthese, StatistiquesService, SyntheseEtatService } from '../data/statistiques.service';
 
 /** Classes par ton de carte (fond de l'icône). */
 const TONS: Record<string, string> = {
@@ -44,6 +44,7 @@ export function fractionIndicateur(i: Indicateur): string {
 })
 export class SyntheseAmiComponent {
   etat = inject(SyntheseEtatService);
+  private stats = inject(StatistiquesService);
   horsLigne = inject(HorsLigneService);
 
   readonly periodes: { code: PeriodeSynthese; libelle: string }[] = [
@@ -67,6 +68,12 @@ export class SyntheseAmiComponent {
   constructor() {
     // Recalcul à chaque ouverture, avec les derniers filtres choisis (l'affichage précédent reste visible entre-temps).
     this.etat.charger();
+    // Chiffres CPN du mois : rechargés quand la province ou l'aire de santé change (le mois choisi est gardé).
+    const lieu = computed(() => `${this.etat.filtres().province ?? ''}|${this.etat.filtres().aire ?? ''}`);
+    effect(() => {
+      lieu();
+      untracked(() => this.chargerCpn());
+    });
   }
 
   choisirPeriode(code: PeriodeSynthese): void {
@@ -124,22 +131,51 @@ export class SyntheseAmiComponent {
     return `${e >= 0 ? '+' : '−'}${Math.abs(e)} vs mois préc.`;
   }
 
-  // --- CPN1 à CPN4 du mois en cours (femmes ayant fait la visite de ce rang) ----------------
-  readonly RANGS_CPN = ['CPN1', 'CPN2', 'CPN3', 'CPN4'];
+  // --- CPN1 à CPN4 d'un mois (en cours par défaut, mois passés consultables) ---------------
+  readonly moisLongs = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+  /** Mois affiché (AAAA-MM) ; vide : mois en cours. */
+  moisCpn = signal('');
+  cpnDonnees = signal<CpnMensuel | null>(null);
+  cpnChargement = signal(false);
+  cpnErreur = signal<string | null>(null);
+
+  libelleMois = (cle: string) => (cle ? `${this.moisLongs[+cle.slice(5) - 1]} ${cle.slice(0, 4)}` : '');
+
+  decalerMois(cle: string, n: number): string {
+    const [a, m] = cle.split('-').map(Number);
+    return new Date(Date.UTC(a, m - 1 + n, 1)).toISOString().slice(0, 7);
+  }
+
+  chargerCpn(mois = this.moisCpn()): void {
+    this.moisCpn.set(mois);
+    const f = this.etat.filtres();
+    this.cpnChargement.set(true);
+    this.cpnErreur.set(null);
+    this.stats.cpnMensuel(mois, f.province, f.aire)
+      .then(d => { this.cpnDonnees.set(d); this.moisCpn.set(d.mois); })
+      .catch(e => this.cpnErreur.set(e?.error?.message ?? 'Chiffres CPN indisponibles pour le moment.'))
+      .finally(() => this.cpnChargement.set(false));
+  }
+
+  moisPrecedentCpn(): void {
+    if (this.moisCpn()) this.chargerCpn(this.decalerMois(this.moisCpn(), -1));
+  }
+
+  moisSuivantCpn(): void {
+    const d = this.cpnDonnees();
+    if (d && d.mois < d.moisCourant) this.chargerCpn(this.decalerMois(d.mois, 1));
+  }
+
   cpnMois = computed(() => {
-    const d = this.s()?.cpnParRang;
-    const moisCourant = d?.mois.at(-1) ?? '';
-    const cartes = this.RANGS_CPN.map(rang => {
-      const valeurs = d?.rangs.find(r => r.rang === rang)?.valeurs ?? null;
-      const n = valeurs?.at(-1) ?? null;
-      const precedent = valeurs && valeurs.length > 1 ? valeurs[valeurs.length - 2] : null;
-      return { rang, valeurs, n, precedent };
+    const d = this.cpnDonnees();
+    const cartes = ['CPN1', 'CPN2', 'CPN3', 'CPN4'].map(rang => {
+      const r = d?.rangs.find(x => x.rang === rang);
+      return { rang, n: r?.n ?? null, precedent: r?.precedent ?? null, valeurs: r?.valeurs ?? [] };
     });
     const cpn1 = cartes[0].n ?? 0;
     return {
-      disponible: !!d,
-      moisCourant,
-      mois: d?.mois ?? [],
+      enCours: !!d && d.mois === d.moisCourant,
+      mois: d?.historique.mois ?? [],
       cartes: cartes.map(c => ({
         ...c,
         ecart: c.n != null && c.precedent != null ? `${c.n - c.precedent >= 0 ? '+' : '−'}${Math.abs(c.n - c.precedent)} vs mois préc.` : null,

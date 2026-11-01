@@ -130,8 +130,6 @@ export interface SyntheseTableauBord {
   };
   alertesParType: { type: string; libelle: string; ouvertes: number }[];
   tendance: { mois: string[]; series: { code: string; libelle: string; valeurs: number[] }[] };
-  /** CPN1 à CPN4 par mois (6 derniers mois, le dernier est le mois en cours) ; absent sur un serveur ancien. */
-  cpnParRang?: { mois: string[]; rangs: { rang: string; valeurs: number[] }[] };
   comparaisonAires: { aire: string; grossessesEnCours: number; cpnEnRetard: number; enfantsEnRetard: number; tachesOuvertes: number }[];
   continuum: { etape: string; n: number }[];
   fluxReco: { etape: string; n: number }[];
@@ -142,6 +140,15 @@ export interface SyntheseTableauBord {
     consultationsIncompletes: number; conflitsRelance: number;
   };
   donneesManquantes: string[];
+}
+
+/** CPN1 à CPN4 d'un mois (GET /api/statistiques/cpn-mensuel). */
+export interface CpnMensuel {
+  mois: string;
+  moisCourant: string;
+  /** Les 6 mois se terminant par le mois choisi (clés AAAA-MM et libellés courts). */
+  historique: { cles: string[]; mois: string[] };
+  rangs: { rang: string; n: number; precedent: number; valeurs: number[] }[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -158,6 +165,15 @@ export class StatistiquesService {
     if (f.province) params['province'] = f.province;
     if (f.aire) params['aire'] = f.aire;
     return firstValueFrom(this.http.get<SyntheseTableauBord>(`${API_URL}/statistiques/synthese`, { params }));
+  }
+
+  /** Femmes ayant fait la CPN1, 2, 3, 4 dans le mois `mois` (AAAA-MM ; mois en cours si vide). */
+  cpnMensuel(mois: string, province?: string, aire?: string): Promise<CpnMensuel> {
+    const params: Record<string, string> = {};
+    if (mois) params['mois'] = mois;
+    if (province) params['province'] = province;
+    if (aire) params['aire'] = aire;
+    return firstValueFrom(this.http.get<CpnMensuel>(`${API_URL}/statistiques/cpn-mensuel`, { params }));
   }
 
   patientes(): Promise<StatistiquesPatientes> {
