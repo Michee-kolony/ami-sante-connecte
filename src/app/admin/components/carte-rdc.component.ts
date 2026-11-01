@@ -28,8 +28,9 @@ const TEINTE_TETE = 'fill-accent-500 dark:fill-accent-500';
 
 /**
  * Carte choroplèthe des provinces de la RDC : plus la province est foncée, plus elle compte
- * de patientes (province de résidence du dossier). Données fournies par le serveur
- * (GET /api/statistiques/patientes), libellés identiques à l'énumération du modèle.
+ * de patientes (province de résidence du dossier). Vue globale du système, tous établissements
+ * confondus (effectifs seulement). Données fournies par le serveur (GET /api/statistiques/patientes),
+ * libellés identiques à l'énumération du modèle.
  */
 @Component({
   selector: 'app-carte-rdc',
@@ -37,7 +38,7 @@ const TEINTE_TETE = 'fill-accent-500 dark:fill-accent-500';
   template: `
     <div class="card overflow-hidden">
       <div class="card-header flex-wrap">
-        <h2 class="card-title"><i class="fa-solid fa-map-location-dot text-brand-600 dark:text-brand-400"></i> Patientes par province de résidence</h2>
+        <h2 class="card-title"><i class="fa-solid fa-map-location-dot text-brand-600 dark:text-brand-400"></i> Patientes par province de résidence <span class="text-xs font-normal text-slate-400">· tout le réseau</span></h2>
         <div class="inline-flex rounded-xl bg-slate-100 p-1 text-xs font-semibold dark:bg-slate-800" role="group" aria-label="Indicateur affiché">
           @for (o of options; track o.id) {
             <button type="button" (click)="indicateur = o.id; calculerClasses()"

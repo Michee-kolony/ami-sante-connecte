@@ -124,6 +124,31 @@ export class SyntheseAmiComponent {
     return `${e >= 0 ? '+' : '−'}${Math.abs(e)} vs mois préc.`;
   }
 
+  // --- CPN1 à CPN4 du mois en cours (femmes ayant fait la visite de ce rang) ----------------
+  readonly RANGS_CPN = ['CPN1', 'CPN2', 'CPN3', 'CPN4'];
+  cpnMois = computed(() => {
+    const d = this.s()?.cpnParRang;
+    const moisCourant = d?.mois.at(-1) ?? '';
+    const cartes = this.RANGS_CPN.map(rang => {
+      const valeurs = d?.rangs.find(r => r.rang === rang)?.valeurs ?? null;
+      const n = valeurs?.at(-1) ?? null;
+      const precedent = valeurs && valeurs.length > 1 ? valeurs[valeurs.length - 2] : null;
+      return { rang, valeurs, n, precedent };
+    });
+    const cpn1 = cartes[0].n ?? 0;
+    return {
+      disponible: !!d,
+      moisCourant,
+      mois: d?.mois ?? [],
+      cartes: cartes.map(c => ({
+        ...c,
+        ecart: c.n != null && c.precedent != null ? `${c.n - c.precedent >= 0 ? '+' : '−'}${Math.abs(c.n - c.precedent)} vs mois préc.` : null,
+        largeur: cpn1 && c.n != null ? Math.min(100, (c.n / cpn1) * 100) : 0,
+        partCpn1: c.rang !== 'CPN1' && cpn1 && c.n != null ? Math.round((c.n / cpn1) * 100) : null,
+      })),
+    };
+  });
+
   // --- Comparaison par aire --------------------------------------------------------------
   maxAire = computed(() => Math.max(1, ...(this.s()?.comparaisonAires ?? []).map(a => a.cpnEnRetard + a.enfantsEnRetard + a.tachesOuvertes)));
 

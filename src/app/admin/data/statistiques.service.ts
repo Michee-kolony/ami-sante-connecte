@@ -130,6 +130,8 @@ export interface SyntheseTableauBord {
   };
   alertesParType: { type: string; libelle: string; ouvertes: number }[];
   tendance: { mois: string[]; series: { code: string; libelle: string; valeurs: number[] }[] };
+  /** CPN1 à CPN4 par mois (6 derniers mois, le dernier est le mois en cours) ; absent sur un serveur ancien. */
+  cpnParRang?: { mois: string[]; rangs: { rang: string; valeurs: number[] }[] };
   comparaisonAires: { aire: string; grossessesEnCours: number; cpnEnRetard: number; enfantsEnRetard: number; tachesOuvertes: number }[];
   continuum: { etape: string; n: number }[];
   fluxReco: { etape: string; n: number }[];
