@@ -90,9 +90,12 @@
   <app-analyse-mensuelle class="block" route="preventions-mensuel" titre="VAT et SP (TPI) du mois" icone="fa-syringe"
     description="Femmes de l’établissement ayant reçu chaque dose (comptée une fois par grossesse)"
     [lignesAttendues]="LIGNES_PREVENTIONS" />
-  <app-analyse-mensuelle class="block" route="prevention-mensuel" titre="Prévention du mois" icone="fa-shield-heart"
+  <app-analyse-mensuelle class="block" route="prevention-mensuel" titre="Prévention et PTME du mois" icone="fa-shield-heart"
     description="Femmes de l’établissement pour qui la mesure a été cochée « Oui » (comptée une fois par grossesse)"
     [lignesAttendues]="LIGNES_PREVENTION" />
+  <app-analyse-mensuelle class="block" route="tdr-palu-mensuel" titre="TDR palu du mois" icone="fa-vial"
+    description="Femmes de l’établissement ayant eu un TDR palu noté sur une consultation (positif : résultat noté positif)"
+    [rapporterAuPremier]="true" [lignesAttendues]="LIGNES_TDR" />
 
   <!-- Ligne 2 : évolution des activités (petits multiples) et comparaison par aire de santé -->
   <div class="grid gap-6 xl:grid-cols-5">

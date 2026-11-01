@@ -75,6 +75,11 @@ export class SyntheseAmiComponent {
     { code: 'mild', libelle: 'Dort sous MILD', groupe: 'Prévention' },
     { code: 'micronutriments', libelle: 'Supplémentation en micronutriments', groupe: 'Prévention' },
     { code: 'mebendazole', libelle: 'Vermifuge : mébendazole (2e trimestre)', groupe: 'Prévention' },
+    { code: 'dcip', libelle: 'DCIP de la femme : conseil', groupe: 'PTME' },
+  ];
+  readonly LIGNES_TDR = [
+    { code: 'tdrPalu', libelle: 'TDR palu réalisé', groupe: 'Laboratoire' },
+    { code: 'tdrPaluPositif', libelle: 'TDR palu positif', groupe: 'Laboratoire' },
   ];
 
   constructor() {

@@ -212,7 +212,7 @@ export class AnalyseMensuelleComponent {
 
   /** Colonnes de la grille selon le nombre de cartes du groupe. */
   colonnes(n: number): string {
-    return n <= 3 ? 'lg:grid-cols-3' : n === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3 2xl:grid-cols-5';
+    return n <= 2 ? 'lg:grid-cols-2' : n === 3 ? 'lg:grid-cols-3' : n === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3 2xl:grid-cols-5';
   }
 
   /** Variation par rapport au mois précédent : hausse (verte), baisse (rose) ou stable (grise). */
