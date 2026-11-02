@@ -87,6 +87,8 @@
   <app-analyse-mensuelle class="block" route="cpn-mensuel" titre="CPN du mois" icone="fa-person-pregnant"
     description="Femmes de l’établissement ayant fait chaque CPN"
     [rapporterAuPremier]="true" [lignesAttendues]="LIGNES_CPN" />
+  <!-- Carte des patientes par province (fournie par le tableau de bord), juste au-dessus de VAT et SP -->
+  <ng-content select="[carteProvinces]" />
   <app-analyse-mensuelle class="block" route="preventions-mensuel" titre="VAT et SP (TPI) du mois" icone="fa-syringe"
     description="Femmes de l’établissement ayant reçu chaque dose (comptée une fois par grossesse)"
     [lignesAttendues]="LIGNES_PREVENTIONS" />

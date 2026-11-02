@@ -41,7 +41,10 @@
 
   <!-- Synthèse opérationnelle AMI (cahier de spécifications du tableau de bord) -->
   @if (session.connecte()) {
-    <app-synthese-ami class="block" />
+    <app-synthese-ami class="block">
+      <!-- Carte de la RDC : patientes par province de résidence (placée au-dessus de VAT et SP) -->
+      <app-carte-rdc carteProvinces class="block" [effectifs]="stats()?.provinces ?? null" [chargement]="statsAttente()" [sansProvince]="stats()?.sansProvince ?? 0" />
+    </app-synthese-ami>
 
     <div class="flex flex-wrap items-end justify-between gap-x-4 gap-y-1 pt-2">
       <div class="min-w-0">
@@ -178,9 +181,6 @@
       </div>
     </div>
   </div>
-
-  <!-- Carte de la RDC : patientes par province de résidence -->
-  <app-carte-rdc class="block" [effectifs]="stats()?.provinces ?? null" [chargement]="statsAttente()" [sansProvince]="stats()?.sansProvince ?? 0" />
 
   <div class="grid gap-6 lg:grid-cols-5">
     <!-- Dossiers récents -->
