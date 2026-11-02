@@ -44,6 +44,8 @@ export class PresenceService implements OnDestroy {
   readonly patientesEnLigne = signal<Set<string>>(new Set());
   /** Chauffeurs connectés à l'application ami-connecte-chauffeur (identifiants seulement). */
   readonly chauffeursEnLigne = signal<Set<string>>(new Set());
+  /** Relais communautaires (application RECO) en ligne. */
+  readonly recosEnLigne = signal<Set<string>>(new Set());
   /** Appelés à chaque (re)connexion du socket : rechargement des données temps réel. */
   private aLaConnexion = new Set<() => void>();
   /** Liste reçue du serveur (avant, ou pendant une reconnexion : squelette). */
@@ -63,7 +65,7 @@ export class PresenceService implements OnDestroy {
 
   /** Soignant ou patiente (application mobile) actuellement en ligne. */
   estEnLigne(id: string): boolean {
-    return this.soignantsEnLigne().has(id) || this.enLigne().some(s => s.id === id) || this.patientesEnLigne().has(id);
+    return this.soignantsEnLigne().has(id) || this.enLigne().some(s => s.id === id) || this.patientesEnLigne().has(id) || this.recosEnLigne().has(id);
   }
 
   /** S'abonne à un événement temps réel ; renvoie la fonction de désabonnement. */
@@ -106,6 +108,7 @@ export class PresenceService implements OnDestroy {
     this.socket.on('presence:ids', (ids: string[]) => this.soignantsEnLigne.set(new Set(ids)));
     this.socket.on('presence:patientes', (ids: string[]) => this.patientesEnLigne.set(new Set(ids)));
     this.socket.on('presence:chauffeurs', (ids: string[]) => this.chauffeursEnLigne.set(new Set(ids)));
+    this.socket.on('presence:recos', (ids: string[]) => this.recosEnLigne.set(new Set(ids)));
     this.socket.on('connect', () => this.zone.run(() => this.aLaConnexion.forEach(f => f())));
     // Serveur redémarré ou réseau coupé : socket.io se reconnecte seul et le serveur renvoie la liste.
     this.socket.on('disconnect', () => this.charge.set(false));
@@ -118,6 +121,7 @@ export class PresenceService implements OnDestroy {
     this.soignantsEnLigne.set(new Set());
     this.patientesEnLigne.set(new Set());
     this.chauffeursEnLigne.set(new Set());
+    this.recosEnLigne.set(new Set());
     this.charge.set(false);
   }
 }

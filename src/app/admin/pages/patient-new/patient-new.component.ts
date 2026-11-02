@@ -19,6 +19,8 @@ interface Step {
   /** Couleur de la carte (Tailwind : classes écrites en entier pour être générées). */
   teinte: Teinte;
   clinical?: boolean;
+  /** Étape facultative : la patiente peut être enregistrée sans elle (ex. pas encore d'échographie). */
+  facultative?: boolean;
 }
 
 interface Teinte {
@@ -122,7 +124,7 @@ export class PatientNewComponent implements OnDestroy {
     { title: 'Antécédents', subtitle: 'Médicaux, gynéco-chirurgicaux et obstétricaux', icon: 'fa-notes-medical', teinte: TEINTES['violet'], clinical: true },
     { title: 'Mesures préventives', subtitle: 'VAT, SP, MILD, vermifuge, dépistages, PF, PTME', icon: 'fa-shield-heart', teinte: TEINTES['vert'], clinical: true },
     { title: 'Laboratoire', subtitle: 'Hb, GE, TDR palu, GS, urines, selles…', icon: 'fa-flask', teinte: TEINTES['ambre'], clinical: true },
-    { title: 'Échographie', subtitle: 'Fœtus, biométrie, placenta, liquide, col, conclusion', icon: 'fa-wave-square', teinte: TEINTES['ciel'], clinical: true },
+    { title: 'Échographie', subtitle: 'Fœtus, biométrie, placenta, liquide, col, conclusion', icon: 'fa-wave-square', teinte: TEINTES['ciel'], clinical: true, facultative: true },
     { title: 'Éléments de référence', subtitle: 'Signes justifiant d’orienter la femme : oui / non', icon: 'fa-hospital-user', teinte: TEINTES['rose'], clinical: true },
     { title: 'Rendez-vous', subtitle: 'Premier rendez-vous et prévisualisation de la fiche', icon: 'fa-calendar-check', teinte: TEINTES['indigo'] },
   ];
@@ -191,6 +193,17 @@ export class PatientNewComponent implements OnDestroy {
 
   retirerFichierEcho(f: File): void {
     this.fichiersEcho = this.fichiersEcho.filter(x => x !== f);
+  }
+
+  /** Pas (encore) d'échographie : l'étape 5 est vidée, la patiente s'enregistre sans elle. */
+  viderEcho(): void {
+    this.echo = {
+      date: '', motif: '', agSemaines: null, agJours: null, nombreFoetus: 1, foetus: [foetusVide()],
+      placenta: { localisation: '', aspect: '', maturite: '' }, liquideAmniotique: { quantite: '', indiceCm: null },
+      col: { longueurMm: null, aspect: '' }, anomalies: '', conclusion: '', praticien: '',
+    };
+    this.fichiersEcho = [];
+    this.erreurFichierEcho = '';
   }
 
   /** Une rubrique de l'échographie est remplie (la date devient alors obligatoire). */
@@ -685,7 +698,8 @@ export class PatientNewComponent implements OnDestroy {
   manquantsEtape(i: number): string[] {
     const f = this.form;
     const m: string[] = [];
-    if (!this.visitees.has(i)) return ['étape non ouverte'];
+    // Étape facultative non ouverte (échographie) : rien à compléter.
+    if (!this.visitees.has(i)) return this.steps[i].facultative ? [] : ['étape non ouverte'];
     if (i === 0) {
       if (!f.nom.trim()) m.push('nom');
       if (this.ageCalcule === null) m.push('âge');
@@ -714,6 +728,8 @@ export class PatientNewComponent implements OnDestroy {
    */
   statutEtape(i: number): 'valide' | 'incomplet' | 'neutre' {
     if (i === this.ouverte || i > this.etapeMax) return 'neutre';
+    // Échographie non faite : ni rouge ni verte, l'enregistrement reste possible.
+    if (this.steps[i].facultative && !this.echoCommencee && !this.manquantsEtape(i).length) return 'neutre';
     return this.manquantsEtape(i).length ? 'incomplet' : 'valide';
   }
 
@@ -734,7 +750,7 @@ export class PatientNewComponent implements OnDestroy {
     // Sans réseau, tout part en une seule saisie gardée sur l'appareil ; l'échographie (avec ses
     // fichiers) s'ajoute depuis le dossier une fois la connexion revenue.
     if (!this.horsLigne.enLigne() && this.echo.date) {
-      this.erreur = 'Hors connexion : l’échographie (étape 5) ne peut pas être gardée sur l’appareil avec ses fichiers. Videz l’étape 5 pour enregistrer maintenant, puis ajoutez l’échographie depuis le dossier une fois la connexion revenue.';
+      this.erreur = 'Hors connexion : l’échographie (étape 5) ne peut pas être gardée sur l’appareil avec ses fichiers. Touchez « Pas d’échographie » à l’étape 5 pour enregistrer maintenant, puis ajoutez l’échographie depuis le dossier une fois la connexion revenue.';
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }

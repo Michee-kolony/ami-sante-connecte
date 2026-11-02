@@ -12,6 +12,10 @@
         <p class="truncate text-xs text-slate-300">{{ service.reco()?.structure?.nom ?? 'Relais communautaire' }}</p>
       </div>
       <div class="flex shrink-0 items-center gap-1">
+        <button type="button" class="relative rounded-lg p-2 text-slate-300 hover:bg-white/10" (click)="ouvrirMessages()" title="Messages" aria-label="Messages">
+          <i class="fa-solid fa-comments"></i>
+          @if (messagerie.totalNonLus()) { <span class="absolute -right-0.5 -top-0.5 min-w-[1.1rem] rounded-full bg-accent-500 px-1 text-center text-[10px] font-bold leading-[1.1rem] text-white">{{ messagerie.totalNonLus() }}</span> }
+        </button>
         <app-theme-toggle />
         <button type="button" class="rounded-lg p-2 text-slate-300 hover:bg-white/10" (click)="service.verrouille.set(true)" title="Verrouiller" aria-label="Verrouiller"><i class="fa-solid fa-lock"></i></button>
         <button type="button" class="rounded-lg p-2 text-slate-300 hover:bg-white/10" (click)="deconnecter()" title="Déconnexion (efface les données du téléphone)" aria-label="Déconnexion"><i class="fa-solid fa-right-from-bracket"></i></button>
@@ -224,6 +228,11 @@
       }
 
       <!-- ================= SIGNALEMENT ================= -->
+      <!-- ================= MESSAGES ================= -->
+      @case ('messages') {
+        <app-messages-reco (retour)="vue.set('liste')" />
+      }
+
       @case ('signalement') {
         <button type="button" class="btn-ghost -ml-2 text-sm" (click)="retour()"><i class="fa-solid fa-arrow-left"></i> Mes tâches</button>
         <form class="card space-y-3 p-4" (ngSubmit)="signaler()">
@@ -246,7 +255,13 @@
   <!-- Barre d'actions -->
   @if (vue() === 'liste') {
     <nav class="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/90 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90">
-      <div class="mx-auto max-w-2xl"><button type="button" class="btn-primary w-full" (click)="vue.set('signalement')"><i class="fa-solid fa-bullhorn"></i> Signaler une situation</button></div>
+      <div class="mx-auto flex max-w-2xl gap-2">
+        <button type="button" class="btn-secondary relative flex-none" (click)="ouvrirMessages()">
+          <i class="fa-solid fa-comments"></i> Messages
+          @if (messagerie.totalNonLus()) { <span class="rounded-full bg-accent-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">{{ messagerie.totalNonLus() }}</span> }
+        </button>
+        <button type="button" class="btn-primary flex-1" (click)="vue.set('signalement')"><i class="fa-solid fa-bullhorn"></i> Signaler une situation</button>
+      </div>
     </nav>
   }
 </div>

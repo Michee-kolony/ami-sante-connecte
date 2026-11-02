@@ -38,7 +38,7 @@ export interface Discussion {
 export const estPatiente = (d: Discussion | null | undefined): boolean => d?.interlocuteur?.role === 'Patiente';
 
 /**
- * Discussions privées : entre soignants, et avec les patientes de l'application mobile. L'historique vient de l'API ; les nouveaux messages,
+ * Discussions privées : entre soignants (et avec les RECO de l'établissement, rôle « RECO »), et avec les patientes de l'application mobile. L'historique vient de l'API ; les nouveaux messages,
  * accusés de lecture et « en train d'écrire » arrivent en temps réel par socket.io.
  */
 @Injectable({ providedIn: 'root' })
@@ -99,9 +99,9 @@ export class DiscussionsService {
     return firstValueFrom(this.http.get<Interlocuteur[]>(`${this.url}/annuaire`));
   }
 
-  /** Ouvre (ou crée) la discussion avec un soignant et la place en tête de liste. */
-  async ouvrirAvec(soignantId: string): Promise<Discussion> {
-    const d = await firstValueFrom(this.http.post<Discussion>(this.url, { soignantId }));
+  /** Ouvre (ou crée) la discussion avec un soignant (ou un RECO de l'établissement) et la place en tête de liste. */
+  async ouvrirAvec(id: string, role?: string): Promise<Discussion> {
+    const d = await firstValueFrom(this.http.post<Discussion>(this.url, role === 'RECO' ? { recoId: id } : { soignantId: id }));
     const existante = this.discussions().find(x => x.id === d.id);
     if (!existante) this.discussions.update(l => [d, ...l]);
     return existante ?? d;

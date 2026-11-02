@@ -161,11 +161,11 @@ export class DiscussionsComponent implements AfterViewChecked, OnDestroy {
       .sort((a, b) => Number(this.presence.estEnLigne(b.id)) - Number(this.presence.estEnLigne(a.id)));
   }
 
-  async demarrerAvec(soignantId: string): Promise<void> {
+  async demarrerAvec(id: string, role?: string): Promise<void> {
     this.annuaireOuvert = false;
     try {
       await this.attendreListe();
-      const d = await this.service.ouvrirAvec(soignantId);
+      const d = await this.service.ouvrirAvec(id, role);
       await this.ouvrir(d);
     } catch (err) {
       this.erreur = messageErreur(err);

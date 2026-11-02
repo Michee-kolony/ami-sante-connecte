@@ -158,6 +158,8 @@ export class RecoService {
   private session = signal<Session | null>(lireSession());
 
   readonly reco = computed(() => this.session()?.reco ?? null);
+  /** Jeton de la session (messagerie temps réel). */
+  readonly jeton = computed(() => this.session()?.jeton ?? null);
   readonly connecte = computed(() => !!this.session());
   readonly taches = signal<TacheReco[]>([]);
   readonly referentiel = signal<ReferentielReco | null>(null);

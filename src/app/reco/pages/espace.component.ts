@@ -4,8 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
 import { messageErreur } from '../../admin/data/session.service';
 import { RecoService, type TacheReco } from '../reco.service';
+import { RecoMessagesService } from '../reco-messages.service';
+import { MessagesRecoComponent } from './messages-reco.component';
 
-type Vue = 'liste' | 'tache' | 'signalement';
+type Vue = 'liste' | 'tache' | 'signalement' | 'messages';
 type Formulaire = 'tentative' | 'visite_planifiee' | 'visite_realisee' | 'orientation' | 'refus_report' | 'demande_appui' | 'urgence' | null;
 
 /**
@@ -15,11 +17,13 @@ type Formulaire = 'tentative' | 'visite_planifiee' | 'visite_realisee' | 'orient
 @Component({
   selector: 'app-espace-reco',
   standalone: true,
-  imports: [DatePipe, FormsModule, ThemeToggleComponent],
+  imports: [DatePipe, FormsModule, ThemeToggleComponent, MessagesRecoComponent],
   templateUrl: './espace.component.html',
 })
 export class EspaceRecoComponent implements OnInit {
   readonly service = inject(RecoService);
+  /** Messagerie avec les soignants et chauffeurs de l'établissement. */
+  readonly messagerie = inject(RecoMessagesService);
 
   vue = signal<Vue>('liste');
   numero = signal<string | null>(null);
@@ -40,12 +44,19 @@ export class EspaceRecoComponent implements OnInit {
   ngOnInit(): void {
     this.service.demarrer();
     this.service.actualiserProfil();
+    this.messagerie.demarrer();
   }
 
   ouvrir(t: TacheReco): void {
     this.numero.set(t.numero);
     this.formulaire.set(null);
     this.vue.set('tache');
+    window.scrollTo({ top: 0 });
+  }
+
+  ouvrirMessages(): void {
+    this.formulaire.set(null);
+    this.vue.set('messages');
     window.scrollTo({ top: 0 });
   }
 
