@@ -31,8 +31,15 @@ import { genererMotDePasse, reglesMotDePasse } from '../../../shared/mot-de-pass
   <div class="card overflow-hidden">
     <div class="card-header">
       <h2 class="card-title"><i class="fa-solid fa-people-group text-brand-600"></i> Relais communautaires ({{ recos().length }})</h2>
-      <button type="button" class="btn-primary text-xs" (click)="nouveau()"><i class="fa-solid fa-user-plus"></i> Ajouter un RECO</button>
+      @if (session.etablissement()) {
+        <button type="button" class="btn-primary text-xs" (click)="nouveau()"><i class="fa-solid fa-user-plus"></i> Ajouter un RECO</button>
+      }
     </div>
+    @if (!session.etablissement()) {
+      <p class="mx-5 mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-300" role="status">
+        <i class="fa-solid fa-circle-info mr-1"></i>Connectez-vous à votre établissement : chaque RECO appartient à une structure, et vous ne voyez et ne gérez que ceux de l’établissement de votre session.
+      </p>
+    }
     <div class="overflow-x-auto">
       <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
         <thead class="bg-slate-50/70 dark:bg-slate-800/50"><tr>
@@ -92,11 +99,11 @@ import { genererMotDePasse, reglesMotDePasse } from '../../../shared/mot-de-pass
           <select id="rs" name="rs" class="input" [(ngModel)]="e.sexe" required><option value="F">Femme</option><option value="M">Homme</option></select></div>
         <div><label class="label" for="rt">Téléphone <span class="req">*</span></label><input id="rt" name="rt" class="input" [(ngModel)]="e.telephone" required></div>
         <div class="sm:col-span-2"><label class="label" for="re">Structure de rattachement <span class="req">*</span></label>
-          <select id="re" name="re" class="input" [(ngModel)]="e.etablissementId" required [disabled]="!!session.etablissement()">
-            <option [ngValue]="undefined" disabled>Choisir le centre de santé…</option>
+          <select id="re" name="re" class="input" [(ngModel)]="e.etablissementId" required disabled>
+            <option [ngValue]="undefined" disabled>Établissement de votre session</option>
             @for (s of structures(); track s.id) { <option [ngValue]="s.id">{{ s.nom }} ({{ s.code }}){{ s.aireSante ? ' — aire ' + s.aireSante : '' }}</option> }
           </select>
-          <p class="hint">{{ session.etablissement() ? 'Structure de votre session : vous ne gérez que ses RECO.' : 'Le RECO reçoit les tâches des personnes suivies par cette structure.' }}</p></div>
+          <p class="hint">Structure de votre session : le RECO lui appartient et reçoit les tâches de ses patientes.</p></div>
         <div><label class="label" for="ra">Aire de santé</label><input id="ra" name="ra" class="input" [(ngModel)]="e.aireSante" placeholder="Celle de la structure par défaut"></div>
         <div class="sm:col-span-2"><label class="label" for="rz">Secteur couvert (quartiers, villages, avenues)</label>
           <input id="rz" name="rz" class="input" [(ngModel)]="zones" placeholder="Salongo, Kemi, Livulu">
@@ -264,7 +271,7 @@ export class RelanceRecosComponent implements OnInit {
     this.mdp = { mode: 'choisi', valeur: '', confirmation: '', voir: false, doitChanger: true };
     this.zones = '';
     this.photo = null;
-    this.edition.set({ prenom: '', nom: '', postnom: '', sexe: 'F', telephone: '', aireSante: '', etablissementId: this.session.etablissement()?.id ?? (this.structures().length === 1 ? this.structures()[0].id : undefined) });
+    this.edition.set({ prenom: '', nom: '', postnom: '', sexe: 'F', telephone: '', aireSante: '', etablissementId: this.session.etablissement()?.id });
   }
 
   modifier(r: Reco): void {
