@@ -66,7 +66,9 @@
       }
     }
     @for (k of s()?.prioritaires ?? []; track k.code) {
-      <a [routerLink]="k.lien ?? null" class="card group flex flex-col p-5 transition hover:-translate-y-0.5 hover:shadow-lg" [title]="infobulle(k)">
+      <a [routerLink]="k.lien ?? null" class="card group flex flex-col p-5 transition hover:-translate-y-0.5 hover:shadow-lg" [title]="infobulle(k)"
+         [attr.data-recherche]="k.libelle" [attr.data-recherche-valeur]="valeur(k)" [attr.data-recherche-mots]="(k.detail ?? '') + ' ' + k.source" [attr.data-recherche-code]="k.code"
+         data-recherche-type="Indicateur prioritaire" data-recherche-section="Cartes prioritaires">
         <div class="flex items-start justify-between gap-2">
           <div class="flex h-10 w-10 items-center justify-center rounded-xl {{ ton(k.ton) }}"><i class="fa-solid {{ k.icone }}"></i></div>
           @if (k.aValider) {
@@ -130,7 +132,7 @@
           @for (i of [1, 2, 3, 4]; track i) { <div class="skeleton h-32 w-full rounded-xl" aria-hidden="true"></div> }
         }
         @for (serie of s()?.tendance?.series ?? []; track serie.code) {
-          <div>
+          <div [attr.data-recherche]="serie.libelle" [attr.data-recherche-valeur]="dernier(serie.valeurs) + ' ce mois'" data-recherche-type="Évolution sur 6 mois">
             <div class="flex items-baseline justify-between gap-2">
               <h3 class="text-sm font-medium text-slate-700 dark:text-slate-200">{{ serie.libelle }}</h3>
               <span class="text-xs tabular-nums text-slate-500 dark:text-slate-400"><strong class="text-base text-slate-900 dark:text-white">{{ dernier(serie.valeurs) }}</strong> ce mois · {{ ecartMois(serie.valeurs) }}</span>
@@ -202,7 +204,7 @@
       <ol class="space-y-3 p-5">
         @if (attente()) { @for (i of [1, 2, 3, 4, 5, 6]; track i) { <li class="skeleton h-7 w-full" aria-hidden="true"></li> } }
         @for (e of continuum(); track e.etape) {
-          <li [title]="e.etape + ' : ' + e.n + (e.partPrecedente != null ? ' (' + e.partPrecedente + ' % de l’étape précédente)' : '')">
+          <li [attr.data-recherche]="e.etape" [attr.data-recherche-valeur]="e.n" data-recherche-type="Étape du continuum" [title]="e.etape + ' : ' + e.n + (e.partPrecedente != null ? ' (' + e.partPrecedente + ' % de l’étape précédente)' : '')">
             <div class="mb-1 flex items-baseline justify-between gap-3 text-sm">
               <span class="text-slate-700 dark:text-slate-200">{{ e.etape }}</span>
               <span class="tabular-nums text-slate-500 dark:text-slate-400">
@@ -228,7 +230,7 @@
       <ol class="space-y-3 p-5">
         @if (attente()) { @for (i of [1, 2, 3, 4, 5]; track i) { <li class="skeleton h-7 w-full" aria-hidden="true"></li> } }
         @for (e of flux(); track e.etape) {
-          <li [title]="e.etape + ' : ' + e.n + ' personne(s)'">
+          <li [attr.data-recherche]="e.etape" [attr.data-recherche-valeur]="e.n" data-recherche-type="Étape de la relance" [title]="e.etape + ' : ' + e.n + ' personne(s)'">
             <div class="mb-1 flex items-baseline justify-between gap-3 text-sm">
               <span class="text-slate-700 dark:text-slate-200">{{ e.etape }}</span>
               <span class="tabular-nums text-slate-500 dark:text-slate-400">

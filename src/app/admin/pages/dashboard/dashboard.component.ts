@@ -12,6 +12,7 @@ import { EnLigneComponent } from '../../components/en-ligne.component';
 import { RepartitionSexeComponent } from '../../components/repartition-sexe.component';
 import { SyntheseAmiComponent } from '../../components/synthese-ami.component';
 import { IndicateursModulesComponent } from '../../components/indicateurs-modules.component';
+import { RechercheTableauBordComponent } from '../../components/recherche-tableau-bord.component';
 import { UTILISATEUR } from '../../data/mock-data';
 import { agLisible, heureFr, jourChiffres, jourLocal } from '../../data/format';
 import { StatistiquesEnfants, StatistiquesPatientes, StatistiquesService } from '../../data/statistiques.service';
@@ -21,7 +22,7 @@ const MOIS_COURTS = ['', 'jan', 'fév', 'mar', 'avr', 'mai', 'juin', 'juil', 'ao
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [DatePipe, RouterLink, AvatarComponent, CarteRdcComponent, EnLigneComponent, RepartitionSexeComponent, SyntheseAmiComponent, IndicateursModulesComponent],
+  imports: [DatePipe, RouterLink, AvatarComponent, CarteRdcComponent, EnLigneComponent, RepartitionSexeComponent, SyntheseAmiComponent, IndicateursModulesComponent, RechercheTableauBordComponent],
   templateUrl: './dashboard.component.html',
 })
 export class DashboardComponent {

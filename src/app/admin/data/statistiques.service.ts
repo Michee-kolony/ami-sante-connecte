@@ -209,6 +209,8 @@ export class SyntheseEtatService {
   readonly donnees = signal<SyntheseTableauBord | null>(null);
   readonly chargement = signal(false);
   readonly erreur = signal<string | null>(null);
+  /** Onglet des indicateurs par module à afficher (demandé par la recherche du tableau de bord). */
+  readonly ongletDemande = signal<ModuleSynthese | null>(null);
 
   charger(filtres: Partial<FiltresSynthese> = {}): void {
     const f = { ...this.filtres(), ...filtres };

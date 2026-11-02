@@ -15,7 +15,7 @@ const MOIS_LONGS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juil
   standalone: true,
   imports: [FormsModule],
   template: `
-    <div class="card">
+    <div class="card" [attr.data-recherche-section]="titre()" [attr.data-recherche-mots]="description() + ' mensuel mois'">
       <div class="card-header flex-wrap gap-2">
         <h2 class="card-title"><i class="fa-solid {{ icone() }} text-brand-600 dark:text-brand-400"></i> {{ titre() }}</h2>
         <div class="flex flex-wrap items-center gap-1.5">
@@ -52,7 +52,9 @@ const MOIS_LONGS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juil
             }
             <div class="grid gap-4 sm:grid-cols-2" [class]="colonnes(g.cartes.length)">
               @for (c of g.cartes; track c.code) {
-                <article class="group flex flex-col rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md
+                <article [attr.data-recherche]="c.libelle" [attr.data-recherche-valeur]="c.n == null ? c.affiche : c.affiche + ' ' + c.uniteLigne"
+                         [attr.data-recherche-mots]="g.nom + ' ' + (c.repere ?? '') + ' ' + c.code" data-recherche-type="Analyse du mois"
+                         class="group flex flex-col rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md
                                 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-brand-500/40">
                   <!-- Libellé et repère -->
                   <div class="flex items-start gap-3">
