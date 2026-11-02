@@ -82,6 +82,105 @@ export class SyntheseAmiComponent {
     { code: 'tdrPalu', libelle: 'TDR palu réalisé', groupe: 'Laboratoire' },
     { code: 'tdrPaluPositif', libelle: 'TDR palu positif', groupe: 'Laboratoire' },
   ];
+  /** Module Accouchement : 20 indicateurs (nombres et taux) du mois. */
+  readonly LIGNES_ACCOUCHEMENT = [
+    ...[['accTotal', 'Accouchements enregistrés'], ['accAssistes', 'Assistés par un personnel qualifié'], ['accVoieBasse', 'Par voie basse'],
+      ['accCesarienne', 'Par césarienne'], ['accDomicile', 'À domicile (déclarés)'], ['accStructure', 'En structure sanitaire'],
+      ['accPrematures', 'Accouchements prématurés']].map(([code, libelle]) => ({ code, libelle, groupe: 'Accouchements' })),
+    ...[['naisVivantes', 'Naissances vivantes'], ['naisMortNes', 'Mort-nés']].map(([code, libelle]) => ({ code, libelle, groupe: 'Naissances' })),
+    ...[['compMaternelles', 'Complications maternelles'], ['compHpp', 'Hémorragies du postpartum'], ['compEclampsie', 'Éclampsie / prééclampsie sévère'],
+      ['compReferences', 'Références obstétricales'], ['compContreReferences', 'Contre-références obstétricales'], ['compDeces', 'Décès maternels']]
+      .map(([code, libelle]) => ({ code, libelle, groupe: 'Complications et références' })),
+    ...[['tauxAssistes', 'Taux d’accouchements assistés'], ['tauxCesariennes', 'Taux de césariennes'], ['tauxComplications', 'Taux de complications obstétricales'],
+      ['tauxMortinatalite', 'Taux de mortinatalité'], ['tauxMortaliteMaternelle', 'Taux de mortalité maternelle']].map(([code, libelle]) => ({ code, libelle, groupe: 'Taux' })),
+  ];
+  /** Module Nouveau-né et suivi postnatal : 14 indicateurs (nombres et taux) des enfants nés dans le mois. */
+  readonly LIGNES_NOUVEAU_NES = [
+    ...[['nnTotal', 'Nouveau-nés enregistrés'], ['nnMasculin', 'Sexe masculin'], ['nnFeminin', 'Sexe féminin'], ['nnFaiblePoids', 'Faible poids de naissance'],
+      ['nnPrematures', 'Prématurés'], ['nnSoinsEssentiels', 'Soins essentiels reçus']].map(([code, libelle]) => ({ code, libelle, groupe: 'Nouveau-nés' })),
+    ...[['cponNouveauNes', 'Nouveau-nés vus en CPoN'], ['cponAttendues', 'CPoN attendues'], ['cponRealisees', 'CPoN réalisées']]
+      .map(([code, libelle]) => ({ code, libelle, groupe: 'Suivi postnatal' })),
+    ...[['nnReferes', 'Nouveau-nés référés'], ['nnDeces', 'Décès néonatals']].map(([code, libelle]) => ({ code, libelle, groupe: 'Références et décès' })),
+    ...[['tauxCpon', 'Taux de réalisation des CPoN'], ['tauxFaiblePoids', 'Taux de faible poids de naissance'], ['tauxSuiviComplet', 'Taux de suivi postnatal complet']]
+      .map(([code, libelle]) => ({ code, libelle, groupe: 'Taux' })),
+  ];
+  /** Module Vaccination : 28 indicateurs (couverture détaillée par antigène). */
+  readonly LIGNES_VACCINATION = [
+    ...[['vacEnfants', 'Enfants enregistrés en vaccination'], ['vacAJour', 'À jour pour leur âge'], ['vacZeroDose', 'Enfants zéro dose'],
+      ['vacSousVaccines', 'Enfants sous-vaccinés'], ['vacAbandons', 'Abandons de la vaccination']].map(([code, libelle]) => ({ code, libelle, groupe: 'Statut vaccinal (fin du mois)' })),
+    ...[['bcg', 'BCG'], ['vpo0', 'VPO 0 (polio oral)'], ['penta1', 'DTC-HepB-Hib 1'], ['penta2', 'DTC-HepB-Hib 2'], ['penta3', 'DTC-HepB-Hib 3'], ['vpo1', 'VPO 1'],
+      ['vpo2', 'VPO 2'], ['vpo3', 'VPO 3'], ['pcv1', 'PCV13 - 1'], ['pcv2', 'PCV13 - 2'], ['pcv3', 'PCV13 - 3']]
+      .map(([code, libelle]) => ({ code: `vac_${code}`, libelle: `Ont reçu le ${libelle}`, groupe: 'Enfants vaccinés dans le mois' })),
+    ...[['vacRota', 'Antirotavirus selon le calendrier'], ['vacRougeole', 'Rougeole selon le calendrier']].map(([code, libelle]) => ({ code, libelle, groupe: 'Enfants vaccinés dans le mois' })),
+    ...[['vacRetrouves', 'Retrouvés par les RECO'], ['vacReintegres', 'Réintégrés dans le calendrier'], ['vacTermines', 'Calendrier vaccinal terminé'],
+      ['vacDoses', 'Doses administrées'], ['vacDosesManquees', 'Doses manquées'], ['vacRdvManques', 'Rendez-vous vaccinaux manqués']].map(([code, libelle]) => ({ code, libelle, groupe: 'Relance et suivi' })),
+    ...[['bcg', 'BCG'], ['penta1', 'DTC-HepB-Hib 1'], ['penta3', 'DTC-HepB-Hib 3'], ['vpo3', 'VPO 3'], ['pcv3', 'PCV13 - 3'], ['rota3', 'Rota 3'], ['var1', 'VAR (RR1)'], ['vaa', 'VAA']]
+      .map(([code, libelle]) => ({ code: `couv_${code}`, libelle: `Couverture ${libelle}`, groupe: 'Couverture par antigène' })),
+    ...[['tauxAbandonPenta', 'Taux d’abandon Penta1-Penta3'], ['tauxReintegration', 'Taux de réintégration vaccinale'], ['tauxAchevement', 'Taux d’achèvement du calendrier']]
+      .map(([code, libelle]) => ({ code, libelle, groupe: 'Taux' })),
+  ];
+  /** Module communautaire RECO — A. indicateurs transversaux (12). */
+  readonly LIGNES_RECO = [
+    ...[['recoEnregistres', 'RECO enregistrés'], ['recoActifs', 'RECO actifs'], ['recoMenages', 'Ménages suivis'], ['recoBeneficiaires', 'Bénéficiaires suivis']]
+      .map(([code, libelle]) => ({ code, libelle, groupe: 'RECO et bénéficiaires' })),
+    ...[['recoVisitesRealisees', 'Visites réalisées'], ['recoVisitesPlanifiees', 'Visites planifiées'], ['recoVisitesNonRealisees', 'Visites non réalisées'],
+      ['recoAbsents', 'Bénéficiaires absents lors des visites']].map(([code, libelle]) => ({ code, libelle, groupe: 'Visites à domicile' })),
+    ...[['recoRetrouves', 'Bénéficiaires retrouvés'], ['recoReferences', 'Références communautaires'], ['recoReferesRecus', 'Référés effectivement reçus']]
+      .map(([code, libelle]) => ({ code, libelle, groupe: 'Retrouvés et références' })),
+    { code: 'recoTauxVisites', libelle: 'Taux de réalisation des visites', groupe: 'Taux' },
+  ];
+  /** Parcours de relance B à F (RAC, ARC, RPC, IRC, TCC) : encarts mensuels et leurs lignes attendues. */
+  private static lignes(groupes: [string, [string, string][]][]) {
+    return groupes.flatMap(([groupe, lignes]) => lignes.map(([code, libelle]) => ({ code, libelle, groupe })));
+  }
+  readonly PARCOURS = [
+    {
+      route: 'rac-mensuel' as const, titre: 'RAC du mois — relance des abandons de CPN', icone: 'fa-person-pregnant',
+      description: 'Femmes relancées dans le parcours RAC (abandon de CPN ou CPN jamais commencée)',
+      lignes: SyntheseAmiComponent.lignes([
+        ['Identification', [['racAbandons', 'Femmes identifiées en abandon de CPN'], ['racJamaisCpn', 'Jamais commencé la CPN, identifiées par les RECO'], ['racARelancer', 'Femmes à relancer']]],
+        ['Relance', [['racContactees', 'Femmes contactées'], ['racRetrouvees', 'Femmes retrouvées'], ['racSensibilisees', 'Femmes sensibilisées'], ['racOrientees', 'Orientées vers une structure']]],
+        ['Issue', [['racRevenues', 'Femmes revenues en CPN'], ['racPerdues', 'Femmes toujours perdues de vue']]],
+        ['Taux', [['racTauxRelance', 'Taux de relance'], ['racTauxReintegration', 'Taux de réintégration CPN'], ['racTauxAbandon', 'Taux d’abandon CPN']]],
+      ]),
+    },
+    {
+      route: 'arc-mensuel' as const, titre: 'ARC du mois', icone: 'fa-route', description: 'Cas du parcours ARC (définition opérationnelle de la fiche du parcours)',
+      lignes: SyntheseAmiComponent.lignes([
+        ['Cas', [['arcIdentifies', 'Cas identifiés (définition ARC)'], ['arcAContacter', 'Cas à contacter']]],
+        ['Suivi', [['arcContactes', 'Cas contactés'], ['arcRetrouves', 'Cas retrouvés'], ['arcOrientes', 'Cas orientés'], ['arcIntervention', 'Cas ayant bénéficié d’une intervention']]],
+        ['Issue', [['arcResolus', 'Cas résolus'], ['arcNonResolus', 'Cas non résolus']]],
+        ['Taux', [['arcTauxResolution', 'Taux de résolution'], ['arcTauxSuivi', 'Taux de suivi des cas']]],
+      ]),
+    },
+    {
+      route: 'rpc-mensuel' as const, titre: 'RPC du mois', icone: 'fa-hand-holding-medical', description: 'Cas du parcours RPC (définition opérationnelle de la fiche du parcours)',
+      lignes: SyntheseAmiComponent.lignes([
+        ['Cas', [['rpcIdentifies', 'Cas identifiés (définition RPC)'], ['rpcConcernes', 'Bénéficiaires concernés']]],
+        ['Suivi', [['rpcContactes', 'Bénéficiaires contactés'], ['rpcVisites', 'Visites réalisées'], ['rpcReferences', 'Références effectuées']]],
+        ['Issue', [['rpcPrisEnCharge', 'Bénéficiaires pris en charge'], ['rpcClotures', 'Cas clôturés'], ['rpcEnAttente', 'Cas en attente']]],
+        ['Taux', [['rpcTauxPriseEnCharge', 'Taux de prise en charge'], ['rpcTauxCloture', 'Taux de clôture des cas']]],
+      ]),
+    },
+    {
+      route: 'irc-mensuel' as const, titre: 'IRC du mois', icone: 'fa-arrows-rotate', description: 'Cas du parcours IRC (définition opérationnelle de la fiche du parcours)',
+      lignes: SyntheseAmiComponent.lignes([
+        ['Cas', [['ircIdentifies', 'Cas identifiés (définition IRC)'], ['ircConcernes', 'Bénéficiaires concernés']]],
+        ['Suivi', [['ircContactes', 'Bénéficiaires contactés'], ['ircRetrouves', 'Bénéficiaires retrouvés'], ['ircOrientes', 'Bénéficiaires orientés']]],
+        ['Issue', [['ircReintegres', 'Bénéficiaires réintégrés'], ['ircSuivis', 'Cas suivis'], ['ircClotures', 'Cas clôturés']]],
+        ['Taux', [['ircTauxReintegration', 'Taux de réintégration'], ['ircTauxSuivi', 'Taux de suivi des cas']]],
+      ]),
+    },
+    {
+      route: 'tcc-mensuel' as const, titre: 'TCC du mois', icone: 'fa-comments', description: 'Cas du parcours TCC (définition opérationnelle de la fiche du parcours)',
+      lignes: SyntheseAmiComponent.lignes([
+        ['Cas', [['tccIdentifies', 'Cas identifiés (définition TCC)'], ['tccConcernes', 'Bénéficiaires concernés']]],
+        ['Suivi', [['tccContactes', 'Bénéficiaires contactés'], ['tccVisites', 'Visites effectuées'], ['tccOrientes', 'Bénéficiaires orientés'], ['tccSuivis', 'Bénéficiaires ayant bénéficié d’un suivi']]],
+        ['Issue', [['tccResolus', 'Cas résolus'], ['tccEnAttente', 'Cas en attente']]],
+        ['Taux', [['tccTauxResolution', 'Taux de résolution'], ['tccTauxSuivi', 'Taux de suivi']]],
+      ]),
+    },
+  ];
 
   constructor() {
     // Recalcul à chaque ouverture, avec les derniers filtres choisis (l'affichage précédent reste visible entre-temps).

@@ -143,7 +143,9 @@ export interface SyntheseTableauBord {
 }
 
 /** Analyses mensuelles du tableau de bord : CPN1 à CPN4, VAT 1 à 5 et SP 1 à 3, MILD, micronutriments, mébendazole. */
-export type RouteAnalyseMensuelle = 'cpn-mensuel' | 'preventions-mensuel' | 'prevention-mensuel' | 'tdr-palu-mensuel' | 'echographies-mensuel';
+export type RouteAnalyseMensuelle = 'cpn-mensuel' | 'preventions-mensuel' | 'prevention-mensuel' | 'tdr-palu-mensuel' | 'echographies-mensuel'
+  | 'accouchements-mensuel' | 'nouveau-nes-mensuel' | 'vaccination-mensuel' | 'reco-mensuel'
+  | 'rac-mensuel' | 'arc-mensuel' | 'rpc-mensuel' | 'irc-mensuel' | 'tcc-mensuel';
 
 /** Analyse d'un mois (GET /api/statistiques/cpn-mensuel ou /preventions-mensuel). */
 export interface AnalyseMensuelle {
@@ -151,8 +153,15 @@ export interface AnalyseMensuelle {
   moisCourant: string;
   /** Les 6 mois se terminant par le mois choisi (clés AAAA-MM et libellés courts). */
   historique: { cles: string[]; mois: string[] };
-  /** Nombre de femmes du mois (n), du mois précédent et des 6 mois (valeurs). */
-  lignes: { code: string; libelle: string; groupe?: string; repere?: string; n: number; precedent: number; valeurs: number[] }[];
+  /**
+   * Valeur du mois (n), du mois précédent et des 6 mois (valeurs). null : non calculable (taux
+   * sans dénominateur, « N/A ») ou non enregistré. `unite` : propre à la ligne (%, ‰, cas…) ;
+   * `sens` « baisse » : une hausse est défavorable (complications, décès…).
+   */
+  lignes: {
+    code: string; libelle: string; groupe?: string; repere?: string; unite?: string; sens?: 'baisse';
+    n: number | null; precedent: number | null; valeurs: (number | null)[];
+  }[];
 }
 
 @Injectable({ providedIn: 'root' })

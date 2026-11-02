@@ -75,8 +75,8 @@ const MOIS_LONGS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juil
                       <div class="skeleton h-9 w-20" aria-hidden="true"></div>
                     } @else {
                       <p class="leading-none">
-                        <span class="text-4xl font-bold tracking-tight tabular-nums" [class]="c.n == null ? 'text-slate-300 dark:text-slate-600' : 'text-slate-900 dark:text-white'">{{ c.n ?? '—' }}</span>
-                        <span class="ml-1 text-sm text-slate-500 dark:text-slate-400">{{ unite() }}</span>
+                        <span class="text-4xl font-bold tracking-tight tabular-nums" [class]="c.n == null ? 'text-slate-300 dark:text-slate-600' : 'text-slate-900 dark:text-white'">{{ c.affiche }}</span>
+                        @if (c.n != null) { <span class="ml-1 text-sm text-slate-500 dark:text-slate-400">{{ c.uniteLigne }}</span> }
                       </p>
                     }
                     @if (c.variation; as v) {
@@ -99,7 +99,7 @@ const MOIS_LONGS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juil
                     <div class="mt-auto pt-4">
                       <div class="flex h-10 items-end gap-1" role="img" [attr.aria-label]="c.libelle + ' sur 6 mois : ' + c.resume">
                         @for (b of c.barres; track $index; let last = $last) {
-                          <div class="flex h-full flex-1 items-end" [title]="b.mois + ' : ' + b.v + ' ' + unite()">
+                          <div class="flex h-full flex-1 items-end" [title]="b.mois + ' : ' + b.texte">
                             <div class="w-full rounded-t-[4px]" [style.height.%]="b.hauteur"
                                  [class]="last ? 'bg-brand-600 dark:bg-brand-400' : 'bg-slate-200 group-hover:bg-slate-300 dark:bg-slate-700 dark:group-hover:bg-slate-600'"></div>
                           </div>
@@ -119,7 +119,7 @@ const MOIS_LONGS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juil
       @if (donnees(); as d) {
         <div class="overflow-x-auto border-t border-slate-100 px-5 pb-5 pt-4 dark:border-slate-800">
           <table class="w-full text-sm">
-            <caption class="mb-2 text-left text-xs text-slate-500 dark:text-slate-400">Les 6 mois jusqu’à {{ libelleMois(mois()) }} (nombre de femmes)</caption>
+            <caption class="mb-2 text-left text-xs text-slate-500 dark:text-slate-400">Les 6 mois jusqu’à {{ libelleMois(mois()) }} {{ legende() }}</caption>
             <thead>
               <tr class="text-xs text-slate-500 dark:text-slate-400">
                 <th class="py-1 text-left font-medium"></th>
@@ -129,9 +129,9 @@ const MOIS_LONGS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juil
             <tbody>
               @for (l of d.lignes; track l.code) {
                 <tr class="border-t border-slate-100 dark:border-slate-800">
-                  <td class="py-1.5 font-medium text-slate-700 dark:text-slate-200">{{ l.libelle }}</td>
+                  <td class="py-1.5 font-medium text-slate-700 dark:text-slate-200">{{ l.libelle }}@if (l.unite && estTaux(l.unite)) { <span class="font-normal text-slate-400"> ({{ l.unite }})</span> }</td>
                   @for (v of l.valeurs; track $index; let last = $last) {
-                    <td class="py-1.5 text-right tabular-nums" [class]="last ? 'font-semibold text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-300'">{{ v }}</td>
+                    <td class="py-1.5 text-right tabular-nums" [class]="last ? 'font-semibold text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-300'">{{ valeurTexte(v, l.unite) }}</td>
                   }
                 </tr>
               }
@@ -152,8 +152,10 @@ export class AnalyseMensuelleComponent {
   icone = input('fa-chart-simple');
   /** Phrase d'introduction, complétée par « en <mois> ». */
   description = input('');
-  /** Unité affichée à côté de chaque nombre. */
+  /** Unité affichée à côté de chaque nombre (remplacée par l'unité propre à la ligne, si le serveur la donne). */
   unite = input('femme(s)');
+  /** Complément de la légende du tableau des 6 mois. */
+  legende = input('(nombre de femmes)');
   /** Barres et pourcentages rapportés à la première ligne de chaque groupe (ex. CPN2 / CPN1). */
   rapporterAuPremier = input(false);
   /** Lignes attendues avant la réponse du serveur (cartes « — »). */
@@ -173,6 +175,15 @@ export class AnalyseMensuelleComponent {
       lieu();
       untracked(() => this.charger());
     });
+  }
+
+  /** Unité de taux (%, ‰, pour 100 000 NV) : une valeur absente est « N/A » (dénominateur nul). */
+  estTaux = (unite?: string) => !!unite && /^(%|‰|pour )/.test(unite);
+
+  /** Valeur lisible : décimale à la française ; absente : « N/A » pour un taux, « — » sinon. */
+  valeurTexte(v: number | null | undefined, unite?: string): string {
+    if (v == null) return this.estTaux(unite) && this.donnees() ? 'N/A' : '—';
+    return v.toLocaleString('fr-FR', { maximumFractionDigits: 1 });
   }
 
   libelleMois = (cle: string) => (cle ? `${MOIS_LONGS[+cle.slice(5) - 1]} ${cle.slice(0, 4)}` : '');
@@ -215,28 +226,43 @@ export class AnalyseMensuelleComponent {
     return n <= 2 ? 'lg:grid-cols-2' : n === 3 ? 'lg:grid-cols-3' : n === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3 2xl:grid-cols-5';
   }
 
-  /** Variation par rapport au mois précédent : hausse (verte), baisse (rose) ou stable (grise). */
-  private variation(n: number | null, precedent: number | null) {
+  /**
+   * Variation par rapport au mois précédent : favorable (verte), défavorable (rose) ou stable (grise).
+   * Une hausse est favorable, sauf pour les lignes `sens: 'baisse'` (complications, décès…).
+   */
+  private variation(n: number | null, precedent: number | null, unite: string, sens?: 'baisse') {
     if (n == null || precedent == null) return null;
     const moisPrec = this.donnees()?.historique.mois.at(-2) ?? 'mois préc.';
-    const e = n - precedent;
-    const titre = `${moisPrec} : ${precedent} ${this.unite()}`;
-    if (e > 0) return { texte: `+${e}`, icone: 'fa-arrow-trend-up', titre, classe: 'bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300' };
-    if (e < 0) return { texte: `−${-e}`, icone: 'fa-arrow-trend-down', titre, classe: 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300' };
+    const e = Math.round((n - precedent) * 10) / 10;
+    const titre = `${moisPrec} : ${this.valeurTexte(precedent, unite)} ${unite}`;
+    const ecart = this.valeurTexte(Math.abs(e)) + (this.estTaux(unite) ? (unite === '%' ? ' pt' : ` ${unite}`) : '');
+    const favorable = (e > 0) !== (sens === 'baisse');
+    const classe = favorable ? 'bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300' : 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300';
+    if (e > 0) return { texte: `+${ecart}`, icone: 'fa-arrow-trend-up', titre, classe };
+    if (e < 0) return { texte: `−${ecart}`, icone: 'fa-arrow-trend-down', titre, classe };
     return { texte: 'Stable', icone: 'fa-equals', titre, classe: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400' };
   }
 
-  private carte(l: { code: string; libelle: string; repere?: string; n: number | null; precedent: number | null; valeurs?: number[] }, premier: { libelle: string; n: number | null } | null) {
+  private carte(
+    l: { code: string; libelle: string; repere?: string; unite?: string; sens?: 'baisse'; n: number | null; precedent: number | null; valeurs?: (number | null)[] },
+    premier: { libelle: string; n: number | null } | null,
+  ) {
     const ref = this.rapporterAuPremier() ? (premier?.n ?? l.n ?? 0) : 0;
+    const uniteLigne = l.unite ?? this.unite();
     const valeurs = l.valeurs ?? [];
-    const max = Math.max(1, ...valeurs);
+    const max = Math.max(1, ...valeurs.map(v => v ?? 0));
     const mois = this.donnees()?.historique.mois ?? [];
-    const barres = valeurs.map((v, i) => ({ v, mois: mois[i] ?? '', hauteur: v ? Math.max(8, (v / max) * 100) : 4 }));
+    const barres = valeurs.map((v, i) => ({
+      v, mois: mois[i] ?? '', hauteur: v ? Math.max(8, (v / max) * 100) : 4,
+      texte: v == null ? this.valeurTexte(v, l.unite) : `${this.valeurTexte(v)} ${uniteLigne}`,
+    }));
     return {
       ...l,
-      variation: this.variation(l.n, l.precedent),
+      uniteLigne,
+      affiche: this.valeurTexte(l.n, l.unite),
+      variation: this.variation(l.n, l.precedent, uniteLigne, l.sens),
       barres,
-      resume: barres.map(b => `${b.mois} ${b.v}`).join(', '),
+      resume: barres.map(b => `${b.mois} ${b.texte}`).join(', '),
       largeur: this.rapporterAuPremier() ? (ref && l.n != null ? Math.min(100, (l.n / ref) * 100) : 0) : null,
       part: this.rapporterAuPremier() && premier && ref && l.n != null ? Math.round((l.n / ref) * 100) : null,
       reference: premier?.libelle ?? '',

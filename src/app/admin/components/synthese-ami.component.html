@@ -99,6 +99,22 @@
   <app-analyse-mensuelle class="block" route="tdr-palu-mensuel" titre="TDR palu du mois" icone="fa-vial"
     description="Femmes de l’établissement ayant eu un TDR palu noté sur une consultation (positif : résultat noté positif)"
     [rapporterAuPremier]="true" [lignesAttendues]="LIGNES_TDR" />
+  <app-analyse-mensuelle class="block" route="accouchements-mensuel" titre="Module Accouchement du mois" icone="fa-baby-carriage"
+    description="Accouchements de l’établissement (dossiers de la salle de travail et accouchements hors plateforme déclarés), naissances, complications et taux"
+    legende="(nombres et taux du mois)" [lignesAttendues]="LIGNES_ACCOUCHEMENT" />
+  <app-analyse-mensuelle class="block" route="nouveau-nes-mensuel" titre="Nouveau-nés et suivi postnatal du mois" icone="fa-baby"
+    description="Enfants de l’établissement nés vivants dans le mois et leurs consultations postnatales (CPoN à J3, J7 et 6 semaines)"
+    legende="(nouveau-nés nés dans le mois)" [lignesAttendues]="LIGNES_NOUVEAU_NES" />
+  <app-analyse-mensuelle class="block" route="vaccination-mensuel" titre="Vaccination du mois" icone="fa-syringe"
+    description="Enfants suivis de l’établissement : doses reçues dans le mois, statut vaccinal en fin de mois, relances RECO et couverture"
+    legende="(nombres et taux du mois ; statuts en fin de mois)" [lignesAttendues]="LIGNES_VACCINATION" />
+  <app-analyse-mensuelle class="block" route="reco-mensuel" titre="Communautaire RECO du mois — indicateurs transversaux" icone="fa-people-group"
+    description="Relais communautaires de l’établissement, bénéficiaires suivis, visites à domicile et références"
+    legende="(nombres et taux du mois)" [lignesAttendues]="LIGNES_RECO" />
+  @for (p of PARCOURS; track p.route) {
+    <app-analyse-mensuelle class="block" [route]="p.route" [titre]="p.titre" [icone]="p.icone" [description]="p.description"
+      legende="(cas : tâches de relance ; bénéficiaires : personnes distinctes)" [lignesAttendues]="p.lignes" />
+  }
 
   <!-- Ligne 2 : évolution des activités (petits multiples) et comparaison par aire de santé -->
   <div class="grid gap-6 xl:grid-cols-5">
