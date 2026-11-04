@@ -15,7 +15,7 @@ export interface ProfilMaman {
   postnom: string;
   prenom: string;
   age: number | null;
-  email: string;
+  email?: string;
   telephone: string;
   statut: string;
   photoUrl: string | null;
@@ -84,7 +84,7 @@ function lire(): Session | null {
 }
 
 /**
- * Espace de la maman : connexion avec l'e-mail et le mot de passe choisis à l'enregistrement,
+ * Espace de la maman : connexion avec l'e-mail ou le matricule et le mot de passe choisi à l'enregistrement,
  * lecture de ses rendez-vous, de ses accouchements et du carnet de ses enfants. Jeton propre à la
  * patiente, envoyé ici explicitement (l'intercepteur des soignants ignore ces routes).
  */
@@ -97,8 +97,8 @@ export class EspaceMamanService {
   readonly patiente = computed(() => this.session()?.patiente ?? null);
   readonly connectee = computed(() => !!this.session());
 
-  async connecter(email: string, motDePasse: string): Promise<void> {
-    const s = await firstValueFrom(this.http.post<Session>(`${URL}/connexion`, { email, motDePasse }));
+  async connecter(identifiant: string, motDePasse: string): Promise<void> {
+    const s = await firstValueFrom(this.http.post<Session>(`${URL}/connexion`, { identifiant, motDePasse }));
     this.enregistrer(s);
   }
 

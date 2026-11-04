@@ -149,7 +149,7 @@ export class EnfantNewComponent implements OnInit {
     if (this.choisie) return true;
     return this.sansDossier && !!this.photoMere && !!this.nouvelle.nom.trim()
       && (!!this.nouvelle.dateNaissance || this.nouvelle.ageDeclare != null)
-      && !!this.nouvelle.email.trim() && !this.emailInvalide && this.reglesMdp.every(r => r.ok);
+      && !this.emailInvalide && this.reglesMdp.every(r => r.ok);
   }
 
   get dosesCochees(): string[] {

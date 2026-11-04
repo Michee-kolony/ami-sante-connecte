@@ -5,7 +5,7 @@ import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
 import { messageErreur } from '../../admin/data/session.service';
 import { EspaceMamanService } from '../espace-maman.service';
 
-/** Connexion de la maman avec l'e-mail et le mot de passe choisis à son enregistrement au centre. */
+/** Connexion de la maman avec son e-mail ou son matricule et le mot de passe choisi à son enregistrement au centre. */
 @Component({
   selector: 'app-connexion-maman',
   standalone: true,
@@ -25,8 +25,8 @@ import { EspaceMamanService } from '../espace-maman.service';
 
     <form class="space-y-5 rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900" (ngSubmit)="connecter()">
       <div>
-        <label class="label" for="email">Adresse e-mail</label>
-        <input id="email" name="email" type="email" class="input" autocomplete="username" [(ngModel)]="email" required>
+        <label class="label" for="identifiant">E-mail ou matricule</label>
+        <input id="identifiant" name="identifiant" type="text" class="input" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="ex. AC-PAT-000123" [(ngModel)]="identifiant" required>
       </div>
       <div>
         <label class="label" for="mdp">Mot de passe</label>
@@ -38,7 +38,7 @@ import { EspaceMamanService } from '../espace-maman.service';
       @if (erreur) {
         <p class="flex items-start gap-2 rounded-xl bg-rose-50 px-3 py-2.5 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300" role="alert"><i class="fa-solid fa-circle-exclamation mt-0.5"></i> {{ erreur }}</p>
       }
-      <button type="submit" class="btn-primary w-full py-3" [disabled]="envoi || !email || !motDePasse">
+      <button type="submit" class="btn-primary w-full py-3" [disabled]="envoi || !identifiant || !motDePasse">
         @if (envoi) { <i class="fa-solid fa-spinner fa-spin"></i> Connexion… } @else { Se connecter <i class="fa-solid fa-arrow-right"></i> }
       </button>
       <p class="text-center text-xs text-slate-500 dark:text-slate-400">Mot de passe oublié ? Adressez-vous à votre centre de santé.</p>
@@ -50,7 +50,7 @@ import { EspaceMamanService } from '../espace-maman.service';
 export class ConnexionMamanComponent {
   private service = inject(EspaceMamanService);
   private router = inject(Router);
-  email = '';
+  identifiant = '';
   motDePasse = '';
   voir = false;
   envoi = false;
@@ -60,7 +60,7 @@ export class ConnexionMamanComponent {
     this.envoi = true;
     this.erreur = '';
     try {
-      await this.service.connecter(this.email, this.motDePasse);
+      await this.service.connecter(this.identifiant, this.motDePasse);
       this.router.navigateByUrl('/maman');
     } catch (err) {
       this.erreur = messageErreur(err);

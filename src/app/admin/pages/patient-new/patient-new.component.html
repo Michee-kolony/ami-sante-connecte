@@ -309,10 +309,10 @@
             <!-- Espace patiente : identifiants de l'application mobile -->
             <div class="rounded-2xl bg-brand-50/60 p-4 ring-1 ring-brand-100 dark:bg-brand-500/5 dark:ring-brand-500/20 sm:p-5">
               <p class="flex items-center gap-2 text-sm font-semibold text-brand-900 dark:text-white"><i class="fa-solid fa-mobile-screen"></i> Compte de la patiente (application mobile)</p>
-              <p class="mt-1 text-xs text-slate-600 dark:text-slate-300">La patiente saisit elle-même son e-mail et son mot de passe. Le mot de passe est chiffré et n’est jamais affiché ni envoyé.</p>
+              <p class="mt-1 text-xs text-slate-600 dark:text-slate-300">La patiente saisit elle-même son mot de passe, chiffré, jamais affiché ni envoyé. L’e-mail est facultatif : sans e-mail, elle se connecte avec son matricule (AC-PAT-…), affiché sur son dossier après l’enregistrement.</p>
               <div class="mt-4 grid gap-4 sm:grid-cols-2">
                 <div class="sm:col-span-2">
-                  <label class="label" for="email">Adresse e-mail <span class="req">*</span></label>
+                  <label class="label" for="email">Adresse e-mail <span class="text-xs font-normal text-slate-400">(facultatif)</span></label>
                   <input id="email" name="email" type="email" class="input" [class.border-rose-400]="emailInvalide" [(ngModel)]="form.email" placeholder="ex. esther.kabeya@exemple.cd" autocomplete="off" inputmode="email">
                   @if (emailInvalide) { <p class="mt-1.5 text-xs text-rose-600 dark:text-rose-400">Adresse e-mail invalide.</p> }
                 </div>
@@ -993,7 +993,7 @@
           <!-- ESPACE PATIENTE (ajout de l'application) -->
           <section class="cadre mt-6 space-y-2 p-4">
             <p class="flex items-center justify-between gap-2"><span class="titre-section">Espace patiente</span> <button type="button" class="petit underline" (click)="modifierEtape(0)">Modifier</button></p>
-            <p class="flex flex-wrap items-baseline gap-x-2"><span>E-mail :</span> <span class="valeur">{{ form.email }}</span></p>
+            <p class="flex flex-wrap items-baseline gap-x-2"><span>E-mail :</span> <span class="valeur">{{ form.email || 'Non renseigné (connexion par matricule)' }}</span></p>
             <p class="flex flex-wrap items-baseline gap-x-2"><span>Mot de passe :</span> <span class="valeur">{{ form.motDePasse ? 'défini (non affiché)' : '' }}</span></p>
           </section>
         </article>

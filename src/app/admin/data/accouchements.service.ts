@@ -159,7 +159,7 @@ export interface AlerteSalle extends Alerte {
 export interface NouvellePatienteAdmission {
   nom: string; postnom: string; prenom: string;
   dateNaissance: string; ageDeclare: number | null; telephone: string;
-  /** Identifiant de l'application patiente (suivi de son bébé). */
+  /** Facultatif : à défaut, l'application patiente s'ouvre avec le matricule. */
   email: string;
   adresse: { commune: string; quartier: string; avenue: string };
   contactUrgence: { nom: string; lien: string; telephone: string };

@@ -185,7 +185,7 @@ export class SalleTravailComponent implements OnInit {
   get peutAdmettre(): boolean {
     if (this.sansDossier) {
       return !!this.photo && !!this.nouvelle.nom.trim() && (!!this.nouvelle.dateNaissance || this.nouvelle.ageDeclare != null)
-        && !!this.nouvelle.email.trim() && !this.emailInvalide && this.reglesMdp.every(r => r.ok);
+        && !this.emailInvalide && this.reglesMdp.every(r => r.ok);
     }
     return !!this.choisie;
   }

@@ -638,7 +638,7 @@ export class PatientNewComponent implements OnDestroy {
     if (!this.form.nom.trim()) m.push('Nom');
     if (this.ageCalcule === null) m.push('Date de naissance ou âge');
     if (!this.photoFichier) m.push('Photo de la patiente');
-    if (!this.form.email.trim() || this.emailInvalide) m.push('E-mail de la patiente');
+    if (this.emailInvalide) m.push('E-mail de la patiente');
     if (this.reglesMdp.some(r => !r.ok)) m.push('Mot de passe de la patiente');
     if (!this.referentiels.provinces().includes(this.form.province)) m.push('Province de résidence');
     if (!this.etablissementsActifs().some(e => e.id === this.form.etablissementId)) m.push('Établissement sanitaire');
@@ -706,7 +706,7 @@ export class PatientNewComponent implements OnDestroy {
       if (!this.photoFichier) m.push('photo');
       if (this.ddrApresReference || this.referenceFuture) m.push('datation à corriger');
       if (this.ecartSensible && !f.dpaJustification.trim()) m.push('justification de la DPA');
-      if (!f.email.trim() || this.emailInvalide) m.push('e-mail');
+      if (this.emailInvalide) m.push('e-mail');
       if (this.reglesMdp.some(r => !r.ok)) m.push('mot de passe');
       if (!this.referentiels.provinces().includes(f.province)) m.push('province');
       if (!this.etablissementsActifs().some(e => e.id === f.etablissementId)) m.push('formation sanitaire');

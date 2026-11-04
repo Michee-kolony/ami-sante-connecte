@@ -40,6 +40,7 @@
         <div class="flex-1">
           <p class="font-semibold text-slate-900 dark:text-white">Dossier {{ p.numero }} créé</p>
           <p class="text-sm text-slate-600 dark:text-slate-300">Réalisez maintenant la première consultation prénatale : vous en serez l’auteur.</p>
+          <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Remettez ce matricule à la patiente : elle se connecte à l’application avec <span class="font-mono font-semibold">{{ p.numero }}</span>{{ p.email ? ' ou son e-mail' : '' }} et son mot de passe.</p>
         </div>
         <a [routerLink]="['/admin/patientes', p.numero, 'consultation']" [queryParams]="{ type: 'Première consultation prénatale' }" class="btn-primary"><i class="fa-solid fa-stethoscope"></i> Commencer la première consultation</a>
       </div>
@@ -445,6 +446,7 @@
                 <div class="flex justify-between gap-3"><dt class="text-slate-500 dark:text-slate-400">Téléphone</dt><dd class="text-right text-slate-900 dark:text-white">{{ p.telephone || '—' }}{{ p.telephone2 ? ' · ' + p.telephone2 : '' }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-slate-500 dark:text-slate-400">E-mail</dt><dd class="truncate text-slate-900 dark:text-white">{{ p.email || '—' }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-slate-500 dark:text-slate-400">Espace patiente</dt><dd class="text-slate-900 dark:text-white">{{ p.espaceEnLigne }}</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-slate-500 dark:text-slate-400">Matricule de connexion</dt><dd class="font-mono text-slate-900 dark:text-white">{{ p.numero }}</dd></div>
                 @if (p.contactUrgence.nom) {
                   <div class="flex justify-between gap-3"><dt class="text-slate-500 dark:text-slate-400">Urgence</dt><dd class="text-right text-slate-900 dark:text-white">{{ p.contactUrgence.nom }}{{ p.contactUrgence.lien ? ' (' + p.contactUrgence.lien + ')' : '' }}<br><span class="text-xs">{{ p.contactUrgence.telephone }}{{ p.contactUrgence.adresse ? ' · ' + p.contactUrgence.adresse : '' }}</span></dd></div>
                 }
@@ -866,7 +868,7 @@
             <div class="grid gap-4 sm:grid-cols-2">
               <div><label class="label" for="f-tel">Téléphone</label><input id="f-tel" class="input" [(ngModel)]="formInfos.telephone" name="ftel"></div>
               <div><label class="label" for="f-tel2">Téléphone secondaire</label><input id="f-tel2" class="input" [(ngModel)]="formInfos.telephone2" name="ftel2"></div>
-              <div class="sm:col-span-2"><label class="label" for="f-mail">E-mail</label><input id="f-mail" type="email" class="input" [(ngModel)]="formInfos.email" name="fmail"></div>
+              <div class="sm:col-span-2"><label class="label" for="f-mail">E-mail <span class="text-xs font-normal text-slate-400">(facultatif)</span></label><input id="f-mail" type="email" class="input" [(ngModel)]="formInfos.email" name="fmail"></div>
               <div class="sm:col-span-2">
                 <label class="label" for="f-prov">Province de résidence</label>
                 <select id="f-prov" class="input" [(ngModel)]="formInfos.province" name="fprov">
