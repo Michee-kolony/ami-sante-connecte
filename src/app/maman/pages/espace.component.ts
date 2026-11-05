@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { HostListener, Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
 import { agLisible, dateHeureFr, jourFr } from '../../admin/data/format';
@@ -197,6 +197,13 @@ type Onglet = 'accueil' | 'enfants' | 'rendez-vous' | 'accouchements' | 'dossier
 
         <!-- ============================ MON DOSSIER ============================ -->
         @case ('dossier') {
+          @if (!dossier) {
+            <form class="card space-y-3 p-5" (ngSubmit)="ouvrirDossier()">
+              <p class="text-sm text-slate-600 dark:text-slate-300"><i class="fa-solid fa-lock mr-1 text-brand-600 dark:text-brand-400"></i> Ces informations sont confidentielles. Saisissez votre mot de passe pour les afficher.</p>
+              <div><label class="label" for="mdp-dossier">Mot de passe</label><input id="mdp-dossier" name="mdpDossier" type="password" class="input" autocomplete="off" required [(ngModel)]="motDePasseDossier"></div>
+              <button type="submit" class="btn-primary w-full" [disabled]="!motDePasseDossier">Afficher</button>
+            </form>
+          }
           @if (dossier; as d) {
             <p class="text-sm text-slate-600 dark:text-slate-300">Informations saisies à votre enregistrement le {{ jour(d.enregistreeLe) }}. Une erreur ? Signalez-la à votre centre de santé.</p>
             @for (r of d.rubriques; track r.titre) {
@@ -258,6 +265,7 @@ export class EspaceMamanComponent implements OnInit {
   rendezVous: RdvMaman[] = [];
   accouchements: AccouchementMaman[] = [];
   dossier: DossierMaman | null = null;
+  motDePasseDossier = '';
 
   get enfant(): EnfantMaman | null {
     return this.enfants.find(e => e.id === this.enfantId) ?? this.enfants[0] ?? null;
@@ -279,14 +287,32 @@ export class EspaceMamanComponent implements OnInit {
     }
   }
 
+  /** Onglet quitté ou page masquée : rien de confidentiel ne reste à l'écran. */
+  private verrouillerDossier(): void {
+    this.dossier = null;
+    this.motDePasseDossier = '';
+  }
+
+  @HostListener('document:visibilitychange')
+  auChangementVisibilite(): void {
+    if (document.visibilityState === 'hidden') this.verrouillerDossier();
+  }
+
+  ouvrirDossier(): void {
+    const motDePasse = this.motDePasseDossier;
+    this.motDePasseDossier = '';
+    this.charger(() => this.service.dossier(motDePasse).then(d => { this.dossier = d; }));
+  }
+
   changer(o: Onglet): void {
+    this.verrouillerDossier();
+    this.erreur = '';
     this.onglet = o;
     window.scrollTo({ top: 0 });
     if (o === 'accueil') this.charger(() => this.service.accueil().then(a => { this.accueil = a; }));
     if (o === 'enfants') this.charger(() => this.service.enfants().then(l => { this.enfants = l; }));
     if (o === 'rendez-vous') this.charger(() => this.service.rendezVous().then(l => { this.rendezVous = l; }));
     if (o === 'accouchements') this.charger(() => this.service.accouchements().then(l => { this.accouchements = l; }));
-    if (o === 'dossier') this.charger(() => this.service.dossier().then(d => { this.dossier = d; }));
   }
 
   ouvrirEnfant(id: string): void {

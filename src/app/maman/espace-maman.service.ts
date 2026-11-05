@@ -147,8 +147,16 @@ export class EspaceMamanService {
     return this.lireApi('/accouchements');
   }
 
-  dossier(): Promise<DossierMaman> {
-    return this.lireApi('/dossier');
+  /** Données confidentielles : le mot de passe est redemandé à chaque ouverture. */
+  async dossier(motDePasse: string): Promise<DossierMaman> {
+    try {
+      return await firstValueFrom(this.http.post<DossierMaman>(`${URL}/dossier`, { motDePasse }, {
+        headers: new HttpHeaders({ Authorization: `Bearer ${this.session()?.jeton ?? ''}` }),
+      }));
+    } catch (err) {
+      if (err instanceof HttpErrorResponse && err.status === 401) this.deconnecter();
+      throw err;
+    }
   }
 
   async changerMotDePasse(actuel: string, nouveau: string): Promise<void> {
