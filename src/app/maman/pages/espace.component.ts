@@ -4,9 +4,9 @@ import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
 import { agLisible, dateHeureFr, jourFr } from '../../admin/data/format';
 import { classeStatutDose, iconeStatutDose, parSeance, DoseCarnet } from '../../admin/data/enfants.service';
 import { messageErreur } from '../../admin/data/session.service';
-import { AccouchementMaman, AccueilMaman, EnfantMaman, EspaceMamanService, RdvMaman } from '../espace-maman.service';
+import { AccouchementMaman, AccueilMaman, DossierMaman, EnfantMaman, EspaceMamanService, RdvMaman } from '../espace-maman.service';
 
-type Onglet = 'accueil' | 'enfants' | 'rendez-vous' | 'accouchements';
+type Onglet = 'accueil' | 'enfants' | 'rendez-vous' | 'accouchements' | 'dossier';
 
 /**
  * Espace de la maman (lecture seule) : prochains rendez-vous (les siens et ceux de ses bébés),
@@ -194,13 +194,33 @@ type Onglet = 'accueil' | 'enfants' | 'rendez-vous' | 'accouchements';
             </div>
           } @empty { <p class="card p-6 text-center text-sm text-slate-500">Aucun accouchement enregistré.</p> }
         }
+
+        <!-- ============================ MON DOSSIER ============================ -->
+        @case ('dossier') {
+          @if (dossier; as d) {
+            <p class="text-sm text-slate-600 dark:text-slate-300">Informations saisies à votre enregistrement le {{ jour(d.enregistreeLe) }}. Une erreur ? Signalez-la à votre centre de santé.</p>
+            @for (r of d.rubriques; track r.titre) {
+              <div class="card">
+                <div class="card-header"><h2 class="card-title">{{ r.titre }}</h2></div>
+                <dl class="divide-y divide-slate-100 px-5 pb-2 text-sm dark:divide-slate-800">
+                  @for (l of r.lignes; track l.libelle) {
+                    <div class="flex justify-between gap-4 py-2.5">
+                      <dt class="text-slate-500 dark:text-slate-400">{{ l.libelle }}</dt>
+                      <dd class="text-right font-medium text-slate-900 dark:text-white">{{ l.valeur }}</dd>
+                    </div>
+                  }
+                </dl>
+              </div>
+            }
+          }
+        }
       }
     }
   </main>
 
   <!-- Barre d'onglets -->
   <nav class="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95">
-    <div class="mx-auto grid max-w-3xl grid-cols-4">
+    <div class="mx-auto grid max-w-3xl grid-cols-5">
       @for (t of onglets; track t.k) {
         <button type="button" class="flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium" (click)="changer(t.k)"
                 [class]="onglet === t.k ? 'text-brand-700 dark:text-brand-300' : 'text-slate-500 dark:text-slate-400'">
@@ -226,6 +246,7 @@ export class EspaceMamanComponent implements OnInit {
     { k: 'enfants', l: 'Mes enfants', i: 'fa-baby' },
     { k: 'rendez-vous', l: 'Rendez-vous', i: 'fa-calendar-check' },
     { k: 'accouchements', l: 'Accouchements', i: 'fa-heart' },
+    { k: 'dossier', l: 'Mon dossier', i: 'fa-notes-medical' },
   ];
   onglet: Onglet = 'accueil';
   chargement = true;
@@ -236,6 +257,7 @@ export class EspaceMamanComponent implements OnInit {
   enfantId: string | null = null;
   rendezVous: RdvMaman[] = [];
   accouchements: AccouchementMaman[] = [];
+  dossier: DossierMaman | null = null;
 
   get enfant(): EnfantMaman | null {
     return this.enfants.find(e => e.id === this.enfantId) ?? this.enfants[0] ?? null;
@@ -264,6 +286,7 @@ export class EspaceMamanComponent implements OnInit {
     if (o === 'enfants') this.charger(() => this.service.enfants().then(l => { this.enfants = l; }));
     if (o === 'rendez-vous') this.charger(() => this.service.rendezVous().then(l => { this.rendezVous = l; }));
     if (o === 'accouchements') this.charger(() => this.service.accouchements().then(l => { this.accouchements = l; }));
+    if (o === 'dossier') this.charger(() => this.service.dossier().then(d => { this.dossier = d; }));
   }
 
   ouvrirEnfant(id: string): void {

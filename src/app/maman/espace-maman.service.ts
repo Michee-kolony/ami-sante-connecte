@@ -73,6 +73,12 @@ export interface AccouchementMaman {
   mesuresPreventives: { mere: string[]; nouveauNe: string[] };
 }
 
+/** Données de l'enregistrement CPN, par rubrique (lecture seule). */
+export interface DossierMaman {
+  enregistreeLe: string;
+  rubriques: { titre: string; lignes: { libelle: string; valeur: string }[] }[];
+}
+
 interface Session { jeton: string; patiente: ProfilMaman }
 
 function lire(): Session | null {
@@ -139,6 +145,10 @@ export class EspaceMamanService {
 
   accouchements(): Promise<AccouchementMaman[]> {
     return this.lireApi('/accouchements');
+  }
+
+  dossier(): Promise<DossierMaman> {
+    return this.lireApi('/dossier');
   }
 
   async changerMotDePasse(actuel: string, nouveau: string): Promise<void> {

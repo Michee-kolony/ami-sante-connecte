@@ -215,7 +215,11 @@
           <div class="card p-5 sm:p-6 lg:col-span-2">
             <h2 class="section-titre"><i class="fa-solid fa-clock-rotate-left"></i> Antécédents</h2>
             <div class="grid gap-4 lg:grid-cols-2">
-              <div><label class="label">Médico-chirurgicaux</label><textarea rows="5" class="input" [(ngModel)]="a.antecedents.medicoChirurgicaux"></textarea></div>
+              @if (session.estMedecin()) {
+                <div><label class="label">Médico-chirurgicaux</label><textarea rows="5" class="input" [(ngModel)]="a.antecedents.medicoChirurgicaux"></textarea></div>
+              } @else {
+                <p class="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:bg-slate-800/50 dark:text-slate-300"><i class="fa-solid fa-lock mr-1"></i> Antécédents médicaux et chirurgicaux réservés aux médecins.</p>
+              }
               <div>
                 <p class="label">Gynéco-obstétricaux</p>
                 @let go = a.antecedents.gynecoObstetricaux;
