@@ -93,10 +93,16 @@
         @for (t of liste(); track t.numero) {
           <button type="button" class="card block w-full p-4 text-left transition hover:shadow-md" (click)="ouvrir(t)">
             <div class="flex items-start justify-between gap-2">
-              <div class="min-w-0">
+              @if (t.rendezVousManque) { <app-avatar [photo]="t.personne.photoUrl ?? undefined" [prenom]="prenom(t)" [nomFamille]="nomFamille(t)" class="h-14 w-14 rounded-full text-sm" /> }
+              <div class="min-w-0 flex-1">
                 <p class="truncate font-semibold text-slate-900 dark:text-white">{{ t.personne.nom || '—' }}@if (t.personne.enfant) { <span class="font-normal text-slate-500"> · enfant {{ t.personne.enfant.prenom }}</span> }</p>
                 <p class="truncate text-sm text-slate-600 dark:text-slate-300">{{ t.motif }}</p>
-                <p class="mt-1 truncate text-xs text-slate-500"><i class="fa-solid fa-location-dot"></i> {{ t.personne.quartier }} {{ t.personne.avenue }} {{ t.personne.repere }}</p>
+                @if (t.rendezVousManque) {
+                  @if (t.personne.telephone) { <p class="mt-1 text-xs text-slate-500"><i class="fa-solid fa-phone"></i> {{ t.personne.telephone }}</p> }
+                  <p class="mt-1 text-xs text-slate-500"><i class="fa-solid fa-location-dot"></i> {{ adresse(t) }}</p>
+                } @else {
+                  <p class="mt-1 truncate text-xs text-slate-500"><i class="fa-solid fa-location-dot"></i> {{ t.personne.quartier }} {{ t.personne.avenue }} {{ t.personne.repere }}</p>
+                }
               </div>
               <div class="flex shrink-0 flex-col items-end gap-1">
                 <span class="badge" [class]="couleur(t.statut)">{{ t.statut }}</span>
@@ -116,13 +122,15 @@
         @if (tache(); as t) {
           <div class="card space-y-3 p-4">
             <div class="flex items-start justify-between gap-2">
-              <div>
+              @if (t.rendezVousManque) { <app-avatar [photo]="t.personne.photoUrl ?? undefined" [prenom]="prenom(t)" [nomFamille]="nomFamille(t)" class="h-20 w-20 rounded-2xl text-lg" /> }
+              <div class="min-w-0 flex-1">
                 <p class="text-lg font-bold text-slate-900 dark:text-white">{{ t.personne.nom || '—' }}</p>
                 @if (t.personne.enfant) { <p class="text-sm text-slate-600 dark:text-slate-300">Enfant : {{ t.personne.enfant.prenom }}</p> }
               </div>
               <span class="badge" [class]="couleur(t.statut)">{{ t.statut }}</span>
             </div>
             <p class="text-sm"><i class="fa-solid fa-flag text-brand-600"></i> {{ t.motif }}</p>
+            @if (t.rendezVousManque && t.personne.telephone) { <p class="text-sm text-slate-600 dark:text-slate-300"><i class="fa-solid fa-phone text-brand-600"></i> {{ t.personne.telephone }}</p> }
             <p class="text-sm text-slate-600 dark:text-slate-300"><i class="fa-solid fa-location-dot text-brand-600"></i> {{ t.personne.commune }} {{ t.personne.quartier }} {{ t.personne.avenue }}
               @if (t.personne.repere) { <br><span class="text-xs">Repère : {{ t.personne.repere }}</span> }</p>
             <p class="text-xs text-slate-500">À faire avant le {{ t.echeance | date:'dd/MM/yyyy' }} · {{ t.tentativesEchouees }}/{{ t.tentativesMax }} tentative(s) sans contact · {{ t.numero }}</p>

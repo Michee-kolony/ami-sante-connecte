@@ -2,6 +2,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
+import { AvatarComponent } from '../../admin/components/avatar.component';
 import { messageErreur } from '../../admin/data/session.service';
 import { RecoService, type TacheReco } from '../reco.service';
 import { RecoMessagesService } from '../reco-messages.service';
@@ -17,7 +18,7 @@ type Formulaire = 'tentative' | 'visite_planifiee' | 'visite_realisee' | 'orient
 @Component({
   selector: 'app-espace-reco',
   standalone: true,
-  imports: [DatePipe, FormsModule, ThemeToggleComponent, MessagesRecoComponent],
+  imports: [DatePipe, FormsModule, ThemeToggleComponent, MessagesRecoComponent, AvatarComponent],
   templateUrl: './espace.component.html',
 })
 export class EspaceRecoComponent implements OnInit {
@@ -71,6 +72,21 @@ export class EspaceRecoComponent implements OnInit {
     this.saisie = { canal: '', resultat: '', date: '', structure: t?.structure?.id ?? '', priorite: 'Normale', motif: '', commentaire: '' };
     this.erreur.set('');
     this.formulaire.set(f);
+  }
+
+  /** Adresse complète, affichée en entier pour un rendez-vous manqué. */
+  adresse(t: TacheReco): string {
+    const { commune, quartier, avenue, repere } = t.personne;
+    return [commune, quartier, avenue, repere].filter(Boolean).join(', ');
+  }
+
+  /** Découpe le nom complet pour les initiales de l'avatar. */
+  prenom(t: TacheReco): string {
+    return t.personne.nom.split(' ')[0];
+  }
+
+  nomFamille(t: TacheReco): string {
+    return t.personne.nom.split(' ').slice(1).join(' ');
   }
 
   /** Canaux téléphoniques consentis (la visite à domicile est une action à part). */

@@ -49,6 +49,8 @@ export interface TacheReco {
   enRetard: boolean;
   parcoursCode: string | null;
   motif: string;
+  /** Rendez-vous de suivi manqué : photo, téléphone et adresse affichés d'emblée. */
+  rendezVousManque?: boolean;
   attribueeAMoi: boolean;
   personne: {
     nom: string;
@@ -59,6 +61,8 @@ export interface TacheReco {
     repere: string;
     telephone: string;
     telephonePartage?: boolean;
+    /** Lien temporaire : absent hors rendez-vous manqué, initiales si expiré. */
+    photoUrl?: string | null;
   };
   canauxAutorises: string[];
   structure: { id: string; nom: string; telephone: string } | null;
