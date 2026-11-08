@@ -108,7 +108,7 @@ const MODELES = [
       <!-- ================= CONVERSATION ================= -->
       @let d = actif()!;
       @let c = d.interlocuteur;
-      <div class="flex h-[calc(100dvh-12rem)] flex-col">
+      <div class="flex h-[calc(100dvh-17rem)] flex-col">
         <div class="flex items-center gap-3 pb-3">
           <button type="button" class="btn-ghost px-2" (click)="fermer()" aria-label="Retour aux conversations"><i class="fa-solid fa-arrow-left"></i></button>
           <app-avatar [photo]="c?.photo ?? undefined" [prenom]="c?.prenom ?? '?'" [nomFamille]="c?.nom ?? ''" class="h-10 w-10 rounded-full text-xs" />

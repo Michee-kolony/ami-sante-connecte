@@ -66,6 +66,17 @@
   .onglet-actif {
     @apply bg-white text-brand-800 shadow-sm dark:bg-slate-900 dark:text-white;
   }
+  /** Barre d'onglets en bas de l'application RECO (style application mobile). */
+  .onglet-reco {
+    @apply relative flex flex-col items-center gap-1 pb-2 pt-2.5 text-[11px] font-medium text-slate-500 transition active:scale-95 dark:text-slate-400;
+  }
+  .onglet-reco-actif {
+    @apply text-brand-600 dark:text-brand-300;
+  }
+  .onglet-reco-actif::before {
+    content: '';
+    @apply absolute inset-x-5 top-0 h-[3px] rounded-b-full bg-brand-600 dark:bg-brand-300;
+  }
   .table-th {
     @apply px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400;
   }

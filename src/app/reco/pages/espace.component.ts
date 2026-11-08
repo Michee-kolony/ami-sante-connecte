@@ -4,11 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
 import { AvatarComponent } from '../../admin/components/avatar.component';
 import { messageErreur } from '../../admin/data/session.service';
-import { RecoService, type TacheReco } from '../reco.service';
+import { RecoService, type AlerteReco, type TacheReco } from '../reco.service';
 import { RecoMessagesService } from '../reco-messages.service';
 import { MessagesRecoComponent } from './messages-reco.component';
 
-type Vue = 'liste' | 'tache' | 'signalement' | 'messages';
+type Vue = 'liste' | 'tache' | 'signalement' | 'messages' | 'tableau' | 'parametres';
 type Formulaire = 'tentative' | 'visite_planifiee' | 'visite_realisee' | 'orientation' | 'refus_report' | 'demande_appui' | 'urgence' | null;
 
 /**
@@ -26,7 +26,8 @@ export class EspaceRecoComponent implements OnInit {
   /** Messagerie avec les soignants et chauffeurs de l'établissement. */
   readonly messagerie = inject(RecoMessagesService);
 
-  vue = signal<Vue>('liste');
+  /** Première ouverture : le tableau de bord. */
+  vue = signal<Vue>('tableau');
   numero = signal<string | null>(null);
   formulaire = signal<Formulaire>(null);
   filtre = signal<'ouvertes' | 'toutes'>('ouvertes');
@@ -36,16 +37,32 @@ export class EspaceRecoComponent implements OnInit {
 
   saisie = { canal: '', resultat: '', date: '', structure: '', priorite: 'Normale', motif: '', commentaire: '' };
   signalement = { nom: '', quartier: '', repere: '', telephone: '', domaine: 'Suivi communautaire', urgence: false, commentaire: '' };
-  mdp = { actuel: '', nouveau: '', verrou: '' };
+  mdp = { actuel: '', nouveau: '', confirmation: '', verrou: '' };
+  chargementTableau = signal(false);
 
   readonly tache = computed(() => this.service.taches().find(t => t.numero === this.numero()) ?? null);
   readonly liste = computed(() => (this.filtre() === 'ouvertes' ? this.service.ouvertes() : this.service.taches()));
   readonly alertesOuvertes = computed(() => this.service.alertes().filter(a => a.ouverte));
+  /** Tâches confiées pas encore prises en charge (badge de l'onglet « Tâches »). */
+  readonly aPrendreEnCharge = computed(() => this.service.taches().filter(t => this.aPrendre(t)));
+  /** Onglet en surbrillance : la fiche d'une tâche reste sous « Tâches ». */
+  readonly ongletActif = computed(() => (this.vue() === 'tache' ? 'liste' : this.vue()));
 
   ngOnInit(): void {
     this.service.demarrer();
     this.service.actualiserProfil();
     this.messagerie.demarrer();
+    this.ouvrirTableau();
+  }
+
+  /** Navigation par la barre d'onglets. */
+  ouvrirOnglet(v: 'tableau' | 'liste' | 'signalement' | 'messages' | 'parametres'): void {
+    if (v === 'tableau') { this.ouvrirTableau(); return; }
+    if (v === 'parametres') { this.ouvrirParametres(); return; }
+    this.formulaire.set(null);
+    this.erreur.set('');
+    this.vue.set(v);
+    window.scrollTo({ top: 0 });
   }
 
   ouvrir(t: TacheReco): void {
@@ -59,6 +76,36 @@ export class EspaceRecoComponent implements OnInit {
     this.formulaire.set(null);
     this.vue.set('messages');
     window.scrollTo({ top: 0 });
+  }
+
+  /** Tableau de bord : rechargé à chaque ouverture (le dernier reste affiché hors connexion). */
+  async ouvrirTableau(): Promise<void> {
+    this.formulaire.set(null);
+    this.erreur.set('');
+    this.vue.set('tableau');
+    window.scrollTo({ top: 0 });
+    if (!this.service.enLigne()) return;
+    this.chargementTableau.set(true);
+    try {
+      await this.service.chargerTableauDeBord();
+    } catch (err) {
+      this.erreur.set(messageErreur(err));
+    } finally {
+      this.chargementTableau.set(false);
+    }
+  }
+
+  ouvrirParametres(): void {
+    this.formulaire.set(null);
+    this.erreur.set('');
+    this.mdp = { ...this.mdp, actuel: '', nouveau: '', confirmation: '' };
+    this.vue.set('parametres');
+    window.scrollTo({ top: 0 });
+  }
+
+  /** Pourcentage d'une part (barres du tableau de bord). */
+  part(n: number, total: number): number {
+    return total ? Math.round((100 * n) / total) : 0;
   }
 
   retour(): void {
@@ -122,8 +169,36 @@ export class EspaceRecoComponent implements OnInit {
         priorite: type === 'orientation' ? s.priorite : null,
       });
       this.formulaire.set(null);
-      this.message.set(this.service.enLigne() ? 'Action enregistrée.' : 'Action enregistrée sur le téléphone : elle sera envoyée au retour du réseau.');
+      const enregistree = type === 'accepter' ? 'Prise en charge enregistrée : les administrateurs de votre établissement sont prévenus.' : 'Action enregistrée.';
+      this.message.set(this.service.enLigne() ? enregistree : 'Action enregistrée sur le téléphone : elle sera envoyée au retour du réseau.');
       setTimeout(() => this.message.set(''), 4000);
+    } catch (err) {
+      this.erreur.set(messageErreur(err));
+    } finally {
+      this.envoi.set(false);
+    }
+  }
+
+  /** Tâche confiée à ce RECO et pas encore prise en charge. */
+  aPrendre(t: TacheReco): boolean {
+    return t.attribueeAMoi && t.statut === 'Attribuée';
+  }
+
+  /** Tâches d'une alerte (ex. « Nouvelles tâches attribuées ») encore à prendre en charge. */
+  aPrendreDans(a: AlerteReco): TacheReco[] {
+    return this.service.taches().filter(t => a.taches.includes(t.numero) && this.aPrendre(t));
+  }
+
+  /** « Je prends en charge » : depuis l'alerte, la liste ou la fiche de la tâche. */
+  async prendreEnCharge(t: TacheReco): Promise<void> {
+    this.envoi.set(true);
+    this.erreur.set('');
+    try {
+      await this.service.agir(t.numero, { type: 'accepter', commentaire: '' });
+      this.message.set(this.service.enLigne()
+        ? `Prise en charge de ${t.personne.nom || t.numero} enregistrée : les administrateurs de votre établissement sont prévenus.`
+        : 'Prise en charge enregistrée sur le téléphone : elle sera envoyée au retour du réseau.');
+      setTimeout(() => this.message.set(''), 5000);
     } catch (err) {
       this.erreur.set(messageErreur(err));
     } finally {
@@ -140,17 +215,23 @@ export class EspaceRecoComponent implements OnInit {
     if (s.urgence && !confirm('Signaler une urgence ? Le superviseur est alerté immédiatement. Orientez la personne vers la structure sans attendre.')) return;
     await this.service.signaler({ ...s, commentaire: s.commentaire.trim() });
     this.signalement = { nom: '', quartier: '', repere: '', telephone: '', domaine: 'Suivi communautaire', urgence: false, commentaire: '' };
-    this.vue.set('liste');
+    this.vue.set('tableau');
     this.message.set('Signalement enregistré : votre superviseur va le vérifier.');
     setTimeout(() => this.message.set(''), 4000);
   }
 
   async changerMotDePasse(): Promise<void> {
+    if (this.mdp.nouveau !== this.mdp.confirmation) {
+      this.erreur.set('Les deux nouveaux mots de passe ne sont pas identiques.');
+      return;
+    }
     this.envoi.set(true);
     this.erreur.set('');
     try {
       await this.service.changerMotDePasse(this.mdp.actuel, this.mdp.nouveau);
-      this.mdp = { actuel: '', nouveau: '', verrou: '' };
+      this.mdp = { actuel: '', nouveau: '', confirmation: '', verrou: '' };
+      this.message.set('Mot de passe modifié.');
+      setTimeout(() => this.message.set(''), 4000);
     } catch (err) {
       this.erreur.set(messageErreur(err));
     } finally {

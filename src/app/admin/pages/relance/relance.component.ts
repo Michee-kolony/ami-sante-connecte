@@ -1,8 +1,9 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { messageErreur } from '../../data/session.service';
+import { PresenceService } from '../../data/presence.service';
 import { PatientesService, type ResumePatiente } from '../../data/patientes.service';
 import {
   RelanceService, couleurPriorite, couleurStatut,
@@ -61,6 +62,8 @@ export class RelanceComponent implements OnInit {
   // Alertes
   alertes = signal<AlerteRelance[]>([]);
   alertesOuvertes = computed(() => this.alertes().filter(a => a.ouverte).length);
+  /** Nouvelle alerte de la structure (prise en charge par un RECO, urgence…) : liste rechargée en direct. */
+  private desabonner = inject(DestroyRef).onDestroy(inject(PresenceService).sur('relance:alerte', () => this.chargerAlertes()));
 
   readonly droits = computed(() => this.referentiel()?.droits ?? { supervision: false, parametrage: false, responsable: false });
 

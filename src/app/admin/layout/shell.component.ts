@@ -75,6 +75,16 @@ export class ShellComponent {
   /** Alertes du partogramme : badge du menu, bandeau et alarme sonore en direct (zone rouge). */
   alertesMaternite = inject(AlertesMaterniteService);
 
+  /** Un RECO de l'établissement vient de prendre en charge un dossier : bandeau nominatif en direct. */
+  priseEnCharge = signal<{ texte: string; tache: string | null } | null>(null);
+  private minuteriePriseEnCharge?: ReturnType<typeof setTimeout>;
+  private ecoutePriseEnCharge = this.presence.sur<{ type: string; message?: string | null; taches?: string[] }>('relance:alerte', d => {
+    if (d.type !== 'prise_en_charge' || !d.message) return;
+    this.priseEnCharge.set({ texte: d.message, tache: d.taches?.[0] ?? null });
+    clearTimeout(this.minuteriePriseEnCharge);
+    this.minuteriePriseEnCharge = setTimeout(() => this.priseEnCharge.set(null), 15000);
+  });
+
   /** Établissement choisi à la connexion, sinon la structure fictive de la maquette. */
   get structure() {
     const e = this.session.etablissement();

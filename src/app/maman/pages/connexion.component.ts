@@ -25,8 +25,8 @@ import { EspaceMamanService } from '../espace-maman.service';
 
     <form class="space-y-5 rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900" (ngSubmit)="connecter()">
       <div>
-        <label class="label" for="identifiant">E-mail ou matricule</label>
-        <input id="identifiant" name="identifiant" type="text" class="input" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="ex. AC-PAT-000123" [(ngModel)]="identifiant" required>
+        <label class="label" for="identifiant">E-mail, matricule ou téléphone</label>
+        <input id="identifiant" name="identifiant" type="text" class="input" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="ex. AC-PAT-000123 ou 0812345678" [(ngModel)]="identifiant" required>
       </div>
       <div>
         <label class="label" for="mdp">Mot de passe</label>

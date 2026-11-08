@@ -308,6 +308,7 @@
               <div class="min-w-0">
                 <p class="font-medium text-slate-800 dark:text-slate-100">
                   @if (a.type === 'urgence') { <i class="fa-solid fa-triangle-exclamation text-rose-600"></i> }
+                  @if (a.type === 'prise_en_charge') { <i class="fa-solid fa-hand text-accent-600"></i> }
                   {{ a.libelle }} <span class="text-xs font-normal text-slate-500">({{ a.taches.length }} tâche(s){{ a.occurrences > 1 ? ', ' + a.occurrences + ' signalements' : '' }})</span>
                 </p>
                 <p class="mt-1 flex flex-wrap gap-1">
@@ -316,6 +317,13 @@
                   }
                   @if (a.taches.length > 12) { <span class="text-xs text-slate-500">…</span> }
                 </p>
+                @if (a.messages?.length) {
+                  <ul class="mt-2 space-y-1 text-sm text-slate-700 dark:text-slate-200">
+                    @for (m of a.messages!.slice().reverse().slice(0, 10); track $index) {
+                      <li><span class="text-xs text-slate-500">{{ m.le | date:'dd/MM HH:mm' }} ·</span> {{ m.texte }}</li>
+                    }
+                  </ul>
+                }
                 <p class="mt-1 text-xs text-slate-500">Depuis le {{ a.premiereLe | date:'dd/MM/yyyy HH:mm' }} · dernière le {{ a.derniereLe | date:'dd/MM/yyyy HH:mm' }}
                   @if (!a.ouverte) { · lue par {{ a.accusePar?.nom }} le {{ a.accuseLe | date:'dd/MM/yyyy HH:mm' }} }</p>
               </div>

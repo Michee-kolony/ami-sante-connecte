@@ -87,6 +87,17 @@ export interface ReferentielReco {
   structures: { id: string; nom: string; zoneSante: string; aireSante: string }[];
 }
 
+/** Tableau de bord du RECO (calculé par le serveur sur tout son historique). */
+export interface TableauDeBordReco {
+  calculeLe: string;
+  taches: {
+    confiees: number; nonResolues: number; aPrendreEnCharge: number; enCours: number; chezLeSuperviseur: number; enRetard: number;
+    resolues: number; clotureesSansReintegration: number; traitees: number; tauxReintegration: number | null;
+  };
+  actions: { total: number; prisesEnCharge: number; tentatives: number; contactsEtablis: number; visites: number; orientations: number; appuisEtUrgences: number; signalements: number };
+  ceMois: { depuis: string; actions: number; resolues: number };
+}
+
 export interface AlerteReco { id: string; type: string; libelle: string; taches: string[]; occurrences: number; derniereLe: string; ouverte: boolean }
 
 /** Opération faite sur l'appareil, envoyée dès que le réseau le permet. */
@@ -377,6 +388,17 @@ export class RecoService {
   }
 
   /** Recharge le profil (changement de mot de passe exigé, structure). */
+  /** Tableau de bord (nécessite du réseau) ; le dernier reçu reste affiché hors connexion. */
+  readonly tableauDeBord = signal<TableauDeBordReco | null>(null);
+  async chargerTableauDeBord(): Promise<void> {
+    try {
+      this.tableauDeBord.set(await firstValueFrom(this.http.get<TableauDeBordReco>(`${URL}/tableau-de-bord`, this.entetes())));
+    } catch (err) {
+      this.gererErreur(err);
+      throw err;
+    }
+  }
+
   async actualiserProfil(): Promise<void> {
     try {
       this.majProfil(await firstValueFrom(this.http.get<ProfilReco>(`${URL}/moi`, this.entetes())));

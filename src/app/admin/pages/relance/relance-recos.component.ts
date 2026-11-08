@@ -98,12 +98,9 @@ import { genererMotDePasse, reglesMotDePasse } from '../../../shared/mot-de-pass
         <div><label class="label" for="rs">Sexe <span class="req">*</span></label>
           <select id="rs" name="rs" class="input" [(ngModel)]="e.sexe" required><option value="F">Femme</option><option value="M">Homme</option></select></div>
         <div><label class="label" for="rt">Téléphone <span class="req">*</span></label><input id="rt" name="rt" class="input" [(ngModel)]="e.telephone" required></div>
-        <div class="sm:col-span-2"><label class="label" for="re">Structure de rattachement <span class="req">*</span></label>
-          <select id="re" name="re" class="input" [(ngModel)]="e.etablissementId" required disabled>
-            <option [ngValue]="undefined" disabled>Établissement de votre session</option>
-            @for (s of structures(); track s.id) { <option [ngValue]="s.id">{{ s.nom }} ({{ s.code }}){{ s.aireSante ? ' — aire ' + s.aireSante : '' }}</option> }
-          </select>
-          <p class="hint">Structure de votre session : le RECO lui appartient et reçoit les tâches de ses patientes.</p></div>
+        <div class="sm:col-span-2"><label class="label" for="re">Établissement sanitaire de rattachement <span class="req">*</span></label>
+          <input id="re" name="re" class="input bg-slate-50 font-medium dark:bg-slate-800/60" [value]="nomStructure(e.etablissementId)" readonly>
+          <p class="hint">Un RECO appartient à un seul établissement sanitaire : celui de votre session. Il ne reçoit que les tâches de cet établissement, et ses prises en charge sont signalées à ses administrateurs.</p></div>
         <div><label class="label" for="ra">Aire de santé</label><input id="ra" name="ra" class="input" [(ngModel)]="e.aireSante" placeholder="Celle de la structure par défaut"></div>
         <div class="sm:col-span-2"><label class="label" for="rz">Secteur couvert (quartiers, villages, avenues)</label>
           <input id="rz" name="rz" class="input" [(ngModel)]="zones" placeholder="Salongo, Kemi, Livulu">
@@ -219,6 +216,12 @@ export class RelanceRecosComponent implements OnInit {
   private etablissements = inject(EtablissementsService);
   /** Structures actives proposées comme rattachement. */
   readonly structures = computed(() => this.etablissements.etablissements().filter(s => s.statut === 'Actif'));
+
+  /** Nom de l'établissement de rattachement (celui de la session, même si la liste n'est pas chargée). */
+  nomStructure(id?: string | null): string {
+    const s = this.structures().find(x => x.id === id) ?? (this.session.etablissement()?.id === id ? this.session.etablissement() : null);
+    return s ? `${s.nom}${s.aireSante ? ' — aire ' + s.aireSante : ''}` : 'Établissement de votre session';
+  }
 
   /** Suppression définitive : médecin chef de service et médecin directeur (le serveur vérifie aussi). */
   peutSupprimer = input(false);

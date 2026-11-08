@@ -125,6 +125,8 @@ export interface AlerteRelance {
   destinataire: 'supervision' | 'structure' | 'reco';
   etablissementId: string | null;
   taches: string[];
+  /** Détail nominatif de chaque occurrence (ex. prise en charge d'un dossier par un RECO). */
+  messages?: { tache: string | null; texte: string; le: string }[];
   occurrences: number;
   premiereLe: string;
   derniereLe: string;

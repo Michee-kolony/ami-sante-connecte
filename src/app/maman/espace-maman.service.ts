@@ -90,7 +90,7 @@ function lire(): Session | null {
 }
 
 /**
- * Espace de la maman : connexion avec l'e-mail ou le matricule et le mot de passe choisi à l'enregistrement,
+ * Espace de la maman : connexion avec l'e-mail, le matricule ou le téléphone et le mot de passe choisi à l'enregistrement,
  * lecture de ses rendez-vous, de ses accouchements et du carnet de ses enfants. Jeton propre à la
  * patiente, envoyé ici explicitement (l'intercepteur des soignants ignore ces routes).
  */

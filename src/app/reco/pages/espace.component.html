@@ -1,4 +1,4 @@
-<div class="min-h-[100dvh] bg-slate-50 pb-24 dark:bg-slate-950">
+<div class="min-h-[100dvh] bg-slate-50 pb-28 dark:bg-slate-950">
   <!-- En-tête -->
   <header class="sticky top-0 z-20 bg-brand-950 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-white shadow-lg">
     <div class="mx-auto flex max-w-2xl items-center justify-between gap-3">
@@ -12,10 +12,6 @@
         <p class="truncate text-xs text-slate-300">{{ service.reco()?.structure?.nom ?? 'Relais communautaire' }}</p>
       </div>
       <div class="flex shrink-0 items-center gap-1">
-        <button type="button" class="relative rounded-lg p-2 text-slate-300 hover:bg-white/10" (click)="ouvrirMessages()" title="Messages" aria-label="Messages">
-          <i class="fa-solid fa-comments"></i>
-          @if (messagerie.totalNonLus()) { <span class="absolute -right-0.5 -top-0.5 min-w-[1.1rem] rounded-full bg-accent-500 px-1 text-center text-[10px] font-bold leading-[1.1rem] text-white">{{ messagerie.totalNonLus() }}</span> }
-        </button>
         <app-theme-toggle />
         <button type="button" class="rounded-lg p-2 text-slate-300 hover:bg-white/10" (click)="service.verrouille.set(true)" title="Verrouiller" aria-label="Verrouiller"><i class="fa-solid fa-lock"></i></button>
         <button type="button" class="rounded-lg p-2 text-slate-300 hover:bg-white/10" (click)="deconnecter()" title="Déconnexion (efface les données du téléphone)" aria-label="Déconnexion"><i class="fa-solid fa-right-from-bracket"></i></button>
@@ -42,15 +38,11 @@
     @if (message()) { <p class="rounded-xl bg-accent-50 px-4 py-3 text-sm text-accent-800 dark:bg-accent-500/10 dark:text-accent-200" role="status"><i class="fa-solid fa-circle-check"></i> {{ message() }}</p> }
     @if (erreur() && !service.verrouille()) { <p class="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300" role="alert">{{ erreur() }}</p> }
 
-    <!-- Changement de mot de passe exigé -->
-    @if (service.reco()?.doitChangerMotDePasse) {
-      <form class="card space-y-3 p-4" (ngSubmit)="changerMotDePasse()">
-        <p class="text-sm font-semibold text-slate-800 dark:text-slate-100"><i class="fa-solid fa-key text-amber-500"></i> Choisissez votre mot de passe personnel</p>
-        <input class="input" type="password" name="actuel" placeholder="Mot de passe reçu" autocomplete="current-password" [(ngModel)]="mdp.actuel">
-        <input class="input" type="password" name="nouveau" placeholder="Nouveau (10 caractères, majuscule, chiffre, symbole)" autocomplete="new-password" [(ngModel)]="mdp.nouveau">
-        <button type="submit" class="btn-primary w-full" [disabled]="envoi() || !mdp.actuel || !mdp.nouveau || !service.enLigne()">Enregistrer</button>
-        @if (!service.enLigne()) { <p class="hint">Nécessite du réseau.</p> }
-      </form>
+    <!-- Mot de passe temporaire : rappel discret (le formulaire est dans Paramètres) -->
+    @if (service.reco()?.doitChangerMotDePasse && vue() !== 'parametres') {
+      <button type="button" class="flex w-full items-center gap-2 rounded-xl bg-amber-50 px-4 py-2 text-left text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-200" (click)="ouvrirParametres()">
+        <i class="fa-solid fa-key"></i><span class="flex-1">Vous utilisez encore le mot de passe reçu. Choisissez le vôtre dans les paramètres.</span><i class="fa-solid fa-chevron-right"></i>
+      </button>
     }
 
     <!-- Actions refusées par le serveur -->
@@ -76,7 +68,18 @@
           <div class="space-y-2">
             @for (a of alertesOuvertes(); track a.id) {
               <div class="flex items-start justify-between gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm dark:border-brand-500/30 dark:bg-brand-500/10">
-                <span><i class="fa-solid fa-bell text-brand-600"></i> {{ a.libelle }} : {{ a.taches.join(', ') }}</span>
+                <div class="min-w-0 flex-1">
+                  <span><i class="fa-solid fa-bell text-brand-600"></i> {{ a.libelle }} : {{ a.taches.join(', ') }}</span>
+                  @for (t of aPrendreDans(a); track t.numero) {
+                    <div class="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-white/70 px-3 py-2 dark:bg-slate-900/40">
+                      <button type="button" class="min-w-0 text-left" (click)="ouvrir(t)">
+                        <span class="font-semibold">{{ t.personne.nom || '—' }}</span>@if (t.personne.enfant) { <span class="text-slate-500"> · enfant {{ t.personne.enfant.prenom }}</span> }
+                        <span class="block text-xs text-slate-500">{{ t.motif }} · {{ t.numero }}</span>
+                      </button>
+                      <button type="button" class="btn-primary py-1.5 text-xs" (click)="prendreEnCharge(t)" [disabled]="envoi()"><i class="fa-solid fa-hand"></i> Je prends en charge</button>
+                    </div>
+                  }
+                </div>
                 <button type="button" class="shrink-0 text-xs font-semibold text-brand-700 dark:text-brand-300" (click)="service.accuserAlerte(a.id)">Vu</button>
               </div>
             }
@@ -91,7 +94,8 @@
         </div>
 
         @for (t of liste(); track t.numero) {
-          <button type="button" class="card block w-full p-4 text-left transition hover:shadow-md" (click)="ouvrir(t)">
+          <div class="card p-4 transition hover:shadow-md">
+          <button type="button" class="block w-full text-left" (click)="ouvrir(t)">
             <div class="flex items-start justify-between gap-2">
               @if (t.rendezVousManque) { <app-avatar [photo]="t.personne.photoUrl ?? undefined" [prenom]="prenom(t)" [nomFamille]="nomFamille(t)" class="h-14 w-14 rounded-full text-sm" /> }
               <div class="min-w-0 flex-1">
@@ -111,9 +115,102 @@
               </div>
             </div>
           </button>
+          @if (aPrendre(t)) { <button type="button" class="btn-primary mt-3 w-full" (click)="prendreEnCharge(t)" [disabled]="envoi()"><i class="fa-solid fa-hand"></i> Je prends en charge</button> }
+          </div>
         } @empty {
           <div class="card p-8 text-center text-sm text-slate-500"><i class="fa-regular fa-face-smile mb-2 text-2xl"></i><p>Aucune tâche pour le moment.</p></div>
         }
+      }
+
+      <!-- ================= TABLEAU DE BORD ================= -->
+      @case ('tableau') {
+        <div class="flex items-center justify-between gap-2">
+          <div>
+            <p class="text-sm text-slate-500">Bonjour {{ service.reco()?.prenom }} 👋</p>
+            <h1 class="text-lg font-bold text-slate-900 dark:text-white">Mon tableau de bord</h1>
+          </div>
+          <button type="button" class="btn-ghost text-xs" (click)="ouvrirTableau()" [disabled]="chargementTableau() || !service.enLigne()"><i class="fa-solid fa-arrows-rotate" [class.fa-spin]="chargementTableau()"></i> Actualiser</button>
+        </div>
+        <!-- Tâches à prendre en charge (données du téléphone : visibles même hors connexion) -->
+        @if (aPrendreEnCharge().length) {
+          <button type="button" class="flex w-full items-center gap-3 rounded-2xl bg-brand-600 px-4 py-3 text-left text-white shadow-md" (click)="ouvrirOnglet('liste')">
+            <i class="fa-solid fa-hand text-2xl"></i>
+            <span class="flex-1"><strong>{{ aPrendreEnCharge().length }} tâche(s) à prendre en charge</strong><br><span class="text-xs text-white/80">Appuyez pour les voir et confirmer « Je prends en charge ».</span></span>
+            <i class="fa-solid fa-chevron-right"></i>
+          </button>
+        }
+        @if (service.tableauDeBord(); as d) {
+          <section class="space-y-2">
+            <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-500">Mes tâches</h2>
+            <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <div class="card p-3"><p class="text-2xl font-bold text-slate-900 dark:text-white">{{ d.taches.confiees }}</p><p class="text-xs text-slate-500">Tâches confiées</p></div>
+              <div class="card p-3"><p class="text-2xl font-bold text-accent-600">{{ d.taches.resolues }}</p><p class="text-xs text-slate-500">Résolues (retour confirmé)</p></div>
+              <div class="card p-3"><p class="text-2xl font-bold text-amber-600">{{ d.taches.nonResolues }}</p><p class="text-xs text-slate-500">Non résolues</p></div>
+              <div class="card p-3"><p class="text-2xl font-bold text-brand-600">{{ d.taches.aPrendreEnCharge }}</p><p class="text-xs text-slate-500">À prendre en charge</p></div>
+              <div class="card p-3"><p class="text-2xl font-bold text-slate-900 dark:text-white">{{ d.taches.enCours }}</p><p class="text-xs text-slate-500">En cours</p></div>
+              <div class="card p-3"><p class="text-2xl font-bold text-rose-600">{{ d.taches.enRetard }}</p><p class="text-xs text-slate-500">En retard</p></div>
+              <div class="card p-3"><p class="text-2xl font-bold text-slate-900 dark:text-white">{{ d.taches.chezLeSuperviseur }}</p><p class="text-xs text-slate-500">Chez le superviseur</p></div>
+              <div class="card p-3"><p class="text-2xl font-bold text-slate-900 dark:text-white">{{ d.taches.clotureesSansReintegration }}</p><p class="text-xs text-slate-500">Clôturées sans retour</p></div>
+              <div class="card p-3"><p class="text-2xl font-bold text-slate-900 dark:text-white">{{ d.taches.traitees }}</p><p class="text-xs text-slate-500">Tâches traitées</p></div>
+            </div>
+            <div class="card space-y-2 p-4">
+              <div class="flex items-center justify-between text-sm"><span class="text-slate-600 dark:text-slate-300">Résolues / confiées</span><span class="font-semibold">{{ part(d.taches.resolues, d.taches.confiees) }} %</span></div>
+              <div class="flex h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                <div class="bg-accent-500" [style.width.%]="part(d.taches.resolues, d.taches.confiees)" title="Résolues"></div>
+                <div class="bg-sky-500" [style.width.%]="part(d.taches.enCours + d.taches.aPrendreEnCharge, d.taches.confiees)" title="En cours"></div>
+                <div class="bg-amber-500" [style.width.%]="part(d.taches.chezLeSuperviseur, d.taches.confiees)" title="Chez le superviseur"></div>
+                <div class="bg-slate-400" [style.width.%]="part(d.taches.clotureesSansReintegration, d.taches.confiees)" title="Clôturées sans retour"></div>
+              </div>
+              <p class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
+                <span><i class="fa-solid fa-square text-accent-500"></i> Résolues</span><span><i class="fa-solid fa-square text-sky-500"></i> En cours</span>
+                <span><i class="fa-solid fa-square text-amber-500"></i> Superviseur</span><span><i class="fa-solid fa-square text-slate-400"></i> Sans retour</span>
+              </p>
+              @if (d.taches.tauxReintegration !== null) { <p class="text-sm text-slate-600 dark:text-slate-300">Taux de retour au centre (tâches clôturées) : <strong>{{ d.taches.tauxReintegration }} %</strong></p> }
+            </div>
+          </section>
+          <section class="space-y-2">
+            <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-500">Mes actions ({{ d.actions.total }})</h2>
+            <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <div class="card p-3"><p class="text-2xl font-bold text-slate-900 dark:text-white">{{ d.actions.prisesEnCharge }}</p><p class="text-xs text-slate-500">Prises en charge</p></div>
+              <div class="card p-3"><p class="text-2xl font-bold text-slate-900 dark:text-white">{{ d.actions.tentatives }}</p><p class="text-xs text-slate-500">Appels / messages</p></div>
+              <div class="card p-3"><p class="text-2xl font-bold text-accent-600">{{ d.actions.contactsEtablis }}</p><p class="text-xs text-slate-500">Contacts établis</p></div>
+              <div class="card p-3"><p class="text-2xl font-bold text-slate-900 dark:text-white">{{ d.actions.visites }}</p><p class="text-xs text-slate-500">Visites à domicile</p></div>
+              <div class="card p-3"><p class="text-2xl font-bold text-slate-900 dark:text-white">{{ d.actions.orientations }}</p><p class="text-xs text-slate-500">Orientations</p></div>
+              <div class="card p-3"><p class="text-2xl font-bold text-slate-900 dark:text-white">{{ d.actions.signalements }}</p><p class="text-xs text-slate-500">Signalements</p></div>
+            </div>
+          </section>
+          <div class="card flex items-center gap-4 p-4">
+            <i class="fa-solid fa-calendar-check text-2xl text-brand-600"></i>
+            <p class="text-sm text-slate-700 dark:text-slate-200">Ce mois-ci : <strong>{{ d.ceMois.actions }}</strong> action(s) et <strong>{{ d.ceMois.resolues }}</strong> tâche(s) résolue(s).</p>
+          </div>
+          <p class="text-center text-xs text-slate-500">Calculé le {{ d.calculeLe | date:'dd/MM/yyyy HH:mm' }}@if (!service.enLigne()) { · hors connexion, chiffres de la dernière consultation }</p>
+        } @else if (chargementTableau()) {
+          <div class="card p-8 text-center text-sm text-slate-500"><i class="fa-solid fa-spinner fa-spin"></i> Chargement…</div>
+        } @else {
+          <div class="card p-8 text-center text-sm text-slate-500"><i class="fa-solid fa-wifi mb-2 text-2xl"></i><p>Le tableau de bord nécessite du réseau.</p></div>
+        }
+      }
+
+      <!-- ================= PARAMÈTRES ================= -->
+      @case ('parametres') {
+        <h1 class="text-lg font-bold text-slate-900 dark:text-white">Profil et paramètres</h1>
+        @if (service.reco(); as r) {
+          <div class="card space-y-1 p-4 text-sm">
+            <p class="font-semibold text-slate-900 dark:text-white">{{ r.prenom }} {{ r.nom }} {{ r.postnom }}</p>
+            <p class="text-slate-600 dark:text-slate-300"><i class="fa-solid fa-id-badge w-5 text-brand-600"></i> {{ r.matricule }}</p>
+            <p class="text-slate-600 dark:text-slate-300"><i class="fa-solid fa-hospital w-5 text-brand-600"></i> {{ r.structure?.nom ?? '—' }}@if (r.aireSante) { · aire {{ r.aireSante }} }</p>
+            @if (r.telephone) { <p class="text-slate-600 dark:text-slate-300"><i class="fa-solid fa-phone w-5 text-brand-600"></i> {{ r.telephone }}</p> }
+            @if (r.zones.length) { <p class="text-slate-600 dark:text-slate-300"><i class="fa-solid fa-map-location-dot w-5 text-brand-600"></i> {{ r.zones.join(', ') }}</p> }
+          </div>
+        }
+        <form class="card space-y-3 p-4" (ngSubmit)="changerMotDePasse()">
+          <p class="text-sm font-semibold text-slate-800 dark:text-slate-100"><i class="fa-solid fa-key text-amber-500"></i> {{ service.reco()?.doitChangerMotDePasse ? 'Choisissez votre mot de passe personnel' : 'Changer mon mot de passe' }}</p>
+          <input class="input" type="password" name="actuel" [placeholder]="service.reco()?.doitChangerMotDePasse ? 'Mot de passe reçu' : 'Mot de passe actuel'" autocomplete="current-password" [(ngModel)]="mdp.actuel">
+          <input class="input" type="password" name="nouveau" placeholder="Nouveau (10 caractères, majuscule, chiffre, symbole)" autocomplete="new-password" [(ngModel)]="mdp.nouveau">
+          <input class="input" type="password" name="confirmation" placeholder="Confirmer le nouveau mot de passe" autocomplete="new-password" [(ngModel)]="mdp.confirmation">
+          <button type="submit" class="btn-primary w-full" [disabled]="envoi() || !mdp.actuel || !mdp.nouveau || !mdp.confirmation || !service.enLigne()">Enregistrer</button>
+          @if (!service.enLigne()) { <p class="hint">Nécessite du réseau.</p> }
+        </form>
       }
 
       <!-- ================= TÂCHE ================= -->
@@ -138,6 +235,14 @@
             @if (t.orientation) { <p class="text-sm text-sky-700 dark:text-sky-300"><i class="fa-solid fa-hospital"></i> Orientée vers {{ t.orientation.structure }} le {{ t.orientation.le | date:'dd/MM' }}. La structure confirmera son passage.</p> }
           </div>
 
+          <!-- Prise en charge : les administrateurs de l'établissement sont prévenus -->
+          @if (aPrendre(t)) {
+            <div class="card space-y-2 border-2 border-brand-300 p-4 dark:border-brand-500/40">
+              <p class="text-sm text-slate-700 dark:text-slate-200">Cette tâche vous est confiée. Confirmez que vous vous en occupez : les administrateurs de votre établissement en seront informés.</p>
+              <button type="button" class="btn-primary w-full py-3 text-base" (click)="prendreEnCharge(t)" [disabled]="envoi()"><i class="fa-solid fa-hand"></i> Je prends en charge</button>
+            </div>
+          }
+
           <!-- Contacter -->
           @if (actionnable(t)) {
             @if (canauxTelephone(t).length) {
@@ -155,7 +260,6 @@
             }
 
             <div class="grid grid-cols-2 gap-2">
-              @if (t.statut === 'Attribuée') { <button type="button" class="btn-primary col-span-2" (click)="agir('accepter')" [disabled]="envoi()"><i class="fa-solid fa-hand"></i> Je prends en charge</button> }
               @if (canauxTelephone(t).length) { <button type="button" class="btn-secondary" (click)="preparer('tentative')"><i class="fa-solid fa-phone"></i> Noter un appel / message</button> }
               <button type="button" class="btn-secondary" (click)="preparer('visite_planifiee')"><i class="fa-solid fa-calendar-plus"></i> Planifier une visite</button>
               <button type="button" class="btn-secondary" (click)="preparer('visite_realisee')"><i class="fa-solid fa-house-user"></i> Noter une visite</button>
@@ -168,8 +272,8 @@
             <p class="rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-600 dark:bg-slate-800 dark:text-slate-300">
               @switch (t.statut) {
                 @case ('Réintégration confirmée') { <i class="fa-solid fa-circle-check text-accent-600"></i> La structure a confirmé le retour de la personne. Merci ! }
-                @case ('Non retrouvée') { Nombre maximal de tentatives atteint : votre superviseur décide de la suite. }
-                @case ('Escaladée') { Cas transmis au superviseur ou au professionnel habilité. }
+                @case ('Non retrouvée') { Nombre maximal de tentatives atteint : votre superviseur décide de la suite. S’il vous redonne la tâche, vous pourrez la reprendre en charge. }
+                @case ('Escaladée') { Cas transmis au superviseur ou au professionnel habilité. S’il vous redonne la tâche, le bouton « Je prends en charge » réapparaîtra ici. }
                 @case ('Refus / report') { Refus ou report noté : votre superviseur décide de la suite. }
                 @default { Tâche clôturée. }
               }
@@ -238,11 +342,10 @@
       <!-- ================= SIGNALEMENT ================= -->
       <!-- ================= MESSAGES ================= -->
       @case ('messages') {
-        <app-messages-reco (retour)="vue.set('liste')" />
+        <app-messages-reco (retour)="ouvrirOnglet('tableau')" />
       }
 
       @case ('signalement') {
-        <button type="button" class="btn-ghost -ml-2 text-sm" (click)="retour()"><i class="fa-solid fa-arrow-left"></i> Mes tâches</button>
         <form class="card space-y-3 p-4" (ngSubmit)="signaler()">
           <h1 class="text-lg font-bold text-slate-900 dark:text-white">Signaler une situation</h1>
           <p class="text-xs text-slate-500">Personne de votre secteur qui a besoin d’un suivi (femme enceinte jamais vue au centre, enfant non vacciné…). Votre superviseur vérifie et rattache au dossier.</p>
@@ -260,18 +363,37 @@
     }
   </main>
 
-  <!-- Barre d'actions -->
-  @if (vue() === 'liste') {
-    <nav class="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/90 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90">
-      <div class="mx-auto flex max-w-2xl gap-2">
-        <button type="button" class="btn-secondary relative flex-none" (click)="ouvrirMessages()">
-          <i class="fa-solid fa-comments"></i> Messages
-          @if (messagerie.totalNonLus()) { <span class="rounded-full bg-accent-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">{{ messagerie.totalNonLus() }}</span> }
+  <!-- Barre d'onglets (application mobile) -->
+  <nav class="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(15,23,42,0.06)] backdrop-blur dark:border-slate-800 dark:bg-slate-900/95" aria-label="Navigation">
+    <div class="mx-auto grid max-w-2xl grid-cols-5 items-end">
+        <button type="button" class="onglet-reco" [class.onglet-reco-actif]="ongletActif() === 'tableau'" (click)="ouvrirOnglet('tableau')" [attr.aria-current]="ongletActif() === 'tableau' ? 'page' : null">
+          <span class="relative"><i class="fa-solid fa-house text-lg"></i></span>
+          <span>Accueil</span>
         </button>
-        <button type="button" class="btn-primary flex-1" (click)="vue.set('signalement')"><i class="fa-solid fa-bullhorn"></i> Signaler une situation</button>
-      </div>
-    </nav>
-  }
+        <button type="button" class="onglet-reco" [class.onglet-reco-actif]="ongletActif() === 'liste'" (click)="ouvrirOnglet('liste')" [attr.aria-current]="ongletActif() === 'liste' ? 'page' : null">
+          <span class="relative"><i class="fa-solid fa-list-check text-lg"></i>
+            @if (aPrendreEnCharge().length) { <span class="absolute -right-2.5 -top-1.5 min-w-[1.1rem] rounded-full bg-rose-500 px-1 text-center text-[10px] font-bold leading-[1.1rem] text-white">{{ aPrendreEnCharge().length }}</span> }
+          </span>
+          <span>Tâches</span>
+        </button>
+        <button type="button" class="flex flex-col items-center gap-1 pb-2 text-[11px] font-medium text-rose-600 dark:text-rose-400" (click)="ouvrirOnglet('signalement')">
+          <span class="-mt-5 flex h-14 w-14 items-center justify-center rounded-full bg-rose-600 text-white shadow-lg ring-4 ring-white dark:ring-slate-900" [class.bg-rose-700]="ongletActif() === 'signalement'"><i class="fa-solid fa-bullhorn text-xl"></i></span>
+          <span>Signaler</span>
+        </button>
+        <button type="button" class="onglet-reco" [class.onglet-reco-actif]="ongletActif() === 'messages'" (click)="ouvrirOnglet('messages')" [attr.aria-current]="ongletActif() === 'messages' ? 'page' : null">
+          <span class="relative"><i class="fa-solid fa-comments text-lg"></i>
+            @if (messagerie.totalNonLus()) { <span class="absolute -right-2.5 -top-1.5 min-w-[1.1rem] rounded-full bg-rose-500 px-1 text-center text-[10px] font-bold leading-[1.1rem] text-white">{{ messagerie.totalNonLus() }}</span> }
+          </span>
+          <span>Messages</span>
+        </button>
+        <button type="button" class="onglet-reco" [class.onglet-reco-actif]="ongletActif() === 'parametres'" (click)="ouvrirOnglet('parametres')" [attr.aria-current]="ongletActif() === 'parametres' ? 'page' : null">
+          <span class="relative"><i class="fa-solid fa-user-gear text-lg"></i>
+            @if (service.reco()?.doitChangerMotDePasse) { <span class="absolute -right-1.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-amber-400 ring-2 ring-white dark:ring-slate-900"></span> }
+          </span>
+          <span>Profil</span>
+        </button>
+    </div>
+  </nav>
 </div>
 
 <!-- Verrouillage automatique -->
