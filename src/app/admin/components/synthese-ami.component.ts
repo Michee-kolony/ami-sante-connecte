@@ -7,6 +7,7 @@ import { PROVINCES_RDC } from '../data/carte-rdc';
 import { dateHeureChiffres, jourChiffres } from '../data/format';
 import { Indicateur, LigneATraiter, PeriodeSynthese, SyntheseEtatService } from '../data/statistiques.service';
 import { AnalyseMensuelleComponent } from './analyse-mensuelle.component';
+import { ESPACE_COMITE } from '../data/espace';
 
 /** Classes par ton de carte (fond de l'icône). */
 const TONS: Record<string, string> = {
@@ -46,6 +47,8 @@ export function fractionIndicateur(i: Indicateur): string {
 export class SyntheseAmiComponent {
   etat = inject(SyntheseEtatService);
   horsLigne = inject(HorsLigneService);
+  /** Espace du comité de pilotage : pas de liens vers les pages du personnel ni de liste nominative. */
+  readonly comite = inject(ESPACE_COMITE);
 
   readonly periodes: { code: PeriodeSynthese; libelle: string }[] = [
     { code: 'jour', libelle: 'Aujourd’hui' },

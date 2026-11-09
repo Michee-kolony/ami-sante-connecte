@@ -7,6 +7,7 @@ import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { authInterceptor } from './admin/data/session.service';
 import { horsLigneInterceptor } from './admin/data/hors-ligne/hors-ligne.interceptor';
+import { comiteInterceptor } from './comite/comite-session.service';
 
 @NgModule({
   declarations: [
@@ -20,7 +21,8 @@ import { horsLigneInterceptor } from './admin/data/hors-ligne/hors-ligne.interce
     ServiceWorkerModule.register('ngsw-worker.js', { enabled: !isDevMode(), registrationStrategy: 'registerImmediately' }),
   ],
   // Hors connexion : lectures depuis l'appareil, saisies en file d'attente (avant le jeton de session).
-  providers: [provideHttpClient(withInterceptors([horsLigneInterceptor, authInterceptor]))],
+  // Comité de pilotage : son propre jeton, sur /api/comite seulement.
+  providers: [provideHttpClient(withInterceptors([horsLigneInterceptor, authInterceptor, comiteInterceptor]))],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

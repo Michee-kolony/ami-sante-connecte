@@ -35,7 +35,7 @@
       } @else {
         <span class="badge bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300"><i class="fa-solid fa-circle text-[7px]"></i> En ligne</span>
       }
-      @if (horsLigne.enAttente()) {
+      @if (horsLigne.enAttente() && !comite) {
         <a routerLink="/admin/synchronisation" class="badge bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">{{ horsLigne.enAttente() }} non synchronisée(s)</a>
       }
       @if (s()) {
@@ -225,7 +225,7 @@
     <div class="card">
       <div class="card-header">
         <h2 class="card-title"><i class="fa-solid fa-people-arrows text-accent-600 dark:text-accent-400"></i> Flux de relance RECO</h2>
-        <a routerLink="/admin/relance" class="text-xs font-semibold text-brand-600 hover:text-brand-800 dark:text-brand-400">Relance <i class="fa-solid fa-arrow-right ml-0.5"></i></a>
+        @if (!comite) { <a routerLink="/admin/relance" class="text-xs font-semibold text-brand-600 hover:text-brand-800 dark:text-brand-400">Relance <i class="fa-solid fa-arrow-right ml-0.5"></i></a> }
       </div>
       <ol class="space-y-3 p-5">
         @if (attente()) { @for (i of [1, 2, 3, 4, 5]; track i) { <li class="skeleton h-7 w-full" aria-hidden="true"></li> } }
@@ -258,7 +258,27 @@
     </div>
   </div>
 
-  <!-- Ligne 4 : à traiter maintenant -->
+  <!-- Ligne 4 : à traiter maintenant (comité : effectifs par type, sans personnes nommées) -->
+  @if (comite) {
+    <div class="card overflow-hidden">
+      <div class="card-header">
+        <h2 class="card-title"><i class="fa-solid fa-list-check text-rose-500"></i> À traiter dans les établissements
+          @if (s()) { <span class="badge bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">{{ s()!.aTraiter.total }}</span> }
+        </h2>
+        <span class="text-xs text-slate-500 dark:text-slate-400">Suivi nominatif par chaque établissement</span>
+      </div>
+      <div class="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-4">
+        @for (t of typesATraiter(); track t.type) {
+          <div class="rounded-xl bg-slate-50 p-4 dark:bg-slate-800/50">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ t.type }}</p>
+            <p class="mt-1 text-2xl font-bold tabular-nums text-slate-900 dark:text-white">{{ t.n }}</p>
+          </div>
+        } @empty {
+          @if (s()) { <p class="text-sm text-slate-500 dark:text-slate-400"><i class="fa-solid fa-circle-check mr-1 text-accent-500"></i>Rien d’urgent à traiter.</p> }
+        }
+      </div>
+    </div>
+  } @else {
   <div class="card overflow-hidden">
     <div class="card-header flex-wrap">
       <h2 class="card-title"><i class="fa-solid fa-list-check text-rose-500"></i> À traiter maintenant
@@ -320,4 +340,5 @@
       <p class="border-t border-slate-100 px-5 py-2.5 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">{{ s()!.aTraiter.lignes.length }} premières lignes sur {{ s()!.aTraiter.total }}, triées par priorité puis ancienneté.</p>
     }
   </div>
+  }
 </section>

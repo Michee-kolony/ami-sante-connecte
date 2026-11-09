@@ -1,12 +1,15 @@
 import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { RouterLink } from '@angular/router';
 import { PROVINCES_RDC } from '../../data/carte-rdc';
 import {
-  DonneesEtablissement, Etablissement, EtablissementsService, SECTEURS_ETABLISSEMENT, SERVICES_ETABLISSEMENT,
+  DonneesEtablissement, DonneesMedecinChef, Etablissement, EtablissementsService, MedecinChef, SECTEURS_ETABLISSEMENT, SERVICES_ETABLISSEMENT,
   ServiceEtablissement, StatutEtablissement, TYPES_ETABLISSEMENT, TypeEtablissement, SecteurEtablissement,
 } from '../../data/etablissements.service';
-import { SessionService, messageErreur } from '../../data/session.service';
+import { messageErreur } from '../../data/session.service';
+import { ESPACE_COMITE } from '../../data/espace';
+import { ChampsMedecinChefComponent, medecinChefNettoye, medecinChefVide } from '../../components/champs-medecin-chef.component';
 
 const MAX_PHOTOS = 6;
 const PHOTO_MAX_OCTETS = 5 * 1024 * 1024;
@@ -39,15 +42,19 @@ interface NouvellePhoto {
 @Component({
   selector: 'app-etablissements',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, RouterLink, ChampsMedecinChefComponent],
   templateUrl: './etablissements.component.html',
 })
 export class EtablissementsComponent implements OnDestroy {
   service = inject(EtablissementsService);
   private sanitizer = inject(DomSanitizer);
   etablissements = this.service.etablissements;
-  /** Seul le médecin chef peut ajouter, modifier, suspendre ou supprimer un établissement. */
-  peutGerer = inject(SessionService).peutGererSoignants;
+  /**
+   * Seul le comité de pilotage ajoute, modifie, suspend ou supprime un établissement, et désigne
+   * son médecin chef. Dans l'administration, la page est une liste en lecture seule.
+   */
+  readonly comite = inject(ESPACE_COMITE);
+  peutGerer = signal(this.comite).asReadonly();
   chargement = true;
   readonly lignesSquelette = [1, 2, 3, 4, 5, 6];
   erreurChargement = '';
@@ -155,6 +162,89 @@ export class EtablissementsComponent implements OnDestroy {
     }
   }
 
+  // --- Médecin chef (comité de pilotage) -------------------------------------------
+  /** Identité du médecin chef saisie avec un nouvel établissement. */
+  chef: DonneesMedecinChef = medecinChefVide();
+  /** Compte créé : identifiants à remettre (le mot de passe n'est affiché qu'une fois). */
+  compteCree: { etablissement: string; chef: MedecinChef; motDePasse: string } | null = null;
+  /** Établissement dont on désigne le médecin chef (fenêtre dédiée). */
+  aDesigner: Etablissement | null = null;
+  chefADesigner: DonneesMedecinChef = medecinChefVide();
+  designation = false;
+  erreurDesignation = '';
+  actionChef: string | null = null;
+
+  chefActif(e: Etablissement): MedecinChef | undefined {
+    return e.medecinsChefs?.find(c => c.statut === 'Actif');
+  }
+
+  sansChef = computed(() => this.etablissements().filter(e => !this.chefActif(e)).length);
+
+  ouvrirDesignation(e: Etablissement): void {
+    this.fiche = null;
+    this.aDesigner = e;
+    this.chefADesigner = medecinChefVide();
+    this.erreurDesignation = '';
+  }
+
+  async designer(f: NgForm): Promise<void> {
+    const e = this.aDesigner;
+    if (!e || this.designation) return;
+    if (f.invalid) {
+      this.erreurDesignation = 'Vérifiez les champs signalés en rouge.';
+      return;
+    }
+    this.designation = true;
+    this.erreurDesignation = '';
+    try {
+      const r = await this.service.designerMedecinChef(e.id, medecinChefNettoye(this.chefADesigner));
+      this.aDesigner = null;
+      this.compteCree = { etablissement: e.nom, chef: r.medecinChef, motDePasse: r.motDePasseTemporaire };
+    } catch (err) {
+      this.erreurDesignation = messageErreur(err);
+    } finally {
+      this.designation = false;
+    }
+  }
+
+  async basculerChef(e: Etablissement, c: MedecinChef): Promise<void> {
+    this.actionChef = c.id;
+    try {
+      const maj = await this.service.basculerMedecinChef(e.id, c.id);
+      this.fiche = this.etablissements().find(x => x.id === e.id) ?? null;
+      this.notifier(maj.statut === 'Suspendu'
+        ? `Le compte du Dr ${c.prenom} ${c.nom} est suspendu : il ne peut plus se connecter.`
+        : `Le compte du Dr ${c.prenom} ${c.nom} est de nouveau actif.`);
+    } catch (err) {
+      this.notifier(messageErreur(err));
+    } finally {
+      this.actionChef = null;
+    }
+  }
+
+  async reinitialiserChef(e: Etablissement, c: MedecinChef): Promise<void> {
+    if (!confirm(`Générer un nouveau mot de passe temporaire pour le Dr ${c.prenom} ${c.nom} ? L’ancien ne fonctionnera plus.`)) return;
+    this.actionChef = c.id;
+    try {
+      const r = await this.service.reinitialiserMedecinChef(e.id, c.id);
+      this.fiche = null;
+      this.compteCree = { etablissement: e.nom, chef: r.medecinChef, motDePasse: r.motDePasseTemporaire };
+    } catch (err) {
+      this.notifier(messageErreur(err));
+    } finally {
+      this.actionChef = null;
+    }
+  }
+
+  copie = false;
+  async copierIdentifiants(): Promise<void> {
+    const c = this.compteCree;
+    if (!c) return;
+    await navigator.clipboard?.writeText(`AMI Santé Connect — ${c.etablissement}\nE-mail : ${c.chef.email}\nMot de passe temporaire : ${c.motDePasse}`).catch(() => {});
+    this.copie = true;
+    setTimeout(() => (this.copie = false), 2000);
+  }
+
   // --- Formulaire d'ajout / modification ----------------------------------------
   panneauOuvert = false;
   /** Établissement en cours de modification (null = ajout). */
@@ -254,6 +344,7 @@ export class EtablissementsComponent implements OnDestroy {
     this.enEdition = e;
     this.form = e ? formulaireDepuis(e) : formulaireVide();
     this.photosConservees = e ? [...e.photos] : [];
+    if (!e) this.chef = medecinChefVide();
     this.viderNouvellesPhotos();
     this.photoErreur = this.localisationErreur = this.erreurEnregistrement = '';
     this.panneauOuvert = true;
@@ -269,7 +360,9 @@ export class EtablissementsComponent implements OnDestroy {
   async enregistrer(f: NgForm): Promise<void> {
     if (this.enregistrement) return;
     if (f.invalid || this.nomExiste || !this.coordonneesValides || !this.form.services.size) {
-      this.erreurEnregistrement = 'Vérifiez les champs signalés en rouge (nom, type, secteur, zone, adresse, responsable, téléphone, services, coordonnées).';
+      this.erreurEnregistrement = this.enEdition
+        ? 'Vérifiez les champs signalés en rouge (nom, type, secteur, zone, adresse, responsable, téléphone, services, coordonnées).'
+        : 'Vérifiez les champs signalés en rouge, y compris l’identité du médecin chef.';
       return;
     }
     this.enregistrement = true;
@@ -293,15 +386,18 @@ export class EtablissementsComponent implements OnDestroy {
       services: this.servicesDisponibles.filter(s => this.form.services.has(s)),
     };
     const fichiers = this.nouvellesPhotos.map(p => p.fichier);
-    const modification = !!this.enEdition;
     try {
-      const e = this.enEdition
-        ? await this.service.modifier(this.enEdition.id, donnees, this.photosConservees, fichiers)
-        : await this.service.ajouter(donnees, fichiers);
-      this.fermer();
-      this.notifier(modification
-        ? `${e.nom} a été mis à jour.`
-        : `${e.nom} est enregistré sous le code ${e.code}. Il est maintenant proposé à l’inscription des soignants.`);
+      if (this.enEdition) {
+        const e = await this.service.modifier(this.enEdition.id, donnees, this.photosConservees, fichiers);
+        this.fermer();
+        this.notifier(`${e.nom} a été mis à jour.`);
+      } else {
+        const e = await this.service.ajouter(donnees, fichiers, medecinChefNettoye(this.chef));
+        this.fermer();
+        this.notifier(`${e.nom} est enregistré sous le code ${e.code}, avec son médecin chef.`);
+        // Identifiants du médecin chef : affichés une seule fois.
+        this.compteCree = { etablissement: e.nom, chef: e.medecinChef, motDePasse: e.motDePasseTemporaire };
+      }
     } catch (err) {
       this.erreurEnregistrement = messageErreur(err);
     } finally {

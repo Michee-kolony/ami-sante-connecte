@@ -3,12 +3,23 @@
   <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
     <div>
       <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Établissements sanitaires</h1>
-      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Hôpitaux, centres et postes de santé raccordés à la plateforme. Chaque établissement reçoit un code unique qui rattache son personnel, ses patientes et ses ambulances. Seul le médecin chef peut les ajouter, modifier ou supprimer.</p>
+      @if (comite) {
+        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Hôpitaux, centres et postes de santé raccordés à la plateforme. Chaque établissement est enregistré avec son médecin chef : il administre l’établissement et y ajoute son personnel soignant.</p>
+      } @else {
+        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Hôpitaux, centres et postes de santé raccordés à la plateforme. Chaque établissement reçoit un code unique qui rattache son personnel, ses patientes et ses ambulances. Les établissements sont enregistrés par le comité de pilotage.</p>
+      }
     </div>
     @if (peutGerer()) {
       <button type="button" class="btn-primary" (click)="ouvrir()"><i class="fa-solid fa-hospital"></i> Ajouter un établissement</button>
     }
   </div>
+
+  @if (comite && sansChef() && !chargement) {
+    <div class="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200" role="status">
+      <i class="fa-solid fa-user-doctor mt-0.5"></i>
+      <span class="flex-1">{{ sansChef() }} établissement(s) sans médecin chef actif : personne ne peut y ajouter de personnel. Ouvrez sa fiche puis « Désigner le médecin chef ».</span>
+    </div>
+  }
 
   @if (erreurChargement) {
     <div class="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200" role="alert">
@@ -96,6 +107,13 @@
                     <button type="button" class="text-left font-medium text-slate-900 hover:text-brand-700 dark:text-white dark:hover:text-brand-300" (click)="ouvrirFiche(e)">{{ e.nom }}</button>
                     <p class="font-mono text-xs text-slate-500 dark:text-slate-400">{{ e.code }}</p>
                     <p class="whitespace-nowrap text-[11px] text-slate-400">{{ e.type }} · {{ e.secteur }}</p>
+                    @if (comite) {
+                      @if (chefActif(e); as c) {
+                        <p class="mt-0.5 whitespace-nowrap text-[11px] text-brand-700 dark:text-brand-300"><i class="fa-solid fa-user-doctor mr-1"></i>Dr {{ c.prenom }} {{ c.nom }}</p>
+                      } @else {
+                        <button type="button" class="mt-0.5 badge bg-amber-50 text-amber-800 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30" (click)="ouvrirDesignation(e)"><i class="fa-solid fa-user-plus"></i> Sans médecin chef</button>
+                      }
+                    }
                   </div>
                 </div>
               </td>
@@ -363,9 +381,18 @@
           }
         </section>
 
+        <!-- Médecin chef : superadmin de l'établissement (création seulement) -->
+        @if (!enEdition) {
+          <section class="rounded-2xl border border-brand-100 bg-brand-50/40 p-4 dark:border-brand-500/20 dark:bg-brand-500/5">
+            <h3 class="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-300"><i class="fa-solid fa-user-doctor"></i> Médecin chef de l’établissement <span class="req">*</span></h3>
+            <p class="mb-4 text-xs text-slate-600 dark:text-slate-400">Il administre l’établissement : c’est lui qui ajoutera ensuite les médecins, infirmier·ères et sages-femmes.</p>
+            <app-champs-medecin-chef [chef]="chef" [soumis]="!!f.submitted" />
+          </section>
+        }
+
         <p class="flex items-start gap-2 rounded-xl bg-slate-50 p-3 text-xs text-slate-600 dark:bg-slate-800/50 dark:text-slate-300">
           <i class="fa-solid fa-shield-halved mt-0.5 text-brand-600 dark:text-brand-400"></i>
-          La création est inscrite au journal d’audit. Les comptes du personnel de l’établissement se créent ensuite depuis les pages Agents et Chauffeurs.
+          Le médecin chef se connecte à l’espace professionnel avec son e-mail et le mot de passe temporaire affiché après l’enregistrement, puis ajoute le personnel de son établissement.
         </p>
       </div>
 
@@ -431,6 +458,44 @@
           <div class="flex flex-wrap gap-1">
             @for (s of e.services; track s) { <span class="badge bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">{{ s }}</span> }
           </div>
+
+          @if (comite) {
+            <div class="rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+              <p class="mb-2 flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <span><i class="fa-solid fa-user-doctor mr-1 text-brand-600"></i> Médecin chef</span>
+                @if (e.effectifs) {
+                  <a routerLink="/comite/personnel" [queryParams]="{ etablissement: e.id }" class="normal-case tracking-normal text-brand-700 hover:underline dark:text-brand-300" title="Voir le personnel de cet établissement">{{ e.effectifs.soignants }} soignant(s) · {{ e.effectifs.patientes }} patiente(s) <i class="fa-solid fa-arrow-right text-[10px]"></i></a>
+                }
+              </p>
+              @for (c of e.medecinsChefs ?? []; track c.id) {
+                <div class="flex flex-wrap items-center gap-3 py-1.5">
+                  @if (c.photo) {
+                    <img [src]="c.photo" alt="" class="h-10 w-10 rounded-full object-cover">
+                  } @else {
+                    <span class="flex h-10 w-10 items-center justify-center rounded-full bg-brand-50 text-sm font-semibold text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">{{ c.prenom.charAt(0) }}{{ c.nom.charAt(0) }}</span>
+                  }
+                  <div class="min-w-0 flex-1 text-sm">
+                    <p class="font-medium text-slate-900 dark:text-white">Dr {{ c.prenom }} {{ c.nom }}
+                      <span class="badge ml-1" [class]="c.statut === 'Actif' ? 'bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300' : 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300'">{{ c.statut }}</span>
+                    </p>
+                    <p class="truncate text-xs text-slate-500 dark:text-slate-400">{{ c.matricule }} · {{ c.email }} · {{ c.telephone }}</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">{{ c.derniereConnexion ? 'Dernière connexion : ' + (c.derniereConnexion.slice(0, 10)) : 'Jamais connecté' }}{{ c.doitChangerMotDePasse ? ' · mot de passe temporaire' : '' }}</p>
+                  </div>
+                  <div class="flex gap-1">
+                    <button type="button" class="btn-ghost px-2.5 py-1.5" title="Nouveau mot de passe temporaire" [disabled]="actionChef === c.id" (click)="reinitialiserChef(e, c)"><i class="fa-solid fa-key"></i></button>
+                    <button type="button" class="btn-ghost px-2.5 py-1.5" [title]="c.statut === 'Actif' ? 'Suspendre le compte' : 'Réactiver le compte'" [disabled]="actionChef === c.id" (click)="basculerChef(e, c)">
+                      <i class="fa-solid" [class]="c.statut === 'Actif' ? 'fa-user-lock text-amber-600' : 'fa-user-check text-accent-600'"></i>
+                    </button>
+                  </div>
+                </div>
+              } @empty {
+                <p class="text-sm text-slate-500 dark:text-slate-400">Aucun médecin chef : personne ne peut encore ajouter de personnel dans cet établissement.</p>
+              }
+              @if (!chefActif(e)) {
+                <button type="button" class="btn-primary mt-2 w-full" (click)="ouvrirDesignation(e)"><i class="fa-solid fa-user-plus"></i> Désigner le médecin chef</button>
+              }
+            </div>
+          }
         </div>
 
         <div class="space-y-2">
@@ -512,6 +577,61 @@
                 [disabled]="!suppressionConfirmee || suppression" (click)="confirmerSuppression()">
           <i class="fa-solid" [class]="suppression ? 'fa-spinner fa-spin' : 'fa-trash'"></i> {{ suppression ? 'Suppression…' : 'Supprimer définitivement' }}
         </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Comité : désigner le médecin chef d'un établissement qui n'en a pas -->
+@if (aDesigner; as e) {
+  <div class="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-labelledby="titre-designation">
+    <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" (click)="aDesigner = null"></div>
+    <form #fd="ngForm" (ngSubmit)="designer(fd)" novalidate class="relative flex h-full w-full max-w-2xl flex-col bg-white shadow-2xl dark:bg-slate-900">
+      <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800 sm:px-6">
+        <div>
+          <h2 id="titre-designation" class="text-lg font-semibold text-slate-900 dark:text-white">Désigner le médecin chef</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">{{ e.nom }} · <span class="font-mono">{{ e.code }}</span></p>
+        </div>
+        <button type="button" class="btn-ghost px-3" (click)="aDesigner = null" aria-label="Fermer"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <div class="flex-1 overflow-y-auto px-5 py-6 sm:px-6">
+        <p class="mb-5 text-sm text-slate-600 dark:text-slate-400">Le médecin chef administre l’établissement : il y ajoute les médecins, infirmier·ères et sages-femmes, et gère leurs accès.</p>
+        <app-champs-medecin-chef [chef]="chefADesigner" [soumis]="!!fd.submitted" />
+      </div>
+      @if (erreurDesignation) {
+        <p class="flex items-start gap-2 border-t border-rose-100 bg-rose-50 px-5 py-3 text-sm text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300 sm:px-6" role="alert">
+          <i class="fa-solid fa-circle-exclamation mt-0.5"></i> {{ erreurDesignation }}
+        </p>
+      }
+      <div class="flex flex-col-reverse gap-2 border-t border-slate-100 px-5 py-4 dark:border-slate-800 sm:flex-row sm:justify-end sm:px-6">
+        <button type="button" class="btn-secondary" (click)="aDesigner = null">Annuler</button>
+        <button type="submit" class="btn-primary" [disabled]="designation">
+          <i class="fa-solid" [class]="designation ? 'fa-spinner fa-spin' : 'fa-user-plus'"></i> Créer le compte du médecin chef
+        </button>
+      </div>
+    </form>
+  </div>
+}
+
+<!-- Comité : identifiants du médecin chef, affichés une seule fois -->
+@if (compteCree; as c) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4" role="alertdialog" aria-modal="true" aria-labelledby="titre-compte-cree">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
+    <div class="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
+      <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-50 text-xl text-accent-600 dark:bg-accent-500/10 dark:text-accent-400"><i class="fa-solid fa-user-doctor"></i></span>
+      <h2 id="titre-compte-cree" class="mt-4 text-lg font-semibold text-slate-900 dark:text-white">Identifiants du médecin chef</h2>
+      <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Dr {{ c.chef.prenom }} {{ c.chef.nom }} · {{ c.etablissement }}</p>
+      <dl class="mt-5 space-y-3 rounded-xl bg-slate-50 p-4 text-sm dark:bg-slate-800/60">
+        <div><dt class="text-xs text-slate-500 dark:text-slate-400">E-mail de connexion</dt><dd class="font-medium text-slate-900 dark:text-white">{{ c.chef.email }}</dd></div>
+        <div><dt class="text-xs text-slate-500 dark:text-slate-400">Mot de passe temporaire</dt><dd class="select-all font-mono text-lg font-semibold tracking-wide text-brand-800 dark:text-brand-200">{{ c.motDePasse }}</dd></div>
+      </dl>
+      <p class="mt-4 flex items-start gap-2 text-xs text-amber-800 dark:text-amber-300">
+        <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
+        Ce mot de passe ne sera plus affiché. Remettez-le en personne au médecin chef : il devra le changer à sa première connexion à l’espace professionnel.
+      </p>
+      <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <button type="button" class="btn-secondary" (click)="copierIdentifiants()"><i class="fa-solid" [class]="copie ? 'fa-check' : 'fa-copy'"></i> {{ copie ? 'Copié' : 'Copier' }}</button>
+        <button type="button" class="btn-primary" (click)="compteCree = null">J’ai noté les identifiants</button>
       </div>
     </div>
   </div>

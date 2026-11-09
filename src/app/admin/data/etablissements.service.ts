@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { API_URL } from '../../shared/api';
+import { BASE_ETABLISSEMENTS } from './espace';
 
 export type TypeEtablissement =
   | 'Hôpital général de référence'
@@ -49,19 +49,63 @@ export interface Etablissement {
   photos: string[];
   statut: StatutEtablissement;
   creeLe: string;
+  /** Espace du comité seulement : médecin(s) chef(s) et effectifs de l'établissement. */
+  medecinsChefs?: MedecinChef[];
+  effectifs?: { soignants: number; patientes: number };
+}
+
+/** Médecin chef d'un établissement : superadmin de son établissement, désigné par le comité de pilotage. */
+export interface MedecinChef {
+  id: string;
+  matricule: string;
+  prenom: string;
+  nom: string;
+  postnom: string;
+  email: string;
+  telephone: string;
+  photo: string | null;
+  statut: StatutEtablissement;
+  derniereConnexion: string | null;
+  doitChangerMotDePasse: boolean;
+}
+
+/** Identité du médecin chef saisie par le comité (son compte est créé avec un mot de passe temporaire). */
+export interface DonneesMedecinChef {
+  prenom: string;
+  nom: string;
+  postnom: string;
+  sexe: 'F' | 'M' | '';
+  dateNaissance: string;
+  lieuNaissance: string;
+  nationalite: string;
+  pieceType: string;
+  pieceNumero: string;
+  adresse: string;
+  telephone: string;
+  numeroOrdre: string;
+  grade: string;
+  specialite: string;
+  email: string;
+}
+
+/** Compte du médecin chef créé : le mot de passe temporaire n'est renvoyé qu'une fois. */
+export interface CompteMedecinChef {
+  medecinChef: MedecinChef;
+  motDePasseTemporaire: string;
 }
 
 /** Champs du formulaire d'ajout ou de modification. */
-export type DonneesEtablissement = Omit<Etablissement, 'id' | 'code' | 'statut' | 'creeLe' | 'photos'>;
+export type DonneesEtablissement = Omit<Etablissement, 'id' | 'code' | 'statut' | 'creeLe' | 'photos' | 'medecinsChefs' | 'effectifs'>;
 
 /**
  * Établissements sanitaires stockés par backend-ami-connecte. Les photos sont déposées
- * dans le bucket R2 (dossier etablissement/). Seul le médecin chef peut les gérer.
+ * dans le bucket R2 (dossier etablissement/). Le personnel les consulte ; seul le comité de
+ * pilotage les enregistre, avec leur médecin chef (espace /comite, adresse BASE_ETABLISSEMENTS).
  */
 @Injectable({ providedIn: 'root' })
 export class EtablissementsService {
   private http = inject(HttpClient);
-  private url = `${API_URL}/etablissements`;
+  private url = inject(BASE_ETABLISSEMENTS);
   private chargementEnCours: Promise<void> | null = null;
 
   readonly etablissements = signal<Etablissement[]>([]);
@@ -95,10 +139,47 @@ export class EtablissementsService {
     return prefixe + String(max + 1).padStart(4, '0');
   }
 
-  async ajouter(donnees: DonneesEtablissement, photos: File[]): Promise<Etablissement> {
-    const e = await firstValueFrom(this.http.post<Etablissement>(this.url, corps(donnees, photos)));
+  /** Comité de pilotage : l'établissement et le compte de son médecin chef sont créés ensemble. */
+  async ajouter(donnees: DonneesEtablissement, photos: File[], medecinChef: DonneesMedecinChef): Promise<Etablissement & CompteMedecinChef> {
+    const c = corps(donnees, photos);
+    c.append('medecinChef', JSON.stringify(medecinChef));
+    const r = await firstValueFrom(this.http.post<{ etablissement: Etablissement } & CompteMedecinChef>(this.url, c));
+    const e: Etablissement = { ...r.etablissement, medecinsChefs: [r.medecinChef], effectifs: { soignants: 1, patientes: 0 } };
     this.etablissements.update(liste => [e, ...liste]);
-    return e;
+    return { ...e, medecinChef: r.medecinChef, motDePasseTemporaire: r.motDePasseTemporaire };
+  }
+
+  /** Comité : désigne le médecin chef d'un établissement qui n'en a pas. */
+  async designerMedecinChef(id: string, medecinChef: DonneesMedecinChef): Promise<CompteMedecinChef> {
+    const r = await firstValueFrom(this.http.post<CompteMedecinChef>(`${this.url}/${id}/medecin-chef`, { medecinChef }));
+    this.majChef(id, r.medecinChef);
+    return r;
+  }
+
+  /** Comité : suspend ou réactive le compte du médecin chef. */
+  async basculerMedecinChef(id: string, chefId: string): Promise<MedecinChef> {
+    const chef = await firstValueFrom(this.http.patch<MedecinChef>(`${this.url}/${id}/medecin-chef/${chefId}/statut`, {}));
+    this.majChef(id, chef);
+    return chef;
+  }
+
+  /** Comité : nouveau mot de passe temporaire du médecin chef (affiché une seule fois). */
+  async reinitialiserMedecinChef(id: string, chefId: string): Promise<CompteMedecinChef> {
+    const r = await firstValueFrom(this.http.post<CompteMedecinChef>(`${this.url}/${id}/medecin-chef/${chefId}/mot-de-passe`, {}));
+    this.majChef(id, r.medecinChef);
+    return r;
+  }
+
+  private majChef(id: string, chef: MedecinChef): void {
+    this.etablissements.update(liste => liste.map(e => {
+      if (e.id !== id) return e;
+      const avant = e.medecinsChefs ?? [];
+      const nouveau = !avant.some(c => c.id === chef.id);
+      return {
+        ...e, medecinsChefs: [...avant.filter(c => c.id !== chef.id), chef],
+        effectifs: e.effectifs && nouveau ? { ...e.effectifs, soignants: e.effectifs.soignants + 1 } : e.effectifs,
+      };
+    }));
   }
 
   /** `photosConservees` : URLs des photos existantes à garder ; les autres sont supprimées. */
@@ -119,8 +200,9 @@ export class EtablissementsService {
     this.etablissements.update(liste => liste.filter(e => e.id !== id));
   }
 
+  /** Remplace la fiche reçue du serveur en gardant le médecin chef et les effectifs déjà connus. */
   private remplacer(e: Etablissement): void {
-    this.etablissements.update(liste => liste.map(x => x.id === e.id ? e : x));
+    this.etablissements.update(liste => liste.map(x => x.id === e.id ? { ...e, medecinsChefs: x.medecinsChefs, effectifs: x.effectifs } : x));
   }
 }
 

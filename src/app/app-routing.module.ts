@@ -5,6 +5,8 @@ import { RouterModule, Routes } from '@angular/router';
 // jamais le code de l'administration (l'application des chauffeurs est le projet ami-connecte-chauffeur).
 const routes: Routes = [
   { path: 'admin', loadChildren: () => import('./admin/admin.routes').then(m => m.ADMIN_ROUTES) },
+  // Comité de pilotage (propriétaire du projet) : établissements, médecins chefs, vue globale.
+  { path: 'comite', loadChildren: () => import('./comite/comite.routes').then(m => m.COMITE_ROUTES) },
   { path: 'maman', loadChildren: () => import('./maman/maman.routes').then(m => m.MAMAN_ROUTES) },
   // Application des relais communautaires (RECO) : relance, utilisable hors connexion.
   { path: 'reco', loadChildren: () => import('./reco/reco.routes').then(m => m.RECO_ROUTES) },

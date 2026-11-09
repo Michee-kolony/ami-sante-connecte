@@ -207,7 +207,8 @@ export class SessionService {
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   // Espace patiente et application RECO : leur propre jeton, ajouté par EspaceMamanService et
   // RecoService (jamais celui d'un soignant).
-  if (!req.url.startsWith(API_URL) || req.url.startsWith(`${API_URL}/espace-patiente`) || req.url.startsWith(`${API_URL}/reco/`)) return next(req);
+  // Comité de pilotage : son jeton est ajouté par comiteInterceptor.
+  if (!req.url.startsWith(API_URL) || req.url.startsWith(`${API_URL}/espace-patiente`) || req.url.startsWith(`${API_URL}/reco/`) || req.url.startsWith(`${API_URL}/comite/`)) return next(req);
   const session = inject(SessionService);
   const jeton = session.jeton;
   const requete = jeton ? req.clone({ setHeaders: { Authorization: `Bearer ${jeton}` } }) : req;

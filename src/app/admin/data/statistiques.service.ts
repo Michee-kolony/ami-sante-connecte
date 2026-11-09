@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { API_URL } from '../../shared/api';
+import { BASE_STATISTIQUES } from './espace';
 import type { StatutPatiente, StatutRdv } from './patientes.service';
 
 /** Patientes et grossesses en cours d'une province (libellé identique à la carte). */
@@ -167,6 +167,8 @@ export interface AnalyseMensuelle {
 @Injectable({ providedIn: 'root' })
 export class StatistiquesService {
   private http = inject(HttpClient);
+  /** Établissement de connexion (personnel) ou tous les établissements (comité de pilotage). */
+  private base = inject(BASE_STATISTIQUES);
 
   /** Synthèse du tableau de bord selon les filtres du bandeau (période, province, aire de santé). */
   synthese(f: FiltresSynthese): Promise<SyntheseTableauBord> {
@@ -177,7 +179,7 @@ export class StatistiquesService {
     }
     if (f.province) params['province'] = f.province;
     if (f.aire) params['aire'] = f.aire;
-    return firstValueFrom(this.http.get<SyntheseTableauBord>(`${API_URL}/statistiques/synthese`, { params }));
+    return firstValueFrom(this.http.get<SyntheseTableauBord>(`${this.base}/synthese`, { params }));
   }
 
   /** Analyse mensuelle (CPN, VAT/SP) du mois `mois` (AAAA-MM ; mois en cours si vide). */
@@ -186,15 +188,15 @@ export class StatistiquesService {
     if (mois) params['mois'] = mois;
     if (province) params['province'] = province;
     if (aire) params['aire'] = aire;
-    return firstValueFrom(this.http.get<AnalyseMensuelle>(`${API_URL}/statistiques/${route}`, { params }));
+    return firstValueFrom(this.http.get<AnalyseMensuelle>(`${this.base}/${route}`, { params }));
   }
 
   patientes(): Promise<StatistiquesPatientes> {
-    return firstValueFrom(this.http.get<StatistiquesPatientes>(`${API_URL}/statistiques/patientes`));
+    return firstValueFrom(this.http.get<StatistiquesPatientes>(`${this.base}/patientes`));
   }
 
   enfants(): Promise<StatistiquesEnfants> {
-    return firstValueFrom(this.http.get<StatistiquesEnfants>(`${API_URL}/statistiques/enfants`));
+    return firstValueFrom(this.http.get<StatistiquesEnfants>(`${this.base}/enfants`));
   }
 }
 

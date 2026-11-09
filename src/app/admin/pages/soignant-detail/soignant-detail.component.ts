@@ -5,7 +5,7 @@ import { AvatarComponent } from '../../components/avatar.component';
 import { EtablissementsService } from '../../data/etablissements.service';
 import { SessionService, messageErreur } from '../../data/session.service';
 import {
-  Affectation, AuteurAjout, CATEGORIES, GRADES, ORDRE, PIECES_IDENTITE, ROLES_SOIGNANT, RoleSoignant, SPECIALITES, Soignant, SoignantsService,
+  Affectation, AuteurAjout, CATEGORIES, GRADES, ORDRE, PIECES_IDENTITE, ROLES_ATTRIBUABLES, RoleSoignant, SPECIALITES, Soignant, SoignantsService,
   categorieDuRole, nomAuteur,
 } from '../../data/soignants.service';
 
@@ -88,7 +88,7 @@ export class SoignantDetailComponent implements OnChanges, OnDestroy {
   }
 
   // --- Modification par le médecin chef ---------------------------------------------
-  readonly rolesParCategorie = ROLES_SOIGNANT;
+  readonly rolesParCategorie = ROLES_ATTRIBUABLES;
   readonly categories = CATEGORIES;
   readonly pieces = PIECES_IDENTITE;
   readonly dateMax = new Date().toISOString().slice(0, 10);

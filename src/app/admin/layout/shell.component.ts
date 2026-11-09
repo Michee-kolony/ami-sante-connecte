@@ -8,6 +8,7 @@ import { UrgencesService } from '../data/urgences.service';
 import { SessionService } from '../data/session.service';
 import { PresenceService } from '../data/presence.service';
 import { DiscussionsService } from '../data/discussions.service';
+import { GroupePilotageService } from '../data/groupe-pilotage.service';
 import { AlertesMaterniteService } from '../data/accouchements.service';
 import { NotificationsMessagesComponent } from '../components/notifications-messages.component';
 import { AvatarComponent } from '../components/avatar.component';
@@ -27,6 +28,8 @@ interface NavItem {
   maternite?: boolean;
   /** Module à sous-pages (épidémiologie) : l'entrée reste active sur toutes ses pages. */
   sousPages?: boolean;
+  /** Groupe de pilotage : réservé au médecin chef. */
+  chef?: boolean;
 }
 
 @Component({
@@ -63,6 +66,7 @@ export class ShellComponent {
   badge(item: NavItem): number | undefined {
     if (item.path === '/admin/messages') return this.discussions.nonLusPatientes() || undefined;
     if (item.path === '/admin/discussions') return this.discussions.nonLusCollegues() || undefined;
+    if (item.path === '/admin/groupe-pilotage') return this.pilotage.groupe.nonLus() || undefined;
     if (item.path === '/admin/urgences') return this.urgences.nouvelles();
     if (item.path === '/admin/synchronisation') return this.pending || undefined;
     if (item.path === '/admin/accouchements') return this.alertesMaternite.actives().length || undefined;
@@ -74,6 +78,8 @@ export class ShellComponent {
   private presence = inject(PresenceService);
   /** Discussions (collègues et patientes) : compteurs de messages non lus dans le menu, en temps réel. */
   private discussions = inject(DiscussionsService);
+  /** Groupe de pilotage (médecin chef et comité) : compteur de non lus dans le menu. */
+  private pilotage = inject(GroupePilotageService);
   /** Alertes du partogramme : badge du menu, bandeau et alarme sonore en direct (zone rouge). */
   alertesMaternite = inject(AlertesMaterniteService);
 
@@ -128,7 +134,8 @@ export class ShellComponent {
   /** Enregistrement (dossier médical) : masqué aux infirmier·ères et sages-femmes — le serveur refuse aussi. Patientes et rendez-vous : vue de suivi. */
   get nav(): NavItem[] {
     const maternite = this.session.estMaternite();
-    return this.navTous.filter(i => (!i.clinique || !this.session.estInfirmier()) && (!i.maternite || maternite));
+    const chef = this.pilotage.accessible();
+    return this.navTous.filter(i => (!i.clinique || !this.session.estInfirmier()) && (!i.maternite || maternite) && (!i.chef || chef));
   }
 
   private navTous: NavItem[] = [
@@ -139,6 +146,7 @@ export class ShellComponent {
     { label: 'Salle de travail', icon: 'fa-bed-pulse', path: '/admin/accouchements', maternite: true },
     { label: 'Rendez-vous', icon: 'fa-calendar-check', path: '/admin/rendez-vous' },
     { label: 'Discussions', icon: 'fa-comment-medical', path: '/admin/discussions' },
+    { label: 'Groupe de pilotage', icon: 'fa-landmark', path: '/admin/groupe-pilotage', chef: true },
     { label: 'Conseils aux mamans', icon: 'fa-newspaper', path: '/admin/conseils', clinique: true },
     { label: 'Messages', icon: 'fa-comments', path: '/admin/messages' },
     { label: 'Doublons', icon: 'fa-clone', path: '/admin/doublons', badge: 2 },

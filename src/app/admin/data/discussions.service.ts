@@ -101,7 +101,9 @@ export class DiscussionsService {
 
   /** Ouvre (ou crée) la discussion avec un soignant (ou un RECO de l'établissement) et la place en tête de liste. */
   async ouvrirAvec(id: string, role?: string): Promise<Discussion> {
-    const d = await firstValueFrom(this.http.post<Discussion>(this.url, role === 'RECO' ? { recoId: id } : { soignantId: id }));
+    // Membre du comité de pilotage : seul le médecin chef le voit dans l'annuaire (règle du serveur).
+    const corps = role === 'RECO' ? { recoId: id } : role === 'Comité de pilotage' ? { membreComiteId: id } : { soignantId: id };
+    const d = await firstValueFrom(this.http.post<Discussion>(this.url, corps));
     const existante = this.discussions().find(x => x.id === d.id);
     if (!existante) this.discussions.update(l => [d, ...l]);
     return existante ?? d;

@@ -38,6 +38,9 @@ const superAdminGuard = () => UTILISATEUR.superAdmin || inject(Router).parseUrl(
 /** Pages branchées sur le serveur : une session est nécessaire. */
 const connecteGuard = () => inject(SessionService).connecte() || inject(Router).parseUrl('/admin/connexion');
 
+/** Groupe de pilotage (avec le comité) : médecin chef seulement. ⚠️ Le serveur refuse aussi. */
+const chefGuard = () => inject(SessionService).soignant()?.role === 'Médecin chef de service' || inject(Router).parseUrl('/admin/discussions');
+
 /** Dossier médical (enregistrement, consultations) : médecins seulement. ⚠️ Le serveur refuse aussi. */
 const medecinGuard = () => inject(SessionService).estMedecin() || inject(Router).parseUrl('/admin/patientes');
 
@@ -66,6 +69,7 @@ export const ADMIN_ROUTES: Routes = [
       { path: 'ambulances', component: AmbulancesComponent, title: 'Ambulances · AMI Santé Connect' },
       { path: 'chauffeurs', component: ChauffeursComponent, title: 'Chauffeurs · AMI Santé Connect' },
       { path: 'discussions', component: DiscussionsComponent, canActivate: [connecteGuard], title: 'Discussions · AMI Santé Connect' },
+      { path: 'groupe-pilotage', loadComponent: () => import('./pages/groupe-pilotage/groupe-pilotage.component').then(m => m.GroupePilotageComponent), canActivate: [connecteGuard, chefGuard], title: 'Groupe de pilotage · AMI Santé Connect' },
       // Articles de conseils : médecins seulement (le serveur refuse aussi les infirmier·ères).
       { path: 'conseils', component: ArticlesComponent, canActivate: [connecteGuard, medecinGuard], title: 'Conseils aux mamans · AMI Santé Connect' },
       { path: 'messages', component: MessagesComponent, canActivate: [connecteGuard], title: 'Messages · AMI Santé Connect' },

@@ -6,7 +6,7 @@ import { EnLigneComponent } from '../../components/en-ligne.component';
 import { PresenceService } from '../../data/presence.service';
 import { EtablissementsService } from '../../data/etablissements.service';
 import {
-  Affectation, AuteurAjout, CATEGORIES, CategorieSoignant, GRADES, ORDRE, PIECES_IDENTITE, PieceIdentite, ROLES_SOIGNANT, RoleSoignant,
+  Affectation, AuteurAjout, CATEGORIES, CategorieSoignant, GRADES, ORDRE, PIECES_IDENTITE, PieceIdentite, ROLES_ATTRIBUABLES, RoleSoignant,
   SPECIALITES, Soignant, SoignantsService, StatutSoignant, categorieDuRole, nomAuteur,
 } from '../../data/soignants.service';
 import { SessionService, messageErreur } from '../../data/session.service';
@@ -64,11 +64,31 @@ export class SoignantsComponent implements OnDestroy {
     this.etablissementsService.charger(true).catch(err => (this.erreurChargement = messageErreur(err)));
   }
 
-  readonly rolesParCategorie = ROLES_SOIGNANT;
+  readonly rolesParCategorie = ROLES_ATTRIBUABLES;
   readonly categories = CATEGORIES;
   readonly pieces = PIECES_IDENTITE;
-  /** Seuls les établissements actifs peuvent recevoir un nouveau soignant. */
+  /**
+   * Établissements proposés : tous les établissements actifs. Un soignant peut exercer dans
+   * plusieurs établissements (il choisit le sien à la connexion), mais au moins un doit être celui
+   * du médecin chef qui l'ajoute (règle appliquée aussi par le serveur).
+   */
   etablissementsActifs = computed(() => this.etablissementsService.etablissements().filter(e => e.statut === 'Actif'));
+
+  /** Établissements du médecin chef connecté (celui de connexion en premier). */
+  private mesEtablissements = computed(() => {
+    const connexion = this.session.etablissement()?.id;
+    const ids = (this.session.soignant()?.affectations ?? []).map(a => a.etablissementId);
+    return connexion ? [connexion, ...ids.filter(id => id !== connexion)] : ids;
+  });
+
+  estMien(id: string): boolean {
+    return this.mesEtablissements().includes(id);
+  }
+
+  /** Au moins un établissement du médecin chef figure dans la liste. */
+  get contientMonEtablissement(): boolean {
+    return this.form.affectations.some(a => this.estMien(a.etablissementId));
+  }
 
   nomEtablissement(id: string): string {
     return this.etablissementsService.etablissements().find(e => e.id === id)?.nom ?? '—';
@@ -323,7 +343,10 @@ export class SoignantsComponent implements OnDestroy {
 
   ouvrir(): void {
     this.form = formulaireVide();
-    this.ajouterAffectation();
+    // Établissement principal proposé : celui où le médecin chef est connecté.
+    const principal = this.mesEtablissements().find(id => this.etablissementsActifs().some(e => e.id === id));
+    if (principal) this.form.affectations.push({ etablissementId: principal, service: '' });
+    else this.ajouterAffectation();
     this.retirerPhoto();
     this.photoErreur = '';
     this.erreurEnregistrement = '';
@@ -414,6 +437,7 @@ export class SoignantsComponent implements OnDestroy {
       .map(([nom]) => libelles[nom]);
     if (!this.photoFichier) p.push('photo d’identité');
     if (!this.form.affectations.length) p.push('au moins un établissement');
+    else if (!this.contientMonEtablissement) p.push('au moins un de vos établissements parmi les établissements d’exercice');
     if (!this.ageValide) p.push('date de naissance (âge entre 18 et 90 ans)');
     if (this.emailDejaUtilise) p.push('e-mail déjà utilisé');
     if (this.numeroOrdreDejaUtilise) p.push('numéro d’Ordre déjà enregistré');

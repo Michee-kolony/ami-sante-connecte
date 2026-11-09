@@ -4,6 +4,7 @@ import { HorsLigneService } from '../data/hors-ligne/hors-ligne.service';
 import { dateHeureChiffres, jourChiffres } from '../data/format';
 import { ModuleSynthese, SyntheseEtatService } from '../data/statistiques.service';
 import { fractionIndicateur, valeurIndicateur } from './synthese-ami.component';
+import { ESPACE_COMITE } from '../data/espace';
 
 export const ONGLETS_MODULES: { code: ModuleSynthese; libelle: string; icone: string }[] = [
   { code: 'dossier', libelle: 'Dossier unique', icone: 'fa-id-card' },
@@ -96,12 +97,12 @@ export const ONGLETS_MODULES: { code: ModuleSynthese; libelle: string; icone: st
 
         <!-- Qualité des données (section 13) -->
         <div class="card">
-          <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-shield-halved text-violet-500"></i> Qualité des données</h3><a routerLink="/admin/synchronisation" class="text-xs font-semibold text-brand-600 dark:text-brand-400">Synchronisation</a></div>
+          <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-shield-halved text-violet-500"></i> Qualité des données</h3>@if (!comite) {<a routerLink="/admin/synchronisation" class="text-xs font-semibold text-brand-600 dark:text-brand-400">Synchronisation</a>}</div>
           @if (s(); as d) {
             <ul class="divide-y divide-slate-100 text-sm dark:divide-slate-800">
               @for (q of qualite(); track q.libelle) {
                 <li [attr.data-recherche]="q.libelle" [attr.data-recherche-valeur]="q.n" data-recherche-type="Qualité des données">
-                  <a [routerLink]="q.lien" class="flex items-center justify-between gap-3 px-5 py-2.5 transition hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                  <a [routerLink]="comite ? null : q.lien" class="flex items-center justify-between gap-3 px-5 py-2.5 transition hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
                     <span class="text-slate-700 dark:text-slate-200"><i class="fa-solid {{ q.icone }} mr-2 w-4 text-center text-slate-400"></i>{{ q.libelle }}</span>
                     <strong class="tabular-nums" [class]="q.n ? 'text-amber-600 dark:text-amber-400' : 'text-accent-600 dark:text-accent-400'">{{ q.n }}</strong>
                   </a>
@@ -136,6 +137,8 @@ export const ONGLETS_MODULES: { code: ModuleSynthese; libelle: string; icone: st
 export class IndicateursModulesComponent {
   etat = inject(SyntheseEtatService);
   horsLigne = inject(HorsLigneService);
+  /** Espace du comité de pilotage : pas de liens vers les pages du personnel. */
+  readonly comite = inject(ESPACE_COMITE);
   readonly onglets = ONGLETS_MODULES;
   onglet = signal<ModuleSynthese>('cpn');
 

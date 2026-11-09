@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { RouterLink, RouterOutlet } from '@angular/router';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
 import { LangueToggleComponent } from '../../shared/i18n/langue-toggle.component';
 import { TraduirePipe } from '../../shared/i18n/traduire.pipe';
@@ -9,7 +9,7 @@ import { ChatbotComponent } from '../components/chatbot/chatbot.component';
 @Component({
   selector: 'app-public-layout',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, ThemeToggleComponent, LangueToggleComponent, TraduirePipe, RetourHautComponent, ChatbotComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ThemeToggleComponent, LangueToggleComponent, TraduirePipe, RetourHautComponent, ChatbotComponent],
   templateUrl: './public-layout.component.html',
 })
 export class PublicLayoutComponent {
@@ -34,4 +34,11 @@ export class PublicLayoutComponent {
     { label: 'Confidentialité', fragment: 'confidentialite' },
     { label: 'Contact', fragment: 'contact' },
   ];
+
+  /** Guide illustré de l'application mobile, espace patiente (libellé court pour l'en-tête). */
+  guide = {
+    court: 'Guide de l’application',
+    long: 'Comment utiliser l’application mobile AMI Santé Connect (partie patiente)',
+    url: '/guide-application-patiente',
+  };
 }

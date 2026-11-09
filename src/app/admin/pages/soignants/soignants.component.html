@@ -433,10 +433,13 @@
             <h3 class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-hospital"></i> Établissements d’exercice <span class="req">*</span></h3>
             <button type="button" class="text-xs font-semibold text-brand-600 hover:text-brand-800 disabled:cursor-not-allowed disabled:opacity-40 dark:text-brand-400 dark:hover:text-brand-300"
                     (click)="ajouterAffectation()" [disabled]="!peutAjouterAffectation">
-              <i class="fa-solid fa-plus"></i> Ajouter un établissement
+              <i class="fa-solid fa-plus"></i> Autre établissement
             </button>
           </div>
-          <p class="mb-3 text-xs text-slate-500 dark:text-slate-400">Une même personne peut exercer dans plusieurs établissements. Le premier de la liste est son établissement principal ; elle aura accès aux données de chacun.</p>
+          <p class="mb-3 text-xs text-slate-500 dark:text-slate-400">Une même personne peut exercer dans plusieurs établissements : votre établissement et d’autres structures où elle travaille aussi. Le premier de la liste est son établissement principal. À la connexion, elle choisit l’établissement où elle travaille ce jour-là et n’accède qu’à ses données.</p>
+          @if (form.affectations.length && !contientMonEtablissement) {
+            <p class="mb-3 flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-300"><i class="fa-solid fa-triangle-exclamation mt-0.5"></i>Gardez au moins un de vos établissements : vous ne pouvez ajouter du personnel que pour votre structure.</p>
+          }
 
           <ul class="space-y-3">
             @for (a of form.affectations; track a; let i = $index, premier = $first) {
@@ -455,7 +458,7 @@
                   <div class="sm:col-span-3">
                     <label class="label" [for]="'sg-etab-' + i">Établissement</label>
                     <select [id]="'sg-etab-' + i" [name]="'etablissement-' + i" class="input" [(ngModel)]="a.etablissementId" required>
-                      @for (e of etablissementsDisponibles(a); track e.id) { <option [ngValue]="e.id">{{ e.nom }} · {{ e.province }}</option> }
+                      @for (e of etablissementsDisponibles(a); track e.id) { <option [ngValue]="e.id">{{ e.nom }} · {{ e.province }}{{ estMien(e.id) ? " (votre établissement)" : "" }}</option> }
                     </select>
                   </div>
                   <div class="sm:col-span-2">
@@ -467,7 +470,7 @@
             }
           </ul>
           @if (!etablissementsActifs().length) {
-            <p class="mt-1.5 text-xs text-rose-600 dark:text-rose-400">Aucun établissement actif : <a routerLink="/admin/etablissements" class="font-semibold underline" (click)="fermer()">ajoutez-en un d’abord</a>.</p>
+            <p class="mt-1.5 text-xs text-rose-600 dark:text-rose-400">Aucun de vos établissements n’est actif. Contactez le comité de pilotage.</p>
           }
         </section>
 

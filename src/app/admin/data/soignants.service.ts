@@ -18,6 +18,12 @@ export const ROLES_SOIGNANT: { categorie: CategorieSoignant; roles: RoleSoignant
   { categorie: 'Sage-femme', roles: ['Sage-femme', 'Sage-femme titulaire', 'Sage-femme superviseur(e)'] },
 ];
 
+/**
+ * Rôles que le médecin chef peut attribuer à son personnel : le rôle de médecin chef est désigné
+ * par le comité de pilotage, avec l'établissement (le serveur applique la même règle).
+ */
+export const ROLES_ATTRIBUABLES = ROLES_SOIGNANT.map(g => ({ ...g, roles: g.roles.filter(r => r !== 'Médecin chef de service') }));
+
 /** Libellés et pictogrammes de chaque catégorie, pour les listes, badges et formulaires. */
 export const CATEGORIES: Record<CategorieSoignant, { pluriel: string; singulier: string; icone: string; badge: string }> = {
   Médecin: {
@@ -26,7 +32,7 @@ export const CATEGORIES: Record<CategorieSoignant, { pluriel: string; singulier:
   },
   Infirmier: {
     pluriel: 'Infirmiers et infirmières', singulier: 'infirmier·ère', icone: 'fa-user-nurse',
-    badge: 'bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300',
+    badge: 'bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300',
   },
   'Sage-femme': {
     pluriel: 'Sages-femmes', singulier: 'sage-femme', icone: 'fa-person-pregnant',

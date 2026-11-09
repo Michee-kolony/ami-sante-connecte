@@ -9,6 +9,11 @@ export const PUBLIC_ROUTES: Routes = [
     component: PublicLayoutComponent,
     children: [
       { path: '', component: HomeComponent, title: 'AMI Santé Connect · Des données fiables pour une meilleure santé' },
+      {
+        path: 'guide-application-patiente',
+        loadComponent: () => import('./pages/guide-patiente/guide-patiente.component').then(m => m.GuidePatienteComponent),
+        title: 'Comment utiliser l’application mobile AMI Santé Connect · Espace patiente',
+      },
     ],
   },
 ];

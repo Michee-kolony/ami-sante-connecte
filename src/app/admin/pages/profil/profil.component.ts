@@ -31,7 +31,8 @@ export class ProfilComponent implements OnDestroy {
   readonly dateMax = new Date().toISOString().slice(0, 10);
 
   /** Le médecin chef choisit lui-même ses établissements ; les autres soignants y sont affectés par lui. */
-  peutChoisirEtablissements = this.session.peutGererSoignants;
+  /** Les affectations ne se modifient plus depuis son profil : le comité rattache le médecin chef, le médecin chef son personnel. */
+  readonly peutChoisirEtablissements = () => false;
   etablissementsActifs = computed(() => this.etablissementsService.etablissements().filter(e => e.statut === 'Actif'));
   affectations: Affectation[] = this.affectationsValides();
 
