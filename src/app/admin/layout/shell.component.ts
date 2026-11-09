@@ -25,6 +25,8 @@ interface NavItem {
   clinique?: boolean;
   /** Salle de travail (médecins et sages-femmes). */
   maternite?: boolean;
+  /** Module à sous-pages (épidémiologie) : l'entrée reste active sur toutes ses pages. */
+  sousPages?: boolean;
 }
 
 @Component({
@@ -142,7 +144,7 @@ export class ShellComponent {
     { label: 'Doublons', icon: 'fa-clone', path: '/admin/doublons', badge: 2 },
     { label: 'Enfants & vaccination', icon: 'fa-baby', path: '/admin/enfants' },
     { label: 'Relance communautaire', icon: 'fa-people-arrows', path: '/admin/relance' },
-    { label: 'Épidémiologie', icon: 'fa-chart-area', path: '/admin/epidemiologie' },
+    { label: 'Épidémiologie', icon: 'fa-chart-area', path: '/admin/epidemiologie', sousPages: true },
     { label: 'Agents de vaccination', icon: 'fa-user-nurse', path: '/admin/agents' },
   ];
 
