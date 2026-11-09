@@ -78,6 +78,8 @@ export const ADMIN_ROUTES: Routes = [
       { path: 'enfants/:id', component: EnfantDetailComponent, canActivate: [connecteGuard], title: 'Carnet de l’enfant · AMI Santé Connect' },
       // Relance communautaire du RECO : supervision, confirmation des prestations, paramétrage (droits vérifiés par le serveur).
       { path: 'relance', component: RelanceComponent, canActivate: [connecteGuard], title: 'Relance communautaire · AMI Santé Connect' },
+      // Module Épidémiologie (dix sous-fenêtres, chargé à la demande ; droits vérifiés par le serveur).
+      { path: 'epidemiologie', canActivate: [connecteGuard], loadChildren: () => import('./pages/epidemiologie/epidemiologie.routes').then(m => m.EPIDEMIOLOGIE_ROUTES) },
       { path: 'agents', component: AgentsComponent, title: 'Agents de vaccination · AMI Santé Connect' },
       { path: 'doublons', component: DuplicatesComponent, title: 'Doublons · AMI Santé Connect' },
       // Dossiers créés sans réseau : consultables et complétables sur l'appareil avant leur synchronisation.

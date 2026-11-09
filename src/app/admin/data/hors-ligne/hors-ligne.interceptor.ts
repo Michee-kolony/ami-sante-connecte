@@ -13,8 +13,13 @@ export const CLE_INDEX_PATIENTES = 'index:patientes';
  * salle de travail (accouchements) et nouveau-nés (enfants, vaccination). Les référentiels,
  * établissements et statistiques sont lus depuis l'appareil pour que les pages s'affichent.
  */
-const LECTURES_HORS_LIGNE = /^(patientes|grossesses|consultations|rendez-vous|journal|accouchements|enfants|referentiels|etablissements|statistiques|soignants)(\/|$|\?)/;
+const LECTURES_HORS_LIGNE = /^(patientes|grossesses|consultations|rendez-vous|journal|accouchements|enfants|referentiels|etablissements|statistiques|soignants|epidemiologie)(\/|$|\?)/;
 const ECRITURES_HORS_LIGNE = /^(patientes|grossesses|consultations|rendez-vous|accouchements|enfants)(\/|$|\?)/;
+/**
+ * Épidémiologie : notifications d'événements, cas, cas de morbidité et décès saisis sans réseau,
+ * envoyés à la synchronisation (jamais présentés comme consolidés avant leur validation).
+ */
+const ECRITURES_EPI_HORS_LIGNE = /^epidemiologie\/(evenements|cas|morbidite|deces)\/?(\?|$)/;
 /** Mesures horodatées : sans heure saisie, l'heure de la saisie (et non celle de l'envoi) est gardée. */
 const MESURES = /^accouchements\/[^/]+\/(post-partum\/)?surveillances$/;
 /** Dossier créé hors ligne, pas encore connu du serveur : la saisie qui le vise attend sa synchronisation. */
@@ -73,7 +78,7 @@ export const horsLigneInterceptor: HttpInterceptorFn = (req, next) => {
   }
 
   // Suppressions et autres modules : jamais hors connexion (action à faire en ligne).
-  if (req.method === 'DELETE' || !ECRITURES_HORS_LIGNE.test(c)) return next(req);
+  if (req.method === 'DELETE' || !(ECRITURES_HORS_LIGNE.test(c) || (req.method === 'POST' && ECRITURES_EPI_HORS_LIGNE.test(c)))) return next(req);
 
   let corps = req.body;
   if (MESURES.test(c) && corps && typeof corps === 'object' && !(corps instanceof FormData) && !(corps as { le?: string }).le) {
