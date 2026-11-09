@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
@@ -81,14 +81,22 @@ const BASE = '/admin/epidemiologie';
       @if (menuMobile()) {
         <div id="epi-menu-mobile" class="card mt-2 p-2">
           @for (g of groupes; track g.titre) {
-            <p class="flex items-center gap-2 px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              @if (g.lettre) { <span class="flex h-4 w-4 items-center justify-center rounded text-[10px] text-white" [class]="g.couleur">{{ g.lettre }}</span> }{{ g.titre }}</p>
+            @if (g.lettre) {
+              <button type="button" (click)="basculer(g.lettre)" [attr.aria-expanded]="estOuvert(g.lettre)"
+                      class="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800/60">
+                <span class="flex h-5 w-5 items-center justify-center rounded-md text-[10px] font-bold text-white" [class]="g.couleur">{{ g.lettre }}</span>
+                <span class="flex-1">{{ g.titre }}</span>
+                <i class="fa-solid fa-chevron-down text-[10px] transition-transform" [class.-rotate-90]="!estOuvert(g.lettre)"></i>
+              </button>
+            }
             @for (l of g.liens; track l.chemin) {
+              @if (!g.lettre || estOuvert(g.lettre)) {
               <a [routerLink]="l.chemin" routerLinkActive="!bg-brand-50 !text-brand-800 dark:!bg-brand-500/10 dark:!text-white" [routerLinkActiveOptions]="{ exact: l.chemin === '.' }" (click)="menuMobile.set(false)"
                  class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800/60">
                 <i class="fa-solid {{ l.icone }} w-4 text-center text-slate-400"></i>
-                <span>@if (l.numero) { <span class="tabular-nums text-slate-400">{{ l.numero }}.</span> } {{ l.libelle }}</span>
+                <span>@if (l.numero) { <span class="tabular-nums text-slate-400">{{ l.numero }}.&nbsp;</span> }{{ l.libelle }}</span>
               </a>
+              }
             }
           }
         </div>
@@ -99,13 +107,22 @@ const BASE = '/admin/epidemiologie';
     <aside class="hidden lg:sticky lg:top-20 lg:block">
       <nav aria-label="Sous-fenêtres du module Épidémiologie" class="card max-h-[calc(100vh-6rem)] overflow-y-auto p-3">
         @for (g of groupes; track g.titre; let premier = $first) {
-          <div [class.mt-3]="!premier" [class.border-t]="!premier" [class.pt-3]="!premier" class="border-slate-100 dark:border-slate-800">
-            <p class="mb-1.5 flex items-center gap-2 px-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              @if (g.lettre) { <span class="flex h-5 w-5 items-center justify-center rounded-md text-[10px] font-bold text-white" [class]="g.couleur">{{ g.lettre }}</span> }
-              @else { <i class="fa-solid fa-gauge-high w-5 text-center"></i> }
-              <span class="leading-tight">{{ g.titre }}</span>
-            </p>
-            <ul class="space-y-0.5">
+          <div [class.mt-2]="!premier" [class.border-t]="!premier" [class.pt-2]="!premier" class="border-slate-100 dark:border-slate-800">
+            @if (g.lettre) {
+              <!-- En-tête de groupe repliable (A, B, C) -->
+              <button type="button" (click)="basculer(g.lettre)" [attr.aria-expanded]="estOuvert(g.lettre)" [attr.aria-controls]="'epi-groupe-' + g.lettre"
+                      class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500 transition hover:bg-slate-50 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-white">
+                <span class="flex h-5 w-5 flex-none items-center justify-center rounded-md text-[10px] font-bold text-white" [class]="g.couleur">{{ g.lettre }}</span>
+                <span class="flex-1 leading-tight">{{ g.titre }}</span>
+                @if (!estOuvert(g.lettre) && contientCourant(g)) { <span class="h-1.5 w-1.5 rounded-full bg-brand-600 dark:bg-brand-400" title="Page ouverte dans ce groupe"></span> }
+                <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200" [class.-rotate-90]="!estOuvert(g.lettre)"></i>
+              </button>
+            } @else {
+              <p class="mb-1.5 flex items-center gap-2 px-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <i class="fa-solid fa-gauge-high w-5 text-center"></i><span class="leading-tight">{{ g.titre }}</span>
+              </p>
+            }
+            <ul [id]="'epi-groupe-' + g.lettre" class="space-y-0.5" [class.hidden]="g.lettre && !estOuvert(g.lettre)" [class.mt-1]="g.lettre">
               @for (l of g.liens; track l.chemin) {
                 <li>
                   <a [routerLink]="l.chemin" routerLinkActive #rla="routerLinkActive" [routerLinkActiveOptions]="{ exact: l.chemin === '.' }" [title]="l.description"
@@ -174,6 +191,29 @@ export class EpidemiologieComponent implements OnInit {
     }
     return { ...this.groupes[0].liens[0], groupe: '' };
   });
+
+  /** Groupes A, B, C dépliés ; celui de la page ouverte se déplie automatiquement. */
+  private ouverts = signal<Set<string>>(new Set());
+  private ouvrirGroupeCourant = effect(() => {
+    const lettre = this.courant().groupe.charAt(0);
+    if (lettre) untracked(() => this.ouverts.update(s => new Set(s).add(lettre)));
+  });
+
+  estOuvert(lettre: string): boolean {
+    return this.ouverts().has(lettre);
+  }
+
+  basculer(lettre: string): void {
+    this.ouverts.update(s => {
+      const n = new Set(s);
+      if (n.has(lettre)) n.delete(lettre); else n.add(lettre);
+      return n;
+    });
+  }
+
+  contientCourant(g: Groupe): boolean {
+    return g.liens.some(l => l.chemin === this.courant().chemin);
+  }
 
   indentation(n: number): string {
     // Espaces insécables : les espaces ordinaires sont réduits à un seul dans une option de liste.
