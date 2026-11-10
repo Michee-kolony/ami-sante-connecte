@@ -1,0 +1,241 @@
+@let c = config();
+
+<!-- En-tête -->
+<section class="relative overflow-hidden bg-gradient-to-b from-brand-50/70 to-white py-16 dark:from-slate-900 dark:to-slate-950 sm:py-20">
+  <div class="pointer-events-none absolute -right-40 -top-40 h-[28rem] w-[28rem] rounded-full bg-accent-200/40 blur-3xl dark:bg-accent-800/30"></div>
+  <div class="pointer-events-none absolute -left-40 top-24 h-[24rem] w-[24rem] rounded-full bg-brand-200/40 blur-3xl dark:bg-brand-800/30"></div>
+
+  <div class="relative mx-auto grid max-w-7xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-[1fr_auto] lg:px-8">
+    <div class="min-w-0">
+      <a routerLink="/" class="flex w-fit items-center gap-2 text-sm font-medium text-brand-700 hover:text-brand-900 dark:text-brand-300 dark:hover:text-white">
+        <i class="fa-solid fa-arrow-left"></i> {{ t(ui.retour) }}
+      </a>
+      <span class="badge mt-6 bg-accent-50 py-1 text-accent-700 ring-1 ring-accent-200 dark:bg-accent-500/10 dark:text-accent-300 dark:ring-accent-500/30">
+        <i class="fa-solid {{ c.badgeIcone }}"></i> {{ t(c.badge) }}
+      </span>
+      <h1 class="mt-4 text-3xl font-extrabold leading-tight tracking-tight text-brand-900 dark:text-white sm:text-5xl">
+        {{ t(c.titre) }} <span class="text-accent-600 dark:text-accent-400">{{ t(c.titreAccent) }}</span>
+      </h1>
+      <p class="mt-5 max-w-2xl text-lg leading-relaxed text-slate-600 dark:text-slate-300">{{ t(c.sousTitre) }}</p>
+
+      <div class="mt-6 flex flex-wrap items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
+        <i class="fa-solid fa-language text-lg text-brand-600 dark:text-brand-400"></i>
+        <span>{{ t(ui.langue) }}</span>
+        <app-langue-toggle />
+      </div>
+
+      <div class="mt-8 flex flex-wrap gap-3">
+        @for (b of c.boutons; track b.fragment) {
+          <a [routerLink]="c.url" [fragment]="b.fragment" [class]="b.secondaire ? 'btn-secondary px-6 py-3' : 'btn-primary px-6 py-3'">
+            <i class="fa-solid {{ b.icone }}" [class.text-rose-600]="b.secondaire"></i> {{ t(b.libelle) }}
+          </a>
+        }
+      </div>
+
+      <dl class="mt-8 flex flex-wrap gap-6 text-sm">
+        <div><dt class="text-slate-500 dark:text-slate-400">{{ t(ui.etapes) }}</dt><dd class="text-2xl font-bold text-brand-900 dark:text-white">{{ totalEtapes() }}</dd></div>
+        <div><dt class="text-slate-500 dark:text-slate-400">{{ t(ui.captures) }}</dt><dd class="text-2xl font-bold text-brand-900 dark:text-white">{{ totalCaptures() }}</dd></div>
+        <div><dt class="text-slate-500 dark:text-slate-400">FR · LN</dt><dd class="text-2xl font-bold text-brand-900 dark:text-white">2</dd></div>
+      </dl>
+    </div>
+
+    @if (c.format === 'telephone') {
+      <div class="mx-auto w-52 sm:w-60 lg:mr-6">
+        <div class="rounded-[2.4rem] bg-slate-900 p-2.5 shadow-2xl shadow-brand-900/25 ring-1 ring-slate-800">
+          <img [src]="c.dossier + '/' + c.captureHero + '.webp'" [alt]="t(c.titreAccent)" width="390" height="844" class="h-auto w-full rounded-[1.9rem]">
+        </div>
+      </div>
+    } @else {
+      <div class="mx-auto w-full max-w-xl lg:w-[34rem]">
+        <div class="overflow-hidden rounded-2xl bg-white shadow-2xl shadow-brand-900/25 ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700 lg:rotate-1">
+          <div class="flex items-center gap-1.5 border-b border-slate-200 bg-slate-100 px-3 py-2 dark:border-slate-700 dark:bg-slate-900">
+            <span class="h-2.5 w-2.5 rounded-full bg-rose-400"></span><span class="h-2.5 w-2.5 rounded-full bg-amber-400"></span><span class="h-2.5 w-2.5 rounded-full bg-emerald-400"></span>
+            <span class="ml-3 flex-1 truncate rounded-md bg-white px-2 py-0.5 text-[10px] text-slate-500 dark:bg-slate-800 dark:text-slate-400"><i class="fa-solid fa-lock mr-1 text-emerald-600"></i>{{ c.adresseEcran }}</span>
+          </div>
+          <img [src]="c.dossier + '/' + c.captureHero + '.webp'" [alt]="t(c.titreAccent)" width="1440" height="900" class="h-auto w-full">
+        </div>
+      </div>
+    }
+  </div>
+</section>
+
+<div class="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:grid lg:grid-cols-[16rem_1fr] lg:gap-12 lg:px-8">
+  <!-- Sommaire -->
+  <aside class="mb-10 lg:mb-0">
+    <nav class="card max-h-[calc(100vh-8rem)] overflow-y-auto p-4 lg:sticky lg:top-28" [attr.aria-label]="t(ui.sommaireAria)">
+      <p class="px-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{{ t(ui.sommaire) }}</p>
+      <ol class="mt-3 space-y-0.5 text-sm">
+        <li>
+          <a [routerLink]="c.url" fragment="avant-de-commencer" class="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-slate-600 transition hover:bg-brand-50 hover:text-brand-800 dark:text-slate-300 dark:hover:bg-brand-500/10 dark:hover:text-brand-200">
+            <i class="fa-solid fa-circle-info w-4 text-center text-brand-500"></i> {{ t(c.avant.titre) }}
+          </a>
+        </li>
+        @for (p of c.parties; track $index) {
+          @if (c.parties.length > 1) {
+            <li class="px-2 pb-1 pt-4 text-[11px] font-bold uppercase tracking-wider text-accent-600 dark:text-accent-400">
+              <i class="fa-solid {{ p.icone }} mr-1"></i> {{ t(p.titre) }}
+            </li>
+          }
+          @for (e of p.etapes; track e.id) {
+            <li>
+              <a [routerLink]="c.url" [fragment]="e.id" class="flex items-start gap-2.5 rounded-lg px-2 py-1.5 text-slate-600 transition hover:bg-brand-50 hover:text-brand-800 dark:text-slate-300 dark:hover:bg-brand-500/10 dark:hover:text-brand-200">
+                <span class="mt-px w-4 flex-none text-center text-xs font-bold text-brand-500">{{ numeros().get(e.id) }}</span> <span>{{ t(e.titre) }}</span>
+              </a>
+            </li>
+          }
+        }
+      </ol>
+    </nav>
+  </aside>
+
+  <div class="min-w-0 space-y-16">
+    <!-- Avant de commencer -->
+    <section id="avant-de-commencer" class="scroll-mt-28">
+      <h2 class="text-2xl font-bold text-brand-900 dark:text-white">{{ t(c.avant.titre) }}</h2>
+      <div class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        @for (k of c.avant.cartes; track $index) {
+          <div class="card p-5">
+            <span class="flex h-10 w-10 items-center justify-center rounded-xl {{ couleurs[k.couleur] }}"><i class="fa-solid {{ k.icone }}"></i></span>
+            <p class="mt-3 font-semibold text-slate-900 dark:text-white">{{ t(k.titre) }}</p>
+            <p class="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-400">{{ t(k.texte) }}</p>
+          </div>
+        }
+      </div>
+
+      @if (c.reperes; as r) {
+        <div class="card mt-6 p-5 sm:p-6">
+          <p class="font-semibold text-slate-900 dark:text-white"><i class="fa-solid fa-hand-pointer mr-1.5 text-brand-500"></i> {{ t(r.titre) }}</p>
+          <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">{{ t(r.texte) }}</p>
+          <ul class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+            @for (b of r.items; track $index) {
+              <li class="flex items-start gap-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-800/50">
+                <span class="flex h-9 w-9 flex-none items-center justify-center rounded-full"
+                      [class]="b.urgence ? 'bg-rose-600 text-white' : 'bg-white text-brand-700 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-brand-300 dark:ring-slate-700'">
+                  <i class="fa-solid {{ b.icone }} text-sm"></i>
+                </span>
+                <span class="text-sm"><b class="block text-slate-900 dark:text-white">{{ t(b.libelle) }}</b><span class="text-slate-600 dark:text-slate-400">{{ t(b.texte) }}</span></span>
+              </li>
+            }
+          </ul>
+        </div>
+      }
+      <p class="mt-6 flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400"><i class="fa-solid fa-magnifying-glass-plus"></i> {{ t(ui.touche) }}</p>
+    </section>
+
+    @for (p of c.parties; track $index) {
+      @if (c.parties.length > 1) {
+        <div class="flex items-center gap-4 border-t border-slate-200 pt-10 dark:border-slate-800">
+          <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300"><i class="fa-solid {{ p.icone }}"></i></span>
+          <p class="text-sm font-bold uppercase tracking-wider text-accent-700 dark:text-accent-300">{{ t(p.titre) }}</p>
+        </div>
+      }
+
+      @for (e of p.etapes; track e.id) {
+        @let num = numeros().get(e.id);
+        <section [id]="e.id" class="scroll-mt-28">
+          <div class="flex items-center gap-4">
+            <span class="flex h-12 w-12 flex-none items-center justify-center rounded-2xl bg-gradient-to-br from-brand-600 to-accent-600 text-lg text-white shadow-lg shadow-brand-900/15">
+              <i class="fa-solid {{ e.icone }}"></i>
+            </span>
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wider text-accent-600 dark:text-accent-400">{{ t(ui.etape) }} {{ num }}</p>
+              <h2 class="text-2xl font-bold text-brand-900 dark:text-white">{{ t(e.titre) }}</h2>
+            </div>
+          </div>
+
+          <p class="mt-4 max-w-3xl leading-relaxed text-slate-600 dark:text-slate-300">{{ t(e.intro) }}</p>
+
+          @if (e.acces) {
+            <p class="mt-3 inline-flex max-w-3xl items-start gap-2 rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-800 ring-1 ring-brand-100 dark:bg-brand-500/10 dark:text-brand-200 dark:ring-brand-500/20">
+              <i class="fa-solid fa-user-shield mt-0.5"></i><span><b>{{ t(ui.acces) }} :</b> {{ t(e.acces) }}</span>
+            </p>
+          }
+
+          <ol class="mt-5 max-w-3xl space-y-2.5">
+            @for (pt of e.points; track $index; let j = $index) {
+              <li class="flex gap-3 text-slate-700 dark:text-slate-300">
+                <span class="mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full bg-brand-50 text-xs font-bold text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">{{ j + 1 }}</span>
+                <span class="leading-relaxed">{{ t(pt) }}</span>
+              </li>
+            }
+          </ol>
+
+          @if (e.astuce) {
+            <p class="mt-5 flex max-w-3xl gap-3 rounded-xl bg-emerald-50 p-4 text-sm leading-relaxed text-emerald-900 ring-1 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-100 dark:ring-emerald-500/30">
+              <i class="fa-solid fa-lightbulb mt-0.5"></i><span><b>{{ t(ui.astuce) }} :</b> {{ t(e.astuce) }}</span>
+            </p>
+          }
+          @if (e.attention) {
+            <p class="mt-5 flex max-w-3xl gap-3 rounded-xl bg-rose-50 p-4 text-sm leading-relaxed text-rose-800 ring-1 ring-rose-200 dark:bg-rose-500/10 dark:text-rose-200 dark:ring-rose-500/30">
+              <i class="fa-solid fa-triangle-exclamation mt-0.5"></i><span>{{ t(e.attention) }}</span>
+            </p>
+          }
+
+          <!-- Captures : défilement horizontal sur mobile, grille sur grand écran -->
+          <div class="-mx-4 mt-8 flex snap-x snap-mandatory gap-5 overflow-x-auto px-4 pb-4 sm:mx-0 sm:grid sm:overflow-visible sm:px-0"
+               [class]="c.format === 'telephone' ? 'sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4' : 'sm:grid-cols-1 xl:grid-cols-2'">
+            @for (cap of e.captures; track cap.fichier; let k = $index) {
+              <figure class="flex-none snap-start sm:w-auto" [class]="format(cap) === 'telephone' ? 'w-48 sm:max-w-[16rem]' : 'w-[85vw] sm:w-auto'">
+                <button type="button" (click)="ouvrir(e, k)" [attr.aria-label]="t(ui.agrandir) + ' : ' + t(cap.legende)"
+                        class="group block w-full text-left transition hover:-translate-y-1 focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/50"
+                        [class]="format(cap) === 'telephone' ? 'rounded-[1.9rem] bg-slate-900 p-1.5 shadow-xl shadow-slate-900/15 ring-1 ring-slate-800 hover:shadow-2xl' : 'overflow-hidden rounded-xl bg-white shadow-xl shadow-slate-900/10 ring-1 ring-slate-200 hover:shadow-2xl dark:bg-slate-800 dark:ring-slate-700'">
+                  @if (format(cap) === 'telephone') {
+                    <img [src]="src(cap)" [alt]="t(cap.legende)" width="390" height="844" loading="lazy" class="h-auto w-full rounded-[1.5rem]">
+                  } @else {
+                    <span class="flex items-center gap-1.5 border-b border-slate-200 bg-slate-100 px-3 py-1.5 dark:border-slate-700 dark:bg-slate-900">
+                      <span class="h-2 w-2 rounded-full bg-rose-400"></span><span class="h-2 w-2 rounded-full bg-amber-400"></span><span class="h-2 w-2 rounded-full bg-emerald-400"></span>
+                      <span class="ml-2 flex-1 truncate text-[10px] text-slate-500 dark:text-slate-400">{{ c.adresseEcran }}</span>
+                      <i class="fa-solid fa-up-right-and-down-left-from-center text-[10px] text-slate-400 opacity-0 transition group-hover:opacity-100"></i>
+                    </span>
+                    <img [src]="src(cap)" [alt]="t(cap.legende)" width="1440" height="900" loading="lazy" class="h-auto w-full">
+                  }
+                </button>
+                <figcaption class="mt-3 flex gap-2 text-sm text-slate-600 dark:text-slate-400">
+                  <span class="font-semibold text-brand-700 dark:text-brand-300">{{ num }}.{{ k + 1 }}</span> {{ t(cap.legende) }}
+                </figcaption>
+              </figure>
+            }
+          </div>
+        </section>
+      }
+    }
+
+    <!-- Aide -->
+    <section class="card flex flex-col items-start gap-4 bg-gradient-to-br from-brand-700 to-accent-600 p-6 text-white sm:flex-row sm:items-center sm:p-8 dark:border-0">
+      <span class="flex h-12 w-12 flex-none items-center justify-center rounded-2xl bg-white/15 text-xl"><i class="fa-solid fa-headset"></i></span>
+      <div class="flex-1">
+        <p class="text-lg font-bold">{{ t(c.aide.titre) }}</p>
+        <p class="mt-1 text-sm text-white/85">{{ t(c.aide.texte) }}</p>
+      </div>
+      <a routerLink="/" fragment="contact" class="btn bg-white text-brand-800 hover:bg-brand-50"><i class="fa-solid fa-envelope"></i> {{ t(c.aide.bouton) }}</a>
+    </section>
+  </div>
+</div>
+
+<!-- Visionneuse plein écran -->
+@if (zoom(); as z) {
+  @let cap = z.etape.captures[z.index];
+  <div class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/90 p-4 backdrop-blur-sm" (click)="fermer()" role="dialog" aria-modal="true" [attr.aria-label]="t(cap.legende)">
+    <button type="button" class="absolute right-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20" (click)="fermer()" [attr.aria-label]="t(ui.fermer)">
+      <i class="fa-solid fa-xmark text-lg"></i>
+    </button>
+
+    @if (z.etape.captures.length > 1) {
+      <button type="button" class="absolute left-3 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 sm:left-6" (click)="$event.stopPropagation(); changer(-1)" [attr.aria-label]="t(ui.precedente)">
+        <i class="fa-solid fa-chevron-left"></i>
+      </button>
+      <button type="button" class="absolute right-3 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 sm:right-6" (click)="$event.stopPropagation(); changer(1)" [attr.aria-label]="t(ui.suivante)">
+        <i class="fa-solid fa-chevron-right"></i>
+      </button>
+    }
+
+    <figure class="flex max-h-full flex-col items-center" (click)="$event.stopPropagation()">
+      <img [src]="src(cap)" [alt]="t(cap.legende)"
+           [class]="format(cap) === 'telephone' ? 'max-h-[82vh] w-auto rounded-[1.6rem] shadow-2xl ring-4 ring-slate-800' : 'max-h-[82vh] w-auto max-w-[88vw] rounded-xl shadow-2xl ring-4 ring-slate-800'">
+      <figcaption class="mt-4 max-w-3xl text-center text-sm text-white/85">
+        <span class="font-semibold text-white">{{ t(z.etape.titre) }}</span> · {{ t(cap.legende) }}
+        <span class="ml-2 text-white/50">{{ z.index + 1 }} / {{ z.etape.captures.length }}</span>
+      </figcaption>
+    </figure>
+  </div>
+}
