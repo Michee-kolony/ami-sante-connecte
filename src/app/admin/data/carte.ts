@@ -105,7 +105,7 @@ export function iconeEtablissement(nom: string, principal = false): L.DivIcon {
   });
 }
 
-function echapper(texte: string): string {
+export function echapper(texte: string): string {
   return texte.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 }
 

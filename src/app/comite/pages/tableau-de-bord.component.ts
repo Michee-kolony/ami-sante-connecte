@@ -9,6 +9,7 @@ import { SyntheseAmiComponent } from '../../admin/components/synthese-ami.compon
 import { IndicateursModulesComponent } from '../../admin/components/indicateurs-modules.component';
 import { CarteRdcComponent } from '../../admin/components/carte-rdc.component';
 import { AnalysePersonnelComponent, SoignantAnalyse } from '../components/analyse-personnel.component';
+import { CarteEtablissementsComponent, EtablissementCarte } from '../components/carte-etablissements.component';
 
 /** Totaux enregistrés par établissement (GET /comite/statistiques/etablissements). */
 interface LigneEtablissement {
@@ -34,7 +35,7 @@ type Colonne = keyof Pick<LigneEtablissement, 'patientes' | 'grossessesEnCours' 
 @Component({
   selector: 'app-comite-tableau-de-bord',
   standalone: true,
-  imports: [RouterLink, SyntheseAmiComponent, IndicateursModulesComponent, CarteRdcComponent, AnalysePersonnelComponent],
+  imports: [RouterLink, SyntheseAmiComponent, IndicateursModulesComponent, CarteRdcComponent, AnalysePersonnelComponent, CarteEtablissementsComponent],
   template: `
     <div class="mx-auto max-w-7xl space-y-6">
       <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -70,6 +71,9 @@ type Colonne = keyof Pick<LigneEtablissement, 'patientes' | 'grossessesEnCours' 
           </div>
         }
       </div>
+
+      <!-- Localisation de tous les établissements sanitaires (consultation seulement) -->
+      <app-carte-etablissements class="block" [etablissements]="pointsCarte() ?? []" [chargement]="!pointsCarte()" />
 
       <!-- Comparaison par établissement -->
       <div class="card overflow-hidden">
@@ -152,6 +156,8 @@ export class ComiteTableauDeBordComponent {
   soignants = signal<SoignantAnalyse[]>([]);
   soignantsRecus = signal(false);
   enfants = signal<StatistiquesEnfants | null>(null);
+  /** Établissements avec leurs coordonnées GPS et leurs photos (GET /comite/etablissements). */
+  pointsCarte = signal<EtablissementCarte[] | null>(null);
   erreur = signal('');
   attente = computed(() => !this.donnees() && !this.erreur());
   recherche = signal('');
@@ -183,6 +189,9 @@ export class ComiteTableauDeBordComponent {
       .catch(err => this.erreur.set(messageErreur(err)));
     this.stats.patientes().then(p => this.patientes.set(p)).catch(() => {});
     this.stats.enfants().then(e => this.enfants.set(e)).catch(() => {});
+    firstValueFrom(this.http.get<(EtablissementCarte & { photos?: string[] })[]>(`${API_COMITE}/etablissements`))
+      .then(l => this.pointsCarte.set(l.map(e => ({ ...e, photo: e.photos?.[0] ?? null }))))
+      .catch(() => this.pointsCarte.set([]));
     firstValueFrom(this.http.get<SoignantAnalyse[]>(`${API_COMITE}/soignants`))
       .then(l => { this.soignants.set(l); this.soignantsRecus.set(true); })
       .catch(() => this.soignantsRecus.set(true));
