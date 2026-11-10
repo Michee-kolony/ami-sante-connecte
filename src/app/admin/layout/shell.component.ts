@@ -1,4 +1,4 @@
-import { Component, afterNextRender, effect, inject, signal, untracked } from '@angular/core';
+import { Component, ElementRef, HostListener, afterNextRender, effect, inject, signal, untracked } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { STRUCTURE, UTILISATEUR } from '../data/mock-data';
@@ -111,6 +111,27 @@ export class ShellComponent {
     return `${this.session.estMedecin() ? 'Dr ' : ''}${this.user.nom}`;
   }
   menuOpen = false;
+
+  /** Menu déroulant « Guides » de la barre du haut : documentation illustrée (FR / LN), ouverte dans un nouvel onglet. */
+  docsOpen = false;
+  private hote = inject<ElementRef<HTMLElement>>(ElementRef);
+  guides = [
+    { titre: 'Guide médecin', texte: 'Espace professionnel : CPN, consultations, salle de travail, vaccination, urgences.', url: '/guide-espace-medecin', icone: 'fa-user-doctor' },
+    { titre: 'Guide patiente', texte: 'Application mobile des mamans : pour l’expliquer aux patientes.', url: '/guide-application-patiente', icone: 'fa-mobile-screen-button' },
+  ];
+
+  /** Ferme le menu « Guides » au clic en dehors de son bouton et de son panneau. */
+  @HostListener('document:click', ['$event'])
+  clicDocument(e: MouseEvent): void {
+    if (!this.docsOpen) return;
+    const zones = Array.from(this.hote.nativeElement.querySelectorAll('[data-docs]'));
+    if (!zones.some((z) => z.contains(e.target as Node))) this.docsOpen = false;
+  }
+
+  @HostListener('document:keydown.escape')
+  fermerDocs(): void {
+    this.docsOpen = false;
+  }
   /** Travail hors connexion : état du réseau et saisies en attente d'envoi. */
   horsLigne = inject(HorsLigneService);
   /** Copie automatique des dossiers actifs sur l'appareil (démarrée avec l'espace administrateur). */

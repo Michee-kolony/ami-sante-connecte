@@ -13,19 +13,13 @@
 
       <div class="ml-auto flex items-center gap-2 lg:ml-2">
         <!-- Documentation : un seul bouton, toujours visible (mobile compris), qui ouvre le choix du guide -->
-        <div class="relative" data-docs>
+        <div class="relative hidden lg:block" data-docs>
           <button type="button" (click)="basculerDocs()" [attr.aria-expanded]="docsOpen" aria-haspopup="true" [attr.aria-label]="'Documentation' | t"
                   class="inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-full bg-accent-600 px-3 text-sm font-bold text-white shadow-md shadow-accent-900/20 ring-2 ring-accent-200 transition hover:bg-accent-700 dark:ring-accent-500/40 sm:px-4">
             <i class="fa-solid fa-book-open"></i>
-            <span class="hidden min-[340px]:inline">{{ 'Guides' | t }}</span>
+            <span>{{ 'Guides' | t }}</span>
             <i class="fa-solid fa-chevron-down text-[10px] transition-transform" [class.rotate-180]="docsOpen"></i>
           </button>
-          @if (!docsOpen) {
-            <span class="pointer-events-none absolute -right-0.5 -top-0.5 flex h-3 w-3 lg:hidden" aria-hidden="true">
-              <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent-400 opacity-75"></span>
-              <span class="relative inline-flex h-3 w-3 rounded-full bg-accent-500 ring-2 ring-white dark:ring-slate-900"></span>
-            </span>
-          }
         </div>
         <app-langue-toggle /><app-theme-toggle class="hidden sm:block" />
       </div>
