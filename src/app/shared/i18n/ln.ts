@@ -17,6 +17,18 @@ export const LINGALA: Record<string, string> = {
   'Retour au site': 'Zonga na site',
   'Retour en haut': 'Zonga likoló',
 
+  // --- Guides illustrés (en-tête, menu mobile, pied de page) -------------------
+  'Documentation': 'Mikanda ya malako',
+  'Guides': 'Mikanda',
+  'Quelle documentation voulez-vous suivre ?': 'Mokanda nini olingi kolanda ?',
+  'Disponible en français et en lingala.': 'Ezali na lifalanse mpe na lingala.',
+  'Application mobile des mamans : grossesse, rendez-vous, enfants, urgence.': 'Application ya telefone ya bamama : zemi, ba rendez-vous, bana, likama.',
+  'Espace professionnel : CPN, consultations, salle de travail, vaccination, urgences.': 'Esika ya basáli : CPN, ba consultation, salle ya kobota, mangwele, makama.',
+  'Guide patiente': 'Mokanda ya mama',
+  'Guide médecin': 'Mokanda ya monganga',
+  'Comment utiliser l’application mobile AMI Santé Connect (partie patiente)': 'Ndenge ya kosalela application AMI Santé Connect (eteni ya mama)',
+  'Guide de l’espace professionnel (partie médecin)': 'Mokanda ya esika ya basáli (eteni ya monganga)',
+
   // --- Site public : navigation ----------------------------------------------
   'Accueil': 'Ebandeli',
   'Le projet': 'Mokano',

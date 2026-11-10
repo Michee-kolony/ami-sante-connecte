@@ -18,8 +18,8 @@ const UI = {
   fermer: { fr: 'Fermer', ln: 'Kokanga' },
   precedente: { fr: 'Capture précédente', ln: 'Elilingi ya liboso' },
   suivante: { fr: 'Capture suivante', ln: 'Elilingi oyo elandi' },
-  captures: { fr: 'captures', ln: 'bililingi' },
-  etapes: { fr: 'étapes', ln: 'biteni' },
+  captures: { fr: 'Captures', ln: 'Bililingi' },
+  etapes: { fr: 'Étapes', ln: 'Biteni' },
   contact: { fr: 'Nous contacter', ln: 'Kokutana na biso' },
   touche: { fr: 'Touchez ou cliquez sur une capture pour l’agrandir.', ln: 'Simba to finá elilingi mpo na komona yango monene.' },
 } satisfies Record<string, Texte>;

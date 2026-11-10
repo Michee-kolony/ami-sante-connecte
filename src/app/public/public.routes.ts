@@ -14,6 +14,11 @@ export const PUBLIC_ROUTES: Routes = [
         loadComponent: () => import('./pages/guide-patiente/guide-patiente.component').then(m => m.GuidePatienteComponent),
         title: 'Comment utiliser l’application mobile AMI Santé Connect · Espace patiente',
       },
+      {
+        path: 'guide-espace-medecin',
+        loadComponent: () => import('./pages/guide-medecin/guide-medecin.component').then(m => m.GuideMedecinComponent),
+        title: 'Guide de l’espace médecin · AMI Santé Connect',
+      },
     ],
   },
 ];

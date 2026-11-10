@@ -42,9 +42,14 @@
   <section class="relative flex items-center justify-center px-4 py-12 sm:px-8">
     <div class="absolute right-4 top-4 flex items-center gap-2 sm:right-6 sm:top-6"><app-theme-toggle /></div>
     <div class="w-full max-w-md">
-      <a routerLink="/" class="mb-8 inline-flex items-center gap-2 text-sm font-medium text-slate-500 dark:text-slate-400 transition hover:text-brand-700 dark:hover:text-brand-300">
-        <i class="fa-solid fa-arrow-left"></i> Retour au site
-      </a>
+      <div class="mb-8 flex flex-wrap items-center justify-between gap-3">
+        <a routerLink="/" class="inline-flex items-center gap-2 text-sm font-medium text-slate-500 dark:text-slate-400 transition hover:text-brand-700 dark:hover:text-brand-300">
+          <i class="fa-solid fa-arrow-left"></i> Retour au site
+        </a>
+        <a routerLink="/guide-espace-medecin" class="inline-flex items-center gap-2 text-sm font-medium text-brand-700 dark:text-brand-300 transition hover:text-brand-900 dark:hover:text-white">
+          <i class="fa-solid fa-book-open"></i> Guide d’utilisation
+        </a>
+      </div>
       <img src="images/logo-full.webp" alt="AMI Santé Connect" class="mb-8 h-auto w-40 dark:rounded-xl dark:bg-white dark:p-2 lg:hidden" width="610" height="261">
 
       <h2 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Connexion</h2>

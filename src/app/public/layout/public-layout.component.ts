@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ElementRef, HostListener, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
 import { LangueToggleComponent } from '../../shared/i18n/langue-toggle.component';
@@ -14,6 +14,9 @@ import { ChatbotComponent } from '../components/chatbot/chatbot.component';
 })
 export class PublicLayoutComponent {
   menuOpen = false;
+  /** Menu déroulant « Documentation » (choix du guide). */
+  docsOpen = false;
+  private hote = inject<ElementRef<HTMLElement>>(ElementRef);
   year = new Date().getFullYear();
 
   // TODO : remplacer « # » par les vraies adresses des pages AMI Santé Connect.
@@ -35,10 +38,44 @@ export class PublicLayoutComponent {
     { label: 'Contact', fragment: 'contact' },
   ];
 
-  /** Guide illustré de l'application mobile, espace patiente (libellé court pour l'en-tête). */
-  guide = {
-    court: 'Guide de l’application',
-    long: 'Comment utiliser l’application mobile AMI Santé Connect (partie patiente)',
-    url: '/guide-application-patiente',
-  };
+  /** Guides illustrés (français / lingala) : libellé court pour l'en-tête, long pour le menu mobile et le pied de page. */
+  guides = [
+    {
+      court: 'Guide patiente',
+      long: 'Comment utiliser l’application mobile AMI Santé Connect (partie patiente)',
+      url: '/guide-application-patiente',
+      icone: 'fa-mobile-screen-button',
+      description: 'Application mobile des mamans : grossesse, rendez-vous, enfants, urgence.',
+    },
+    {
+      court: 'Guide médecin',
+      long: 'Guide de l’espace professionnel (partie médecin)',
+      url: '/guide-espace-medecin',
+      icone: 'fa-user-doctor',
+      description: 'Espace professionnel : CPN, consultations, salle de travail, vaccination, urgences.',
+    },
+  ];
+
+  basculerDocs(): void {
+    this.docsOpen = !this.docsOpen;
+    if (this.docsOpen) this.menuOpen = false;
+  }
+
+  basculerMenu(): void {
+    this.menuOpen = !this.menuOpen;
+    if (this.menuOpen) this.docsOpen = false;
+  }
+
+  /** Ferme le menu « Documentation » au clic en dehors de son bouton et de son panneau. */
+  @HostListener('document:click', ['$event'])
+  clicDocument(e: MouseEvent): void {
+    if (!this.docsOpen) return;
+    const zones = Array.from(this.hote.nativeElement.querySelectorAll('[data-docs]'));
+    if (!zones.some((z) => z.contains(e.target as Node))) this.docsOpen = false;
+  }
+
+  @HostListener('document:keydown.escape')
+  echap(): void {
+    this.docsOpen = false;
+  }
 }
