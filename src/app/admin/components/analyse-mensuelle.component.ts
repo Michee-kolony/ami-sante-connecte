@@ -168,11 +168,14 @@ export class AnalyseMensuelleComponent {
   donnees = signal<AnalyseMensuelle | null>(null);
   chargement = signal(false);
   erreur = signal<string | null>(null);
+  /** Numéro de la dernière demande : une réponse arrivée après un changement de filtre est ignorée. */
+  private demande = 0;
   enCours = computed(() => !!this.donnees() && this.donnees()!.mois === this.donnees()!.moisCourant);
 
   constructor() {
     // Rechargé quand la province ou l'aire de santé du bandeau change (le mois choisi est gardé).
-    const lieu = computed(() => `${this.etat.filtres().province ?? ''}|${this.etat.filtres().aire ?? ''}`);
+    // Et, dans l'espace du comité, quand le périmètre (établissement, province, zone) change.
+    const lieu = computed(() => `${this.etat.filtres().province ?? ''}|${this.etat.filtres().aire ?? ''}|${JSON.stringify(this.stats.perimetre())}`);
     effect(() => {
       lieu();
       untracked(() => this.charger());
@@ -195,10 +198,11 @@ export class AnalyseMensuelleComponent {
     const f = this.etat.filtres();
     this.chargement.set(true);
     this.erreur.set(null);
+    const n = ++this.demande;
     this.stats.analyseMensuelle(this.route(), mois, f.province, f.aire)
-      .then(d => { this.donnees.set(d); this.mois.set(d.mois); })
-      .catch(e => this.erreur.set(e?.error?.message ?? 'Chiffres indisponibles pour le moment.'))
-      .finally(() => this.chargement.set(false));
+      .then(d => { if (n === this.demande) { this.donnees.set(d); this.mois.set(d.mois); } })
+      .catch(e => { if (n === this.demande) this.erreur.set(e?.error?.message ?? 'Chiffres indisponibles pour le moment.'); })
+      .finally(() => { if (n === this.demande) this.chargement.set(false); });
   }
 
   decaler(n: number): void {

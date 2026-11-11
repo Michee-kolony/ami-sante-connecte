@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { BASE_STATISTIQUES } from './espace';
+import { BASE_STATISTIQUES, PERIMETRE_STATISTIQUES } from './espace';
 import type { StatutPatiente, StatutRdv } from './patientes.service';
 
 /** Patientes et grossesses en cours d'une province (libellé identique à la carte). */
@@ -169,6 +169,12 @@ export class StatistiquesService {
   private http = inject(HttpClient);
   /** Établissement de connexion (personnel) ou tous les établissements (comité de pilotage). */
   private base = inject(BASE_STATISTIQUES);
+  /** Périmètre du comité (établissement, province, zone de santé) ; vide pour le personnel. */
+  readonly perimetre = inject(PERIMETRE_STATISTIQUES);
+
+  private get<T>(route: string, params: Record<string, string> = {}): Promise<T> {
+    return firstValueFrom(this.http.get<T>(`${this.base}/${route}`, { params: { ...this.perimetre(), ...params } }));
+  }
 
   /** Synthèse du tableau de bord selon les filtres du bandeau (période, province, aire de santé). */
   synthese(f: FiltresSynthese): Promise<SyntheseTableauBord> {
@@ -179,7 +185,7 @@ export class StatistiquesService {
     }
     if (f.province) params['province'] = f.province;
     if (f.aire) params['aire'] = f.aire;
-    return firstValueFrom(this.http.get<SyntheseTableauBord>(`${this.base}/synthese`, { params }));
+    return this.get<SyntheseTableauBord>('synthese', params);
   }
 
   /** Analyse mensuelle (CPN, VAT/SP) du mois `mois` (AAAA-MM ; mois en cours si vide). */
@@ -188,15 +194,15 @@ export class StatistiquesService {
     if (mois) params['mois'] = mois;
     if (province) params['province'] = province;
     if (aire) params['aire'] = aire;
-    return firstValueFrom(this.http.get<AnalyseMensuelle>(`${this.base}/${route}`, { params }));
+    return this.get<AnalyseMensuelle>(route, params);
   }
 
   patientes(): Promise<StatistiquesPatientes> {
-    return firstValueFrom(this.http.get<StatistiquesPatientes>(`${this.base}/patientes`));
+    return this.get<StatistiquesPatientes>('patientes');
   }
 
   enfants(): Promise<StatistiquesEnfants> {
-    return firstValueFrom(this.http.get<StatistiquesEnfants>(`${this.base}/enfants`));
+    return this.get<StatistiquesEnfants>('enfants');
   }
 }
 
@@ -213,15 +219,18 @@ export class SyntheseEtatService {
   readonly erreur = signal<string | null>(null);
   /** Onglet des indicateurs par module à afficher (demandé par la recherche du tableau de bord). */
   readonly ongletDemande = signal<ModuleSynthese | null>(null);
+  /** Numéro de la dernière demande : une réponse plus ancienne (filtres changés entre-temps) est ignorée. */
+  private demande = 0;
 
   charger(filtres: Partial<FiltresSynthese> = {}): void {
     const f = { ...this.filtres(), ...filtres };
     this.filtres.set(f);
     this.chargement.set(true);
     this.erreur.set(null);
+    const n = ++this.demande;
     this.api.synthese(f)
-      .then(d => this.donnees.set(d))
-      .catch(e => this.erreur.set(e?.error?.message ?? 'Synthèse indisponible pour le moment.'))
-      .finally(() => this.chargement.set(false));
+      .then(d => { if (n === this.demande) this.donnees.set(d); })
+      .catch(e => { if (n === this.demande) this.erreur.set(e?.error?.message ?? 'Synthèse indisponible pour le moment.'); })
+      .finally(() => { if (n === this.demande) this.chargement.set(false); });
   }
 }

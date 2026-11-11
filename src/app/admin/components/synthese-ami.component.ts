@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -7,7 +7,7 @@ import { PROVINCES_RDC } from '../data/carte-rdc';
 import { dateHeureChiffres, jourChiffres } from '../data/format';
 import { Indicateur, LigneATraiter, PeriodeSynthese, SyntheseEtatService } from '../data/statistiques.service';
 import { AnalyseMensuelleComponent } from './analyse-mensuelle.component';
-import { ESPACE_COMITE } from '../data/espace';
+import { ESPACE_COMITE, PERIMETRE_STATISTIQUES } from '../data/espace';
 
 /** Classes par ton de carte (fond de l'icône). */
 const TONS: Record<string, string> = {
@@ -185,9 +185,16 @@ export class SyntheseAmiComponent {
     },
   ];
 
+  /** Périmètre du comité (établissement, province, zone de santé) ; vide pour le personnel. */
+  private perimetre = inject(PERIMETRE_STATISTIQUES);
+
   constructor() {
-    // Recalcul à chaque ouverture, avec les derniers filtres choisis (l'affichage précédent reste visible entre-temps).
-    this.etat.charger();
+    // Recalcul à chaque ouverture, avec les derniers filtres choisis (l'affichage précédent reste visible
+    // entre-temps), puis à chaque changement de périmètre dans l'espace du comité.
+    effect(() => {
+      this.perimetre();
+      untracked(() => this.etat.charger());
+    });
   }
 
   choisirPeriode(code: PeriodeSynthese): void {

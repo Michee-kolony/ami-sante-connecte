@@ -12,7 +12,8 @@ import { ComiteFlotteComponent } from './pages/flotte.component';
 import { ComiteMessagesComponent } from './pages/messages.component';
 import { ComitePatientesComponent } from './pages/patientes.component';
 import { EtablissementsComponent } from '../admin/pages/etablissements/etablissements.component';
-import { BASE_ETABLISSEMENTS, BASE_STATISTIQUES, ESPACE_COMITE } from '../admin/data/espace';
+import { BASE_ETABLISSEMENTS, BASE_STATISTIQUES, ESPACE_COMITE, PERIMETRE_STATISTIQUES } from '../admin/data/espace';
+import { PerimetreComiteService } from './perimetre-comite.service';
 import { StatistiquesService, SyntheseEtatService } from '../admin/data/statistiques.service';
 import { EtablissementsService } from '../admin/data/etablissements.service';
 
@@ -36,6 +37,9 @@ export const COMITE_ROUTES: Routes = [
       { provide: ESPACE_COMITE, useValue: true },
       { provide: BASE_STATISTIQUES, useValue: `${API_COMITE}/statistiques` },
       { provide: BASE_ETABLISSEMENTS, useValue: `${API_COMITE}/etablissements` },
+      // Filtre du tableau de bord (établissement, province, zone de santé), ajouté à chaque statistique.
+      PerimetreComiteService,
+      { provide: PERIMETRE_STATISTIQUES, useFactory: () => inject(PerimetreComiteService).params },
       StatistiquesService,
       SyntheseEtatService,
       EtablissementsService,

@@ -6,7 +6,7 @@ import { coucheOsm, creerCarte, echapper } from '../../admin/data/carte';
 /** Établissement tel que renvoyé par GET /comite/statistiques/etablissements (champs utiles à la carte). */
 export interface EtablissementCarte {
   id: string; code: string; nom: string; type: string; secteur?: string; province: string;
-  zoneSante?: string; adresse?: string; telephone?: string; statut: 'Actif' | 'Suspendu';
+  zoneSante?: string; zonesSante?: string[]; adresse?: string; telephone?: string; statut: 'Actif' | 'Suspendu';
   latitude?: number | null; longitude?: number | null; photo?: string | null;
 }
 
@@ -64,6 +64,8 @@ const localise = (e: EtablissementCarte): boolean =>
 export class CarteEtablissementsComponent implements AfterViewInit, OnDestroy {
   etablissements = input<EtablissementCarte[]>([]);
   chargement = input(false);
+  /** Clé du filtre affiché (périmètre du comité) : quand elle change, la carte se recadre sur les établissements. */
+  cadrage = input('');
 
   @ViewChild('carte', { static: true }) carteRef!: ElementRef<HTMLDivElement>;
 
@@ -73,6 +75,7 @@ export class CarteEtablissementsComponent implements AfterViewInit, OnDestroy {
   private calque = L.featureGroup();
   /** Le cadrage automatique n'a lieu qu'une fois : ensuite, l'utilisateur garde sa vue. */
   private cadree = false;
+  private derniereCle = '';
 
   localises = computed(() => this.etablissements().filter(localise));
   nonLocalises = computed(() => this.etablissements().filter(e => !localise(e)));
@@ -80,7 +83,14 @@ export class CarteEtablissementsComponent implements AfterViewInit, OnDestroy {
   constructor() {
     effect(() => {
       const liste = this.localises();
-      untracked(() => this.dessiner(liste));
+      const cle = this.cadrage();
+      untracked(() => {
+        if (cle !== this.derniereCle) {
+          this.derniereCle = cle;
+          this.cadree = false;
+        }
+        this.dessiner(liste);
+      });
     });
   }
 
@@ -166,7 +176,7 @@ function fiche(e: EtablissementCarte): string {
   const statut = e.statut === 'Actif'
     ? '<span class="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-700">Actif</span>'
     : '<span class="rounded-md bg-rose-50 px-1.5 py-0.5 text-[11px] font-semibold text-rose-700">Suspendu</span>';
-  const lieu = [e.zoneSante, e.province].filter(Boolean).join(' · ');
+  const lieu = [e.zonesSante?.length ? e.zonesSante.join(', ') : e.zoneSante, e.province].filter(Boolean).join(' · ');
   return `<div class="text-xs text-slate-700 dark:text-slate-200">
     ${e.photo ? `<img src="${echapper(e.photo)}" alt="" class="mb-2 h-28 w-full rounded-lg bg-slate-200 object-cover">` : ''}
     <p class="text-sm font-semibold text-slate-900">${echapper(e.nom)}</p>

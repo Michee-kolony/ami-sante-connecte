@@ -16,8 +16,9 @@
           <button type="button" class="btn-secondary py-1.5" [disabled]="!du || !au" (click)="appliquerPerso()">Appliquer</button>
         </div>
       }
-      <select class="input w-auto py-1.5" [ngModel]="etat.filtres().province ?? ''" (ngModelChange)="changerProvince($event)" aria-label="Province">
-        <option value="">Toutes les provinces</option>
+      <select class="input w-auto py-1.5" [ngModel]="etat.filtres().province ?? ''" (ngModelChange)="changerProvince($event)"
+              [attr.aria-label]="comite ? 'Province de résidence des patientes' : 'Province'" [title]="comite ? 'Filtre sur l’adresse des patientes (le périmètre des établissements se choisit en haut de page)' : ''">
+        <option value="">{{ comite ? 'Résidence : toutes provinces' : 'Toutes les provinces' }}</option>
         @for (p of provinces; track p) { <option [value]="p">{{ p }}</option> }
       </select>
       @if (s()?.filtres?.aires?.length) {
