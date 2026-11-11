@@ -3,6 +3,7 @@ import { FormsModule, NgForm } from '@angular/forms';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
 import { PROVINCES_RDC } from '../../data/carte-rdc';
+import { zonesDeProvince } from '../../data/zones-sante';
 import {
   DonneesEtablissement, DonneesMedecinChef, Etablissement, EtablissementsService, MedecinChef, SECTEURS_ETABLISSEMENT, SERVICES_ETABLISSEMENT,
   ServiceEtablissement, StatutEtablissement, TYPES_ETABLISSEMENT, TypeEtablissement, SecteurEtablissement,
@@ -17,7 +18,7 @@ const PHOTO_MAX_OCTETS = 5 * 1024 * 1024;
 function formulaireVide() {
   return {
     nom: '', type: '' as TypeEtablissement | '', secteur: '' as SecteurEtablissement | '',
-    province: 'Kinshasa', districtSanitaire: '', zoneSante: '', aireSante: '', adresse: '',
+    province: 'Kinshasa', districtSanitaire: '', zonesSante: [] as string[], aireSante: '', adresse: '',
     latitude: null as number | null, longitude: null as number | null,
     telephone: '', email: '', responsable: '', fonctionResponsable: '', lits: 0,
     services: new Set<ServiceEtablissement>(),
@@ -27,11 +28,19 @@ function formulaireVide() {
 function formulaireDepuis(e: Etablissement) {
   return {
     nom: e.nom, type: e.type as TypeEtablissement | '', secteur: e.secteur as SecteurEtablissement | '',
-    province: e.province, districtSanitaire: e.districtSanitaire ?? '', zoneSante: e.zoneSante, aireSante: e.aireSante, adresse: e.adresse,
+    province: e.province, districtSanitaire: e.districtSanitaire ?? '',
+    // Seules les zones du référentiel sont reprises (les anciennes saisies libres sont à re-choisir).
+    zonesSante: zonesEtablissement(e).filter(z => zonesDeProvince(e.province).includes(z)),
+    aireSante: e.aireSante, adresse: e.adresse,
     latitude: e.latitude, longitude: e.longitude,
     telephone: e.telephone, email: e.email, responsable: e.responsable, fonctionResponsable: e.fonctionResponsable, lits: e.lits,
     services: new Set(e.services),
   };
+}
+
+/** Zones de santé d'un établissement (les plus anciens n'ont qu'une zone, `zoneSante`). */
+export function zonesEtablissement(e: Pick<Etablissement, 'zoneSante' | 'zonesSante'>): string[] {
+  return e.zonesSante?.length ? e.zonesSante : e.zoneSante ? [e.zoneSante] : [];
 }
 
 interface NouvellePhoto {
@@ -78,7 +87,7 @@ export class EtablissementsComponent implements OnDestroy {
   filtres = computed(() => {
     const q = this.recherche().trim().toLowerCase();
     return this.etablissements().filter(e => {
-      const texte = `${e.nom} ${e.code} ${e.province} ${e.zoneSante} ${e.aireSante} ${e.responsable}`.toLowerCase();
+      const texte = `${e.nom} ${e.code} ${e.province} ${zonesEtablissement(e).join(' ')} ${e.aireSante} ${e.responsable}`.toLowerCase();
       return (this.filtreStatut() === 'Tous' || e.statut === this.filtreStatut()) && (!q || texte.includes(q));
     });
   });
@@ -278,6 +287,51 @@ export class EtablissementsComponent implements OnDestroy {
     return this.photosConservees.length + this.nouvellesPhotos.length;
   }
 
+  readonly zonesEtablissement = zonesEtablissement;
+  /** Filtre de la liste des zones (Kinshasa, Ituri… en comptent plus de 30). */
+  rechercheZone = '';
+
+  /** Zones de santé de la province choisie, filtrées par la recherche. */
+  get zonesProvince(): readonly string[] {
+    const q = this.rechercheZone.trim().toLowerCase();
+    const zones = zonesDeProvince(this.form.province);
+    return q ? zones.filter(z => z.toLowerCase().includes(q)) : zones;
+  }
+
+  get nombreZonesProvince(): number {
+    return zonesDeProvince(this.form.province).length;
+  }
+
+  /** Zone saisie librement avant le référentiel, à remplacer par une zone de la liste. */
+  get ancienneZone(): string | null {
+    const e = this.enEdition;
+    if (!e) return null;
+    const hors = zonesEtablissement(e).filter(z => !zonesDeProvince(e.province).includes(z));
+    return hors.length ? hors.join(', ') : null;
+  }
+
+  /** Changer de province vide les zones choisies : elles appartiennent à l'ancienne province. */
+  changerProvince(province: string): void {
+    this.form.province = province;
+    this.form.zonesSante = this.form.zonesSante.filter(z => zonesDeProvince(province).includes(z));
+    this.rechercheZone = '';
+  }
+
+  /** Coche ou décoche une zone ; l'ordre de sélection est gardé (la première est la zone principale). */
+  basculerZone(z: string): void {
+    const zones = this.form.zonesSante;
+    this.form.zonesSante = zones.includes(z) ? zones.filter(x => x !== z) : [...zones, z];
+  }
+
+  /** Coche toutes les zones affichées (après filtre), sans changer la zone principale. */
+  toutesLesZones(): void {
+    this.form.zonesSante = [...this.form.zonesSante, ...this.zonesProvince.filter(z => !this.form.zonesSante.includes(z))];
+  }
+
+  aucuneZone(): void {
+    this.form.zonesSante = [];
+  }
+
   basculerService(s: ServiceEtablissement): void {
     this.form.services.has(s) ? this.form.services.delete(s) : this.form.services.add(s);
   }
@@ -347,6 +401,7 @@ export class EtablissementsComponent implements OnDestroy {
     if (!e) this.chef = medecinChefVide();
     this.viderNouvellesPhotos();
     this.photoErreur = this.localisationErreur = this.erreurEnregistrement = '';
+    this.rechercheZone = '';
     this.panneauOuvert = true;
     document.body.style.overflow = 'hidden';
   }
@@ -359,9 +414,9 @@ export class EtablissementsComponent implements OnDestroy {
 
   async enregistrer(f: NgForm): Promise<void> {
     if (this.enregistrement) return;
-    if (f.invalid || this.nomExiste || !this.coordonneesValides || !this.form.services.size) {
+    if (f.invalid || this.nomExiste || !this.coordonneesValides || !this.form.services.size || !this.form.zonesSante.length) {
       this.erreurEnregistrement = this.enEdition
-        ? 'Vérifiez les champs signalés en rouge (nom, type, secteur, zone, adresse, responsable, téléphone, services, coordonnées).'
+        ? 'Vérifiez les champs signalés en rouge (nom, type, secteur, zones de santé, adresse, responsable, téléphone, services, coordonnées).'
         : 'Vérifiez les champs signalés en rouge, y compris l’identité du médecin chef.';
       return;
     }
@@ -373,7 +428,7 @@ export class EtablissementsComponent implements OnDestroy {
       secteur: this.form.secteur as SecteurEtablissement,
       province: this.form.province,
       districtSanitaire: this.form.districtSanitaire.trim(),
-      zoneSante: this.form.zoneSante.trim(),
+      zonesSante: [...this.form.zonesSante],
       aireSante: this.form.aireSante.trim(),
       adresse: this.form.adresse.trim(),
       latitude: this.form.latitude,

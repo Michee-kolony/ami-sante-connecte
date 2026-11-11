@@ -34,7 +34,10 @@ export interface Etablissement {
   province: string;
   /** District sanitaire (en-tête de la fiche CPN). */
   districtSanitaire: string;
+  /** Zone de santé principale (la première de `zonesSante`). */
   zoneSante: string;
+  /** Zones de santé couvertes, de la province (référentiel zones-sante.ts). */
+  zonesSante: string[];
   aireSante: string;
   adresse: string;
   latitude: number | null;
@@ -95,7 +98,8 @@ export interface CompteMedecinChef {
 }
 
 /** Champs du formulaire d'ajout ou de modification. */
-export type DonneesEtablissement = Omit<Etablissement, 'id' | 'code' | 'statut' | 'creeLe' | 'photos' | 'medecinsChefs' | 'effectifs'>;
+/** La zone principale (`zoneSante`) est déduite par le serveur : la première de `zonesSante`. */
+export type DonneesEtablissement = Omit<Etablissement, 'id' | 'code' | 'statut' | 'creeLe' | 'photos' | 'medecinsChefs' | 'effectifs' | 'zoneSante'>;
 
 /**
  * Établissements sanitaires stockés par backend-ami-connecte. Les photos sont déposées
@@ -209,7 +213,7 @@ export class EtablissementsService {
 function corps(donnees: DonneesEtablissement, photos: File[]): FormData {
   const c = new FormData();
   for (const [cle, valeur] of Object.entries(donnees)) {
-    c.append(cle, cle === 'services' ? JSON.stringify(valeur) : valeur == null ? '' : String(valeur));
+    c.append(cle, Array.isArray(valeur) ? JSON.stringify(valeur) : valeur == null ? '' : String(valeur));
   }
   for (const p of photos) c.append('photos', p);
   return c;

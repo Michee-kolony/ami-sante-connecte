@@ -119,7 +119,8 @@
               </td>
               <td class="table-td">
                 <p class="whitespace-nowrap text-slate-900 dark:text-white">{{ e.province }}</p>
-                <p class="text-xs text-slate-500 dark:text-slate-400">{{ e.zoneSante }}</p>
+                @let zones = zonesEtablissement(e);
+                <p class="text-xs text-slate-500 dark:text-slate-400" [title]="zones.join(', ')">{{ zones[0] }}@if (zones.length > 1) { <span> +{{ zones.length - 1 }}</span> }</p>
                 @if (e.latitude != null) {
                   <a [href]="lienCarte(e)" target="_blank" rel="noopener" class="text-[11px] text-brand-700 hover:underline dark:text-brand-300">
                     <i class="fa-solid fa-location-dot mr-1"></i>{{ e.latitude }}, {{ e.longitude }}
@@ -294,7 +295,7 @@
           <div class="grid gap-4 sm:grid-cols-2">
             <div>
               <label class="label" for="et-province">Province <span class="req">*</span></label>
-              <select id="et-province" name="province" class="input" [(ngModel)]="form.province" required>
+              <select id="et-province" name="province" class="input" [ngModel]="form.province" (ngModelChange)="changerProvince($event)" required>
                 @for (p of provinces; track p) { <option [value]="p">{{ p }}</option> }
               </select>
             </div>
@@ -302,10 +303,47 @@
               <label class="label" for="et-district">District sanitaire</label>
               <input id="et-district" name="districtSanitaire" class="input" placeholder="District sanitaire de …" [(ngModel)]="form.districtSanitaire">
             </div>
-            <div>
-              <label class="label" for="et-zone">Zone de santé <span class="req">*</span></label>
-              <input id="et-zone" name="zoneSante" class="input" placeholder="Zone de Santé de …" [(ngModel)]="form.zoneSante" #zone="ngModel" required
-                     [class.border-rose-400]="zone.invalid && (zone.touched || f.submitted)">
+            <div class="sm:col-span-2" role="group" aria-labelledby="et-zones-titre">
+              <div class="flex flex-wrap items-baseline justify-between gap-2">
+                <span id="et-zones-titre" class="label">Zones de santé <span class="req">*</span></span>
+                <span class="mb-1.5 text-xs text-slate-500 dark:text-slate-400">
+                  {{ form.zonesSante.length }} / {{ nombreZonesProvince }} sélectionnée{{ form.zonesSante.length > 1 ? 's' : '' }} · {{ form.province }}
+                </span>
+              </div>
+              <div class="rounded-xl p-3 ring-1" [class]="!form.zonesSante.length && f.submitted ? 'ring-rose-400' : 'ring-slate-200 dark:ring-slate-700'">
+                <div class="mb-3 flex flex-wrap items-center gap-2">
+                  <div class="relative min-w-[12rem] flex-1">
+                    <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
+                    <input type="search" name="rechercheZone" class="input pl-8" placeholder="Rechercher une zone…" aria-label="Rechercher une zone de santé"
+                           [(ngModel)]="rechercheZone" [ngModelOptions]="{ standalone: true }">
+                  </div>
+                  <button type="button" class="text-xs font-semibold text-brand-600 hover:text-brand-800 dark:text-brand-400 dark:hover:text-brand-300" (click)="toutesLesZones()">Tout cocher</button>
+                  @if (form.zonesSante.length) {
+                    <button type="button" class="text-xs font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200" (click)="aucuneZone()">Effacer</button>
+                  }
+                </div>
+                <div class="flex max-h-56 flex-wrap gap-2 overflow-y-auto">
+                  @for (z of zonesProvince; track z) {
+                    @let rang = form.zonesSante.indexOf(z);
+                    <button type="button" (click)="basculerZone(z)" [attr.aria-pressed]="rang >= 0"
+                            class="rounded-full px-3 py-1.5 text-xs font-medium ring-1 transition"
+                            [class]="rang >= 0 ? 'bg-brand-600 text-white ring-brand-600' : 'bg-white text-slate-600 ring-slate-200 hover:ring-brand-300 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700'">
+                      @if (rang >= 0) { <i class="fa-solid fa-check mr-1"></i> }{{ z }}@if (rang === 0) { <span class="ml-1 opacity-80">(principale)</span> }
+                    </button>
+                  } @empty {
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Aucune zone ne correspond à « {{ rechercheZone }} ».</p>
+                  }
+                </div>
+              </div>
+              <p class="mt-1.5 text-xs" [class]="!form.zonesSante.length && f.submitted ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500 dark:text-slate-400'">
+                @if (!form.zonesSante.length && f.submitted) {
+                  Sélectionnez au moins une zone de santé.
+                } @else if (ancienneZone && !form.zonesSante.length) {
+                  Zone enregistrée auparavant : « {{ ancienneZone }} ». Choisissez-la dans la liste officielle.
+                } @else {
+                  Les zones proposées sont celles de la province choisie. La première cochée est la zone principale (fiche CPN, carte).
+                }
+              </p>
             </div>
             <div>
               <label class="label" for="et-aire">Aire de santé</label>
@@ -445,7 +483,7 @@
           <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
             <div><dt class="text-xs text-slate-500 dark:text-slate-400">Province</dt><dd class="text-slate-900 dark:text-white">{{ e.province }}</dd></div>
             <div><dt class="text-xs text-slate-500 dark:text-slate-400">District sanitaire</dt><dd class="text-slate-900 dark:text-white">{{ e.districtSanitaire || '—' }}</dd></div>
-            <div><dt class="text-xs text-slate-500 dark:text-slate-400">Zone de santé</dt><dd class="text-slate-900 dark:text-white">{{ e.zoneSante }}</dd></div>
+            <div><dt class="text-xs text-slate-500 dark:text-slate-400">Zone{{ zonesEtablissement(e).length > 1 ? 's' : '' }} de santé</dt><dd class="text-slate-900 dark:text-white">{{ zonesEtablissement(e).join(', ') }}</dd></div>
             <div><dt class="text-xs text-slate-500 dark:text-slate-400">Aire de santé</dt><dd class="text-slate-900 dark:text-white">{{ e.aireSante || '—' }}</dd></div>
             <div><dt class="text-xs text-slate-500 dark:text-slate-400">Lits</dt><dd class="text-slate-900 dark:text-white">{{ e.lits }}</dd></div>
             <div class="col-span-2"><dt class="text-xs text-slate-500 dark:text-slate-400">Adresse</dt><dd class="text-slate-900 dark:text-white">{{ e.adresse }}</dd></div>
