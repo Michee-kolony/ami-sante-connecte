@@ -1,0 +1,349 @@
+<div class="mx-auto max-w-6xl space-y-6">
+  @if (comite) {
+    <a routerLink="/comite/etablissements" class="inline-flex items-center gap-1 text-sm text-brand-700 hover:underline dark:text-brand-300"><i class="fa-solid fa-arrow-left text-xs"></i> Établissements</a>
+  }
+
+  @if (chargement && !donnees) {
+    <div class="card space-y-3 p-6" aria-busy="true"><div class="skeleton h-6 w-64"></div><div class="skeleton h-4 w-40"></div><div class="skeleton h-32 w-full"></div></div>
+  } @else if (erreur) {
+    <div class="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200" role="alert">
+      <i class="fa-solid fa-circle-exclamation mt-0.5"></i> Fiche indisponible : {{ erreur }}
+    </div>
+  } @else if (donnees) {
+    @let d = donnees;
+    @let e = d.etablissement;
+    @let k = d.calculs;
+    <!-- En-tête -->
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div class="min-w-0">
+        <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ comite ? e.nom : 'Fiche de mon établissement' }}</h1>
+        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          @if (!comite) { {{ e.nom }} · }
+          <span class="font-mono font-semibold text-slate-700 dark:text-slate-200">{{ e.codeAmi ?? e.code }}</span> · {{ e.type }} · {{ e.province }} · ZS {{ e.zoneSante }}@if (e.aireSante) { · AS {{ e.aireSante }} }
+        </p>
+        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ d.rattachement.dps }} · {{ d.rattachement.bczs }}</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="text-right">
+          <p class="text-xs text-slate-500 dark:text-slate-400">Complétude du dossier</p>
+          <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ k.completude }} %</p>
+        </div>
+        <span class="badge text-sm" [class]="classeStatut(statut)">{{ statut }}</span>
+      </div>
+    </div>
+    <div class="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div class="h-full rounded-full bg-brand-600 transition-all" [style.width.%]="k.completude"></div></div>
+
+    @if (!comite) {
+      <p class="flex items-start gap-2 rounded-xl bg-brand-50 p-3 text-sm text-brand-900 dark:bg-brand-500/10 dark:text-brand-200">
+        <i class="fa-solid fa-circle-info mt-0.5"></i>
+        Vous pouvez compléter les informations facultatives : compléments d’identité et de localisation, responsables et horaires, infrastructures et équipements, personnel, population desservie et capacités. Les champs grisés (identité officielle, rattachement, statut juridique, services) sont saisis et validés par le comité de pilotage.
+      </p>
+    }
+
+    @if (message) {
+      <div class="flex items-start gap-3 rounded-xl border border-accent-200 bg-accent-50 px-4 py-3 text-sm text-accent-900 dark:border-accent-500/30 dark:bg-accent-500/10 dark:text-accent-200" role="status">
+        <i class="fa-solid fa-circle-check mt-0.5"></i><span class="flex-1">{{ message }}</span>
+        <button type="button" (click)="message = ''" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    }
+    @if (erreurAction) {
+      <div class="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200" role="alert">
+        <i class="fa-solid fa-circle-exclamation mt-0.5"></i><span class="flex-1">{{ erreurAction }}</span>
+        <button type="button" (click)="erreurAction = ''" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    }
+
+    <!-- Onglets -->
+    <div class="flex gap-1 border-b border-slate-200 dark:border-slate-800" role="tablist">
+      @for (o of [{ id: 'synthese', titre: 'Synthèse et calculs', icone: 'fa-chart-simple' }, { id: 'saisie', titre: comite ? 'Saisie' : 'Compléter la fiche', icone: 'fa-pen-to-square' }, { id: 'circuit', titre: 'Validation et activation', icone: 'fa-stamp' }]; track o.id) {
+        <button type="button" role="tab" [attr.aria-selected]="onglet === o.id" (click)="onglet = $any(o.id)"
+                class="-mb-px flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition"
+                [class]="onglet === o.id ? 'border-brand-600 text-brand-700 dark:text-brand-300' : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'">
+          <i class="fa-solid {{ o.icone }}"></i> {{ o.titre }}
+        </button>
+      }
+    </div>
+
+    <!-- Synthèse et calculs -->
+    @if (onglet === 'synthese') {
+      <div class="grid gap-4 lg:grid-cols-3">
+        <div class="card p-4">
+          <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Modules AMI</p>
+          @if (k.modulesActifs === null) {
+            <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Établissement enregistré avant la fiche AMI : tous les modules restent ouverts jusqu’à sa première activation.</p>
+          } @else {
+            <div class="mt-2 flex flex-wrap gap-1.5">
+              @for (m of ['CPN', 'Accouchement', 'Vaccination']; track m) {
+                @let actif = k.modulesActifs.includes(m);
+                @let prevu = k.modulesPrevus.includes(m);
+                <span class="badge" [class]="actif ? 'bg-accent-50 text-accent-700 ring-1 ring-accent-200 dark:bg-accent-500/10 dark:text-accent-300' : prevu ? 'bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800'">
+                  <i class="fa-solid" [class]="actif ? 'fa-lock-open' : 'fa-lock'"></i> {{ m }}{{ !actif && prevu ? ' (à l’activation)' : '' }}
+                </span>
+              }
+            </div>
+          }
+        </div>
+        <div class="card p-4">
+          <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Équipements (étape 4)</p>
+          <p class="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{{ k.equipements.taux != null ? k.equipements.taux + ' %' : '—' }}</p>
+          <p class="text-xs text-slate-500">Taux de fonctionnalité · {{ k.equipements.fonctionnels }} / {{ k.equipements.total }} · {{ k.equipements.aRemplacer }} à remplacer</p>
+        </div>
+        <div class="card p-4">
+          <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Ressources humaines (étape 5)</p>
+          <p class="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{{ k.rh.total }} <span class="text-sm font-normal text-slate-500">agents</span></p>
+          <p class="text-xs text-slate-500">{{ k.rh.disponibles }} disponibles · {{ k.rh.indisponibles }} indisponibles</p>
+        </div>
+      </div>
+
+      @if (k.rh.total || k.rh.ecarts.length) {
+        <div class="card grid gap-4 p-4 md:grid-cols-3">
+          <div><p class="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Par profession</p>
+            @for (p of entrees(k.rh.parProfession); track p.cle) { <p class="flex justify-between text-sm"><span>{{ p.cle }}</span><b>{{ p.n }}</b></p> }
+          </div>
+          <div><p class="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Par service</p>
+            @for (p of entrees(k.rh.parService); track p.cle) { <p class="flex justify-between text-sm"><span>{{ p.cle }}</span><b>{{ p.n }}</b></p> }
+          </div>
+          <div><p class="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Écart à la norme</p>
+            @for (x of k.rh.ecarts; track x.profession) {
+              <p class="flex justify-between text-sm"><span>{{ x.profession }}</span><b [class]="x.ecart < 0 ? 'text-rose-600' : 'text-accent-600'">{{ x.present }} / {{ x.attendu }} ({{ x.ecart > 0 ? '+' : '' }}{{ x.ecart }})</b></p>
+            } @empty { <p class="text-sm text-slate-400">Aucune norme paramétrée.</p> }
+          </div>
+        </div>
+      }
+
+      <!-- Étape 8 -->
+      <div class="card overflow-hidden">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+          <h2 class="text-sm font-semibold text-slate-900 dark:text-white"><i class="fa-solid fa-calculator mr-1 text-brand-600"></i> Étape 8 · Populations cibles attendues</h2>
+          <p class="text-xs text-slate-500">Base {{ k.cibles.annee ?? '—' }} : <b>{{ k.cibles.populationBase?.toLocaleString('fr-FR') ?? '—' }}</b> · calcul du {{ k.cibles.dateCalcul }} · {{ k.cibles.periode }}</p>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead class="bg-slate-50 text-left text-xs text-slate-500 dark:bg-slate-800/60"><tr><th class="px-4 py-2">Indicateur</th><th class="px-4 py-2">Population de base</th><th class="px-4 py-2">Coefficient</th><th class="px-4 py-2">Formule</th><th class="px-4 py-2">Cible calculée</th><th class="px-4 py-2">Cible mensuelle</th><th class="px-4 py-2">Paramètre</th></tr></thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+              @for (c of k.cibles.lignes; track c.cible) {
+                <tr>
+                  <td class="px-4 py-2 font-medium">{{ c.indicateur }}</td>
+                  <td class="px-4 py-2">{{ c.populationBase?.toLocaleString('fr-FR') ?? '—' }}</td>
+                  <td class="px-4 py-2">{{ c.coefficientPct.toLocaleString('fr-FR') }} %</td>
+                  <td class="px-4 py-2 font-mono text-xs">{{ c.formule }}</td>
+                  <td class="px-4 py-2 font-semibold">{{ c.cibleAnnuelle?.toLocaleString('fr-FR') ?? '—' }}</td>
+                  <td class="px-4 py-2">{{ c.cibleMensuelle ?? '—' }}</td>
+                  <td class="px-4 py-2 text-xs text-slate-500">{{ c.coefficient.code }}{{ c.coefficient.version ? ' v' + c.coefficient.version : '' }} · {{ c.coefficient.source }}@if (c.coefficient.validePar) { · validé par {{ c.coefficient.validePar }} }</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <p class="flex items-start gap-2 bg-rose-50 px-4 py-2.5 text-xs text-rose-800 dark:bg-rose-500/10 dark:text-rose-200"><i class="fa-solid fa-triangle-exclamation mt-0.5"></i> {{ k.cibles.alerte }}</p>
+      </div>
+
+      <!-- Étape 9 -->
+      <div class="card overflow-hidden">
+        <h2 class="border-b border-slate-100 px-4 py-3 text-sm font-semibold text-slate-900 dark:border-slate-800 dark:text-white"><i class="fa-solid fa-gauge-high mr-1 text-brand-600"></i> Étape 9 · Capacité théorique, opérationnelle, réalisée et besoins</h2>
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead class="bg-slate-50 text-left text-xs text-slate-500 dark:bg-slate-800/60"><tr><th class="px-4 py-2">Activité</th><th class="px-4 py-2">Théorique</th><th class="px-4 py-2">Opérationnelle</th><th class="px-4 py-2">Réalisées (30 j)</th><th class="px-4 py-2">Besoin / mois</th><th class="px-4 py-2">Alerte</th></tr></thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+              @for (l of k.capacites.lignes; track l.service) {
+                <tr>
+                  <td class="px-4 py-2 font-medium">{{ l.activite }}@if (l.prerequisManquants.length) { <span class="block text-[11px] text-rose-600">Manque : {{ l.prerequisManquants.join(', ') }}</span> }</td>
+                  <td class="px-4 py-2">{{ l.theorique ?? '—' }}</td>
+                  <td class="px-4 py-2">{{ l.operationnelle ?? '—' }}</td>
+                  <td class="px-4 py-2">{{ l.realisees ?? '—' }}</td>
+                  <td class="px-4 py-2">{{ l.besoin ?? '—' }}</td>
+                  <td class="px-4 py-2">@if (l.alerte; as a) { <span class="inline-block rounded-lg px-2 py-1 text-xs" [class]="classeAlerte(a.niveau)">{{ a.message }}</span> } @else { <span class="text-xs text-slate-400">Données insuffisantes</span> }</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <div class="flex flex-wrap gap-2 border-t border-slate-100 px-4 py-3 dark:border-slate-800">
+          @for (x of k.capacites.disponibilites; track x.libelle) {
+            <span class="badge" [class]="x.valeur === 'Oui' ? 'bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300' : x.valeur === 'Non' ? 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800'">{{ x.libelle }} : {{ x.valeur ?? '—' }}</span>
+          }
+        </div>
+      </div>
+
+      @if (d.fiche?.historiqueResponsables?.length) {
+        <div class="card p-4">
+          <h2 class="mb-2 text-sm font-semibold text-slate-900 dark:text-white"><i class="fa-solid fa-clock-rotate-left mr-1 text-brand-600"></i> Historique des responsables</h2>
+          @for (h of d.fiche!.historiqueResponsables!; track $index) {
+            <p class="text-sm text-slate-700 dark:text-slate-300">{{ h.le.slice(0, 10) }} · <b>{{ h.role }}</b> : {{ nomPersonne(h.ancien) }} → {{ nomPersonne(h.nouveau) }} <span class="text-xs text-slate-400">(par {{ h.par.nom }})</span></p>
+          }
+        </div>
+      }
+    }
+
+    <!-- Saisie -->
+    @if (onglet === 'saisie' && fiche) {
+      <form #f="ngForm" (ngSubmit)="enregistrer(f)" novalidate class="card overflow-hidden">
+        <nav class="flex gap-1 overflow-x-auto border-b border-slate-100 px-3 py-2 dark:border-slate-800" aria-label="Étapes">
+          @for (s of etapes; track s.n) {
+            <button type="button" (click)="etape = s.n" [attr.aria-current]="etape === s.n ? 'step' : null"
+                    class="flex flex-none items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium transition"
+                    [class]="etape === s.n ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'">
+              <span class="font-bold">{{ s.n }}</span> {{ s.titre }}
+              @if ($any(s).facultatif && !comite) { <i class="fa-solid fa-pen text-[10px] opacity-70" title="Vous pouvez compléter cette étape"></i> }
+            </button>
+          }
+        </nav>
+        <div class="p-5">
+          @if (etape === 1 || etape === 2 || etape === 6) {
+            <p class="mb-4 text-xs text-slate-500 dark:text-slate-400">
+              @if (comite) { Nom, type, province, zones, aire, adresse, téléphone et GPS se modifient depuis la liste des établissements (bouton Modifier). }
+              @else { Les champs grisés sont gérés par le comité de pilotage. }
+            </p>
+          }
+          <app-fiche-etapes [fiche]="fiche" [etape]="etape" [role]="comite ? 'comite' : 'chef'" [soumis]="!!f.submitted" [bczs]="d.rattachement.bczs" [dps]="d.rattachement.dps" />
+        </div>
+        <div class="flex items-center justify-between gap-2 border-t border-slate-100 px-5 py-3 dark:border-slate-800">
+          <p class="text-xs text-slate-500">{{ modifie ? 'Modifications non enregistrées.' : 'Aucune modification en cours.' }}</p>
+          <button type="submit" class="btn-primary" [disabled]="enregistrement || !modifie">
+            <i class="fa-solid" [class]="enregistrement ? 'fa-spinner fa-spin' : 'fa-floppy-disk'"></i> Enregistrer
+          </button>
+        </div>
+      </form>
+    }
+
+    <!-- Validation et activation (étape 10) -->
+    @if (onglet === 'circuit') {
+      @let c = circuit;
+      <div class="grid gap-4 lg:grid-cols-3">
+        <div class="space-y-4 lg:col-span-2">
+          <!-- Contrôle automatique -->
+          <div class="card p-4">
+            <h2 class="mb-2 text-sm font-semibold text-slate-900 dark:text-white"><i class="fa-solid fa-list-check mr-1 text-brand-600"></i> Contrôle automatique</h2>
+            @if (k.controle.erreurs.length) {
+              <ul class="space-y-1 text-sm text-rose-700 dark:text-rose-300">@for (m of k.controle.erreurs; track m) { <li><i class="fa-solid fa-circle-xmark mr-1"></i>{{ m }}</li> }</ul>
+            } @else {
+              <p class="text-sm text-accent-700 dark:text-accent-300"><i class="fa-solid fa-circle-check mr-1"></i> Champs obligatoires et cohérences : conformes.</p>
+            }
+            @for (m of (c?.controle?.avertissements ?? k.controle.avertissements); track m) { <p class="mt-1 text-sm text-amber-700 dark:text-amber-300"><i class="fa-solid fa-triangle-exclamation mr-1"></i>{{ m }}</p> }
+            @if (c?.motifsCorrection?.length) {
+              <div class="mt-3 rounded-lg bg-rose-50 p-3 text-sm text-rose-800 dark:bg-rose-500/10 dark:text-rose-200"><b>À corriger :</b> {{ c!.motifsCorrection.join(' ; ') }}</div>
+            }
+          </div>
+
+          @if (comite) {
+            <div class="card space-y-4 p-4">
+              <h2 class="text-sm font-semibold text-slate-900 dark:text-white"><i class="fa-solid fa-stamp mr-1 text-brand-600"></i> Action</h2>
+              @switch (statut) {
+                @case ('Brouillon') {
+                  <p class="text-sm text-slate-600 dark:text-slate-300">La fiche passe le contrôle automatique puis part en vérification (BCZS / DPS).</p>
+                  <button type="button" class="btn-primary" [disabled]="!!action" (click)="executer('soumettre')"><i class="fa-solid fa-paper-plane"></i> Soumettre à vérification</button>
+                }
+                @case ('À corriger') {
+                  <p class="text-sm text-slate-600 dark:text-slate-300">Corrigez la fiche (onglet Saisie ou bouton Modifier de la liste), puis soumettez-la de nouveau.</p>
+                  <button type="button" class="btn-primary" [disabled]="!!action" (click)="executer('soumettre')"><i class="fa-solid fa-paper-plane"></i> Soumettre de nouveau</button>
+                }
+                @case ('En attente de vérification') {
+                  <p class="text-xs text-amber-700 dark:text-amber-300"><i class="fa-solid fa-user-shield mr-1"></i> Le vérificateur doit être un autre membre que l’auteur de la saisie.</p>
+                  <div class="grid gap-3 sm:grid-cols-3">
+                    <input class="input" placeholder="Nom du vérificateur *" aria-label="Nom du vérificateur" [(ngModel)]="verification.nom">
+                    <input class="input" placeholder="Fonction *" aria-label="Fonction du vérificateur" [(ngModel)]="verification.fonction">
+                    <input class="input" type="date" aria-label="Date de vérification" [(ngModel)]="verification.date">
+                    <select class="input" aria-label="Résultat du contrôle" [(ngModel)]="verification.resultat"><option value="Conforme">Conforme</option><option value="Non conforme">Non conforme</option></select>
+                    <textarea class="input sm:col-span-2" rows="2" placeholder="Observations" aria-label="Observations" [(ngModel)]="verification.observations"></textarea>
+                    @if (verification.resultat === 'Non conforme') {
+                      <textarea class="input sm:col-span-3" rows="3" placeholder="Motifs de correction (un par ligne) *" aria-label="Motifs de correction" [(ngModel)]="verification.motifs"></textarea>
+                    }
+                  </div>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <label class="btn-secondary cursor-pointer"><i class="fa-solid fa-paperclip"></i> Pièce justificative<input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" class="sr-only" (change)="ajouterPiece('verification', $event)"></label>
+                    <button type="button" class="btn-primary" [disabled]="!!action || !verification.nom.trim() || !verification.fonction.trim()" (click)="verifier()"><i class="fa-solid fa-clipboard-check"></i> Enregistrer la vérification</button>
+                  </div>
+                }
+                @case ('En attente de validation') {
+                  <div class="grid gap-3 sm:grid-cols-3">
+                    <input class="input" placeholder="Nom du valideur *" aria-label="Nom du valideur" [(ngModel)]="validation.nom">
+                    <input class="input" placeholder="Fonction" aria-label="Fonction du valideur" [(ngModel)]="validation.fonction">
+                    <input class="input" type="date" aria-label="Date de validation" [(ngModel)]="validation.date">
+                    <input class="input sm:col-span-3" placeholder="Statut final" aria-label="Statut final" [(ngModel)]="validation.statutFinal">
+                  </div>
+                  <button type="button" class="btn-primary" [disabled]="!!action || !validation.nom.trim()" (click)="executer('valider', validation)"><i class="fa-solid fa-circle-check"></i> Valider la fiche</button>
+                }
+                @case ('Validée') {
+                  <p class="text-sm text-slate-600 dark:text-slate-300">L’activation ouvre les modules : <b>{{ k.modulesPrevus.join(', ') || 'aucun' }}</b>, et génère le QR code.</p>
+                  <button type="button" class="btn-primary" [disabled]="!!action" (click)="executer('activer')"><i class="fa-solid fa-power-off"></i> Activer</button>
+                }
+                @case ('Active') {
+                  <div class="flex flex-wrap items-center gap-2">
+                    <input class="input flex-1" placeholder="Motif (suspension ou archivage)" aria-label="Motif" [(ngModel)]="motif">
+                    <button type="button" class="btn-secondary" [disabled]="!!action || !motif.trim()" (click)="executer('suspendre', { motif })"><i class="fa-solid fa-pause"></i> Suspendre</button>
+                  </div>
+                }
+                @case ('Suspendue') {
+                  <button type="button" class="btn-primary" [disabled]="!!action" (click)="executer('reactiver')"><i class="fa-solid fa-play"></i> Réactiver</button>
+                }
+                @case ('Archivée') {
+                  <button type="button" class="btn-secondary" [disabled]="!!action" (click)="executer('rouvrir')"><i class="fa-solid fa-box-open"></i> Rouvrir en brouillon</button>
+                }
+              }
+              @if (statut !== 'Archivée') {
+                <details class="text-sm">
+                  <summary class="cursor-pointer text-xs text-slate-500">Archiver la fiche…</summary>
+                  <div class="mt-2 flex flex-wrap items-center gap-2">
+                    <input class="input flex-1" placeholder="Motif de l’archivage *" aria-label="Motif de l’archivage" [(ngModel)]="motif">
+                    <button type="button" class="btn-secondary text-rose-600" [disabled]="!!action || !motif.trim()" (click)="executer('archiver', { motif })"><i class="fa-solid fa-box-archive"></i> Archiver</button>
+                  </div>
+                </details>
+              }
+            </div>
+
+            <div class="card p-4">
+              <h2 class="mb-2 text-sm font-semibold text-slate-900 dark:text-white"><i class="fa-solid fa-file-contract mr-1 text-brand-600"></i> Autorisation de fonctionnement (étape 3)</h2>
+              <p class="text-sm text-slate-600 dark:text-slate-300">Référence : {{ d.fiche?.organisation?.autorisation?.reference || '—' }} · date : {{ d.fiche?.organisation?.autorisation?.date || '—' }}</p>
+              <div class="mt-2 flex flex-wrap items-center gap-2">
+                @if (d.fiche?.organisation?.autorisation?.piece; as p) { <a [href]="p.url" target="_blank" rel="noopener" class="text-sm text-brand-700 hover:underline dark:text-brand-300"><i class="fa-solid fa-file mr-1"></i>{{ p.nom }}</a> }
+                <label class="btn-secondary cursor-pointer"><i class="fa-solid fa-upload"></i> {{ d.fiche?.organisation?.autorisation?.piece ? 'Remplacer' : 'Joindre' }} la pièce<input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" class="sr-only" (change)="ajouterPiece('autorisation', $event)"></label>
+              </div>
+            </div>
+          }
+
+          <!-- Historique -->
+          <div class="card p-4">
+            <h2 class="mb-3 text-sm font-semibold text-slate-900 dark:text-white"><i class="fa-solid fa-clock-rotate-left mr-1 text-brand-600"></i> Historique du circuit</h2>
+            <ol class="space-y-2 border-l-2 border-slate-200 pl-4 dark:border-slate-700">
+              @for (h of (c?.historique ?? []).slice().reverse(); track $index) {
+                <li class="text-sm">
+                  <p class="font-medium text-slate-900 dark:text-white">{{ h.action }} <span class="badge ml-1" [class]="classeStatut(h.vers)">{{ h.vers }}</span></p>
+                  <p class="text-xs text-slate-500">{{ h.le.slice(0, 16).replace('T', ' ') }} · {{ h.par.nom }}@if (h.motif) { · {{ h.motif }} }</p>
+                </li>
+              } @empty { <li class="text-sm text-slate-400">Aucune étape enregistrée.</li> }
+            </ol>
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          <div class="card p-4 text-center">
+            <h2 class="mb-2 text-sm font-semibold text-slate-900 dark:text-white">Identifiant AMI</h2>
+            <p class="font-mono text-lg font-bold text-brand-800 dark:text-brand-200">{{ e.codeAmi ?? '—' }}</p>
+            @if (c?.qrCode) {
+              <img [src]="c!.qrCode" alt="QR code de l’établissement" class="mx-auto mt-3 h-48 w-48 rounded-lg bg-white p-2">
+              <a [href]="c!.qrCode" [attr.download]="(e.codeAmi ?? e.code) + '.png'" class="mt-2 inline-flex items-center gap-1 text-xs font-medium text-brand-700 hover:underline dark:text-brand-300"><i class="fa-solid fa-download"></i> Télécharger le QR code</a>
+            } @else {
+              <p class="mt-3 text-xs text-slate-500">Le QR code est généré à l’activation.</p>
+            }
+          </div>
+          @if (c?.verification; as v) {
+            <div class="card p-4 text-sm">
+              <h2 class="mb-2 font-semibold text-slate-900 dark:text-white">Vérification</h2>
+              <p>{{ v.nom }} ({{ v.fonction }}) · {{ v.date }}</p>
+              <p class="font-semibold" [class]="v.resultat === 'Conforme' ? 'text-accent-700' : 'text-rose-700'">{{ v.resultat }}</p>
+              @if (v.observations) { <p class="text-slate-600 dark:text-slate-300">{{ v.observations }}</p> }
+              @for (p of c!.pieces; track $index) { @if (p) { <a [href]="p.url" target="_blank" rel="noopener" class="block text-xs text-brand-700 hover:underline dark:text-brand-300"><i class="fa-solid fa-paperclip mr-1"></i>{{ p.nom }}</a> } }
+            </div>
+          }
+          @if (c?.validation; as v) {
+            <div class="card p-4 text-sm">
+              <h2 class="mb-2 font-semibold text-slate-900 dark:text-white">Validation</h2>
+              <p>{{ v.nom }}@if (v.fonction) { ({{ v.fonction }}) } · {{ v.date }}</p>
+              <p class="font-semibold text-accent-700">{{ v.statutFinal }}</p>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  }
+</div>

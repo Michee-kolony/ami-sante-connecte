@@ -18,6 +18,7 @@ import { MessagesComponent } from './pages/messages/messages.component';
 import { AmbulancesComponent } from './pages/ambulances/ambulances.component';
 import { ChauffeursComponent } from './pages/chauffeurs/chauffeurs.component';
 import { EtablissementsComponent } from './pages/etablissements/etablissements.component';
+import { FicheEtablissementComponent } from './pages/etablissements/fiche-etablissement.component';
 import { SoignantsComponent } from './pages/soignants/soignants.component';
 import { SessionService } from './data/session.service';
 import { ProfilComponent } from './pages/profil/profil.component';
@@ -91,6 +92,8 @@ export const ADMIN_ROUTES: Routes = [
       { path: 'hors-ligne/:localId', component: DossiersLocauxComponent, canActivate: [connecteGuard], title: 'Dossier hors connexion · AMI Santé Connect' },
       { path: 'synchronisation', component: SyncComponent, title: 'Synchronisation · AMI Santé Connect' },
       { path: 'etablissements', component: EtablissementsComponent, canActivate: [superAdminGuard], title: 'Établissements sanitaires · AMI Santé Connect' },
+      // Médecin chef : fiche AMI de son établissement (champs facultatifs). ⚠️ Le serveur refuse aussi.
+      { path: 'mon-etablissement', component: FicheEtablissementComponent, canActivate: [connecteGuard, chefGuard], title: 'Fiche de mon établissement · AMI Santé Connect' },
       { path: 'soignants', component: SoignantsComponent, canActivate: [superAdminGuard, connecteGuard], title: 'Médecins et infirmiers · AMI Santé Connect' },
       { path: 'soignants/:id', component: SoignantDetailComponent, canActivate: [superAdminGuard, connecteGuard], title: 'Profil du soignant · AMI Santé Connect' },
       { path: 'profil', component: ProfilComponent, canActivate: [connecteGuard], title: 'Mon profil · AMI Santé Connect' },

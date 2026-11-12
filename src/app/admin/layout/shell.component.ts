@@ -168,6 +168,7 @@ export class ShellComponent {
     { label: 'Rendez-vous', icon: 'fa-calendar-check', path: '/admin/rendez-vous' },
     { label: 'Discussions', icon: 'fa-comment-medical', path: '/admin/discussions' },
     { label: 'Groupe de pilotage', icon: 'fa-landmark', path: '/admin/groupe-pilotage', chef: true },
+    { label: 'Fiche de mon établissement', icon: 'fa-hospital-user', path: '/admin/mon-etablissement', chef: true },
     { label: 'Conseils aux mamans', icon: 'fa-newspaper', path: '/admin/conseils', clinique: true },
     { label: 'Messages', icon: 'fa-comments', path: '/admin/messages' },
     { label: 'Doublons', icon: 'fa-clone', path: '/admin/doublons', badge: 2 },

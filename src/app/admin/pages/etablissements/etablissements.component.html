@@ -105,7 +105,10 @@
                   </button>
                   <div class="min-w-0">
                     <button type="button" class="text-left font-medium text-slate-900 hover:text-brand-700 dark:text-white dark:hover:text-brand-300" (click)="ouvrirFiche(e)">{{ e.nom }}</button>
-                    <p class="font-mono text-xs text-slate-500 dark:text-slate-400">{{ e.code }}</p>
+                    <p class="font-mono text-xs text-slate-500 dark:text-slate-400">{{ e.codeAmi ?? e.code }}</p>
+                    @if (e.ficheAmi; as fa) {
+                      <span class="badge mt-0.5 text-[10px]" [class]="classeStatut(fa.statut)" [title]="'Fiche AMI · complétude ' + fa.completude + ' %'">{{ fa.statut }} · {{ fa.completude }} %</span>
+                    }
                     <p class="whitespace-nowrap text-[11px] text-slate-400">{{ e.type }} · {{ e.secteur }}</p>
                     @if (comite) {
                       @if (chefActif(e); as c) {
@@ -153,6 +156,9 @@
                     <i class="fa-solid fa-eye"></i><span class="sr-only">Voir la fiche</span>
                   </button>
                   @if (peutGerer()) {
+                    <a [routerLink]="['/comite/etablissements', e.id, 'fiche']" class="btn-ghost px-2.5 py-1.5" title="Fiche AMI (validation, calculs)">
+                      <i class="fa-solid fa-file-medical text-brand-600 dark:text-brand-400"></i><span class="sr-only">Fiche AMI</span>
+                    </a>
                     <button type="button" class="btn-ghost px-2.5 py-1.5" title="Modifier" (click)="ouvrir(e)">
                       <i class="fa-solid fa-pen text-brand-600 dark:text-brand-400"></i><span class="sr-only">Modifier</span>
                     </button>
@@ -202,64 +208,104 @@
   </div>
 </div>
 
-<!-- Panneau d'ajout d'un établissement -->
+<!-- Panneau d'ajout / modification : fiche AMI en 10 étapes -->
 @if (panneauOuvert) {
   <div class="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-labelledby="titre-ajout-et">
     <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" (click)="fermer()"></div>
 
     <form #f="ngForm" (ngSubmit)="enregistrer(f)" novalidate
-          class="relative flex h-full w-full max-w-2xl flex-col bg-white shadow-2xl dark:bg-slate-900">
-      <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800 sm:px-6">
-        <div>
+          class="relative flex h-full w-full max-w-4xl flex-col bg-white shadow-2xl dark:bg-slate-900">
+      <div class="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-4 dark:border-slate-800 sm:px-6">
+        <div class="min-w-0">
           <h2 id="titre-ajout-et" class="text-lg font-semibold text-slate-900 dark:text-white">{{ enEdition ? 'Modifier l’établissement' : 'Ajouter un établissement sanitaire' }}</h2>
-          <p class="text-xs text-slate-500 dark:text-slate-400">Code {{ enEdition ? '' : 'attribué ' }}: <span class="font-mono font-semibold text-slate-700 dark:text-slate-200">{{ codePropose }}</span></p>
+          <p class="text-xs text-slate-500 dark:text-slate-400">
+            @if (enEdition?.codeAmi) {
+              Code AMI <span class="font-mono font-semibold text-slate-700 dark:text-slate-200">{{ enEdition?.codeAmi }}</span> ·
+            } @else if (!enEdition) {
+              Code AMI attribué automatiquement à l’enregistrement (ex. AMI-TAN-KAL-00124) ·
+            }
+            Code {{ enEdition ? '' : 'plateforme ' }}<span class="font-mono font-semibold text-slate-700 dark:text-slate-200">{{ codePropose }}</span>
+            @if (statutFiche) { · <span class="badge" [class]="classeStatut(statutFiche)">{{ statutFiche }}</span> }
+          </p>
         </div>
-        <button type="button" class="btn-ghost px-3" (click)="fermer()" aria-label="Fermer"><i class="fa-solid fa-xmark text-lg"></i></button>
+        <div class="flex items-center gap-3">
+          <div class="hidden text-right sm:block">
+            <p class="text-[11px] text-slate-500 dark:text-slate-400">Complétude estimée</p>
+            <p class="text-sm font-bold text-slate-900 dark:text-white">{{ completudeEstimee }} %</p>
+          </div>
+          <button type="button" class="btn-ghost px-3" (click)="fermer()" aria-label="Fermer"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
       </div>
 
-      <div class="flex-1 space-y-7 overflow-y-auto px-5 py-6 sm:px-6">
-        <!-- Photos -->
-        <section>
-          <div class="mb-3 flex items-center justify-between gap-3">
-            <h3 class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-images"></i> Photos <span class="font-normal normal-case tracking-normal">({{ nombrePhotos }}/{{ maxPhotos }})</span></h3>
-          </div>
-          <div class="grid grid-cols-3 gap-3 sm:grid-cols-4">
-            @for (url of photosConservees; track url; let premiere = $first) {
-              <div class="group relative aspect-[4/3] overflow-hidden rounded-xl bg-slate-100 ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
-                <img [src]="url" alt="" class="h-full w-full object-cover">
-                @if (premiere) { <span class="absolute left-1.5 top-1.5 rounded bg-slate-900/70 px-1.5 py-0.5 text-[10px] font-semibold text-white">Couverture</span> }
-                <button type="button" class="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-rose-600 shadow transition hover:bg-white dark:bg-slate-900/90"
-                        (click)="retirerPhotoConservee(url)" aria-label="Retirer cette photo"><i class="fa-solid fa-xmark text-sm"></i></button>
-              </div>
-            }
-            @for (p of nouvellesPhotos; track p.apercu; let i = $index) {
-              <div class="group relative aspect-[4/3] overflow-hidden rounded-xl bg-slate-100 ring-2 ring-brand-500 dark:bg-slate-800">
-                <img [src]="p.apercu" alt="" class="h-full w-full object-cover">
-                @if (!photosConservees.length && i === 0) { <span class="absolute left-1.5 top-1.5 rounded bg-slate-900/70 px-1.5 py-0.5 text-[10px] font-semibold text-white">Couverture</span> }
-                <span class="absolute bottom-1.5 left-1.5 rounded bg-brand-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">Nouvelle</span>
-                <button type="button" class="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-rose-600 shadow transition hover:bg-white dark:bg-slate-900/90"
-                        (click)="retirerNouvellePhoto(p)" aria-label="Retirer cette photo"><i class="fa-solid fa-xmark text-sm"></i></button>
-              </div>
-            }
-            @if (nombrePhotos < maxPhotos) {
-              <label class="flex aspect-[4/3] cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-slate-300 text-slate-500 transition hover:border-brand-400 hover:bg-brand-50/50 hover:text-brand-700 dark:border-slate-700 dark:text-slate-400 dark:hover:border-brand-500 dark:hover:bg-brand-500/5 dark:hover:text-brand-300">
-                <i class="fa-solid fa-camera text-xl"></i>
-                <span class="text-xs font-medium">Ajouter</span>
-                <input type="file" accept="image/jpeg,image/png,image/webp" multiple class="sr-only" (change)="choisirPhotos($event)">
-              </label>
-            }
-          </div>
-          <p class="mt-2 text-xs" [class]="photoErreur ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500 dark:text-slate-400'">
-            {{ photoErreur || 'Façade, accueil, salles… JPG, PNG ou WebP, 5 Mo max par photo. La première sert de couverture.' }}
-          </p>
-        </section>
+      <!-- Étapes -->
+      <nav class="flex gap-1 overflow-x-auto border-b border-slate-100 px-3 py-2 dark:border-slate-800" aria-label="Étapes de la fiche">
+        @for (e of etapes; track e.n) {
+          @let manque = f.submitted && manquants(e.n).length > 0;
+          <button type="button" (click)="allerA(e.n)" [attr.aria-current]="etape === e.n ? 'step' : null"
+                  class="flex flex-none items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium transition"
+                  [class]="etape === e.n ? 'bg-brand-600 text-white' : manque ? 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'">
+            <span class="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold" [class]="etape === e.n ? 'bg-white/20' : 'bg-slate-200 dark:bg-slate-700'">{{ e.n }}</span>
+            <span class="whitespace-nowrap">{{ e.titre }}</span>
+            @if (manque) { <i class="fa-solid fa-circle-exclamation"></i> }
+          </button>
+        }
+      </nav>
 
-        <!-- Identification -->
-        <section>
-          <h3 class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-hospital"></i> Identification</h3>
+      <div id="corps-panneau-et" class="flex-1 space-y-6 overflow-y-auto px-5 py-6 sm:px-6">
+        @let etapeCourante = etapes[etape - 1];
+        <div class="flex items-center justify-between gap-2">
+          <h3 class="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
+            <i class="fa-solid {{ etapeCourante.icone }} text-brand-600 dark:text-brand-400"></i> Étape {{ etape }} · {{ etapeCourante.titre }}
+          </h3>
+          @if ($any(etapeCourante).facultatif) {
+            <span class="badge bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300" title="Peut être complétée plus tard par le médecin chef de l’établissement">
+              <i class="fa-solid fa-user-doctor"></i> Facultatif · complétable par le médecin chef
+            </span>
+          }
+        </div>
+
+        @if (chargementFiche) {
+          <p class="flex items-center gap-2 text-sm text-slate-500"><i class="fa-solid fa-spinner fa-spin"></i> Chargement de la fiche AMI…</p>
+        }
+
+        <!-- Étape 1 : identité portée par l'établissement -->
+        <div [hidden]="etape !== 1" class="space-y-6">
+          <section>
+            <h4 class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-images"></i> Photos <span class="font-normal normal-case tracking-normal">({{ nombrePhotos }}/{{ maxPhotos }})</span></h4>
+            <div class="grid grid-cols-3 gap-3 sm:grid-cols-6">
+              @for (url of photosConservees; track url; let premiere = $first) {
+                <div class="group relative aspect-[4/3] overflow-hidden rounded-xl bg-slate-100 ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+                  <img [src]="url" alt="" class="h-full w-full object-cover">
+                  @if (premiere) { <span class="absolute left-1.5 top-1.5 rounded bg-slate-900/70 px-1.5 py-0.5 text-[10px] font-semibold text-white">Couverture</span> }
+                  <button type="button" class="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-rose-600 shadow transition hover:bg-white dark:bg-slate-900/90"
+                          (click)="retirerPhotoConservee(url)" aria-label="Retirer cette photo"><i class="fa-solid fa-xmark text-sm"></i></button>
+                </div>
+              }
+              @for (p of nouvellesPhotos; track p.apercu; let i = $index) {
+                <div class="group relative aspect-[4/3] overflow-hidden rounded-xl bg-slate-100 ring-2 ring-brand-500 dark:bg-slate-800">
+                  <img [src]="p.apercu" alt="" class="h-full w-full object-cover">
+                  @if (!photosConservees.length && i === 0) { <span class="absolute left-1.5 top-1.5 rounded bg-slate-900/70 px-1.5 py-0.5 text-[10px] font-semibold text-white">Couverture</span> }
+                  <span class="absolute bottom-1.5 left-1.5 rounded bg-brand-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">Nouvelle</span>
+                  <button type="button" class="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-rose-600 shadow transition hover:bg-white dark:bg-slate-900/90"
+                          (click)="retirerNouvellePhoto(p)" aria-label="Retirer cette photo"><i class="fa-solid fa-xmark text-sm"></i></button>
+                </div>
+              }
+              @if (nombrePhotos < maxPhotos) {
+                <label class="flex aspect-[4/3] cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-slate-300 text-slate-500 transition hover:border-brand-400 hover:bg-brand-50/50 hover:text-brand-700 dark:border-slate-700 dark:text-slate-400 dark:hover:border-brand-500 dark:hover:bg-brand-500/5 dark:hover:text-brand-300">
+                  <i class="fa-solid fa-camera text-xl"></i>
+                  <span class="text-xs font-medium">Ajouter</span>
+                  <input type="file" accept="image/jpeg,image/png,image/webp" multiple class="sr-only" (change)="choisirPhotos($event)">
+                </label>
+              }
+            </div>
+            <p class="mt-2 text-xs" [class]="photoErreur ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500 dark:text-slate-400'">
+              {{ photoErreur || 'Façade, accueil, salles… JPG, PNG ou WebP, 5 Mo max par photo. La première sert de couverture.' }}
+            </p>
+          </section>
+
           <div class="grid gap-4 sm:grid-cols-2">
             <div class="sm:col-span-2">
-              <label class="label" for="et-nom">Nom de l’établissement <span class="req">*</span></label>
+              <label class="label" for="et-nom">Nom officiel (complet, sans abréviation) <span class="req">*</span></label>
               <input id="et-nom" name="nom" class="input" placeholder="Centre de Santé de …" [(ngModel)]="form.nom" #nom="ngModel" required
                      [class.border-rose-400]="(nom.invalid || nomExiste) && (nom.touched || f.submitted)">
               @if (nomExiste) {
@@ -267,128 +313,15 @@
               }
             </div>
             <div>
-              <label class="label" for="et-type">Type <span class="req">*</span></label>
-              <select id="et-type" name="type" class="input" [(ngModel)]="form.type" #type="ngModel" required
+              <label class="label" for="et-type">Type de structure <span class="req">*</span></label>
+              <select id="et-type" name="type" class="input" [ngModel]="form.type" (ngModelChange)="changerType($event)" #type="ngModel" required
                       [class.border-rose-400]="type.invalid && (type.touched || f.submitted)">
                 <option value="" disabled>— Choisir —</option>
                 @for (t of types; track t) { <option [value]="t">{{ t }}</option> }
               </select>
             </div>
             <div>
-              <label class="label" for="et-secteur">Secteur <span class="req">*</span></label>
-              <select id="et-secteur" name="secteur" class="input" [(ngModel)]="form.secteur" #secteur="ngModel" required
-                      [class.border-rose-400]="secteur.invalid && (secteur.touched || f.submitted)">
-                <option value="" disabled>— Choisir —</option>
-                @for (s of secteurs; track s) { <option [value]="s">{{ s }}</option> }
-              </select>
-            </div>
-            <div>
-              <label class="label" for="et-lits">Capacité (lits)</label>
-              <input id="et-lits" name="lits" type="number" min="0" inputmode="numeric" class="input" [(ngModel)]="form.lits">
-            </div>
-          </div>
-        </section>
-
-        <!-- Localisation -->
-        <section>
-          <h3 class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-map-location-dot"></i> Localisation</h3>
-          <div class="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label class="label" for="et-province">Province <span class="req">*</span></label>
-              <select id="et-province" name="province" class="input" [ngModel]="form.province" (ngModelChange)="changerProvince($event)" required>
-                @for (p of provinces; track p) { <option [value]="p">{{ p }}</option> }
-              </select>
-            </div>
-            <div>
-              <label class="label" for="et-district">District sanitaire</label>
-              <input id="et-district" name="districtSanitaire" class="input" placeholder="District sanitaire de …" [(ngModel)]="form.districtSanitaire">
-            </div>
-            <div class="sm:col-span-2" role="group" aria-labelledby="et-zones-titre">
-              <div class="flex flex-wrap items-baseline justify-between gap-2">
-                <span id="et-zones-titre" class="label">Zones de santé <span class="req">*</span></span>
-                <span class="mb-1.5 text-xs text-slate-500 dark:text-slate-400">
-                  {{ form.zonesSante.length }} / {{ nombreZonesProvince }} sélectionnée{{ form.zonesSante.length > 1 ? 's' : '' }} · {{ form.province }}
-                </span>
-              </div>
-              <div class="rounded-xl p-3 ring-1" [class]="!form.zonesSante.length && f.submitted ? 'ring-rose-400' : 'ring-slate-200 dark:ring-slate-700'">
-                <div class="mb-3 flex flex-wrap items-center gap-2">
-                  <div class="relative min-w-[12rem] flex-1">
-                    <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
-                    <input type="search" name="rechercheZone" class="input pl-8" placeholder="Rechercher une zone…" aria-label="Rechercher une zone de santé"
-                           [(ngModel)]="rechercheZone" [ngModelOptions]="{ standalone: true }">
-                  </div>
-                  <button type="button" class="text-xs font-semibold text-brand-600 hover:text-brand-800 dark:text-brand-400 dark:hover:text-brand-300" (click)="toutesLesZones()">Tout cocher</button>
-                  @if (form.zonesSante.length) {
-                    <button type="button" class="text-xs font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200" (click)="aucuneZone()">Effacer</button>
-                  }
-                </div>
-                <div class="flex max-h-56 flex-wrap gap-2 overflow-y-auto">
-                  @for (z of zonesProvince; track z) {
-                    @let rang = form.zonesSante.indexOf(z);
-                    <button type="button" (click)="basculerZone(z)" [attr.aria-pressed]="rang >= 0"
-                            class="rounded-full px-3 py-1.5 text-xs font-medium ring-1 transition"
-                            [class]="rang >= 0 ? 'bg-brand-600 text-white ring-brand-600' : 'bg-white text-slate-600 ring-slate-200 hover:ring-brand-300 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700'">
-                      @if (rang >= 0) { <i class="fa-solid fa-check mr-1"></i> }{{ z }}@if (rang === 0) { <span class="ml-1 opacity-80">(principale)</span> }
-                    </button>
-                  } @empty {
-                    <p class="text-xs text-slate-500 dark:text-slate-400">Aucune zone ne correspond à « {{ rechercheZone }} ».</p>
-                  }
-                </div>
-              </div>
-              <p class="mt-1.5 text-xs" [class]="!form.zonesSante.length && f.submitted ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500 dark:text-slate-400'">
-                @if (!form.zonesSante.length && f.submitted) {
-                  Sélectionnez au moins une zone de santé.
-                } @else if (ancienneZone && !form.zonesSante.length) {
-                  Zone enregistrée auparavant : « {{ ancienneZone }} ». Choisissez-la dans la liste officielle.
-                } @else {
-                  Les zones proposées sont celles de la province choisie. La première cochée est la zone principale (fiche CPN, carte).
-                }
-              </p>
-            </div>
-            <div>
-              <label class="label" for="et-aire">Aire de santé</label>
-              <input id="et-aire" name="aireSante" class="input" placeholder="AS …" [(ngModel)]="form.aireSante">
-            </div>
-            <div>
-              <label class="label" for="et-adresse">Adresse <span class="req">*</span></label>
-              <input id="et-adresse" name="adresse" class="input" placeholder="Avenue, numéro, commune" [(ngModel)]="form.adresse" #adr="ngModel" required
-                     [class.border-rose-400]="adr.invalid && (adr.touched || f.submitted)">
-            </div>
-            <div class="sm:col-span-2">
-              <div class="flex items-center justify-between">
-                <span class="label">Coordonnées GPS</span>
-                <button type="button" class="mb-1.5 text-xs font-semibold text-brand-600 hover:text-brand-800 dark:text-brand-400 dark:hover:text-brand-300" (click)="localiser()" [disabled]="localisation">
-                  <i class="fa-solid" [class]="localisation ? 'fa-spinner fa-spin' : 'fa-location-crosshairs'"></i> Ma position actuelle
-                </button>
-              </div>
-              <div class="grid grid-cols-2 gap-3">
-                <input name="latitude" type="number" step="any" class="input font-mono" placeholder="Latitude (ex. -4.3217)" aria-label="Latitude"
-                       [(ngModel)]="form.latitude" [class.border-rose-400]="!coordonneesValides">
-                <input name="longitude" type="number" step="any" class="input font-mono" placeholder="Longitude (ex. 15.2663)" aria-label="Longitude"
-                       [(ngModel)]="form.longitude" [class.border-rose-400]="!coordonneesValides">
-              </div>
-              <p class="mt-1.5 text-xs" [class]="localisationErreur || !coordonneesValides ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500 dark:text-slate-400'">
-                {{ localisationErreur || (!coordonneesValides ? 'Renseignez la latitude et la longitude (degrés décimaux).' : 'Utilisées pour placer l’établissement sur la carte des urgences.') }}
-              </p>
-            </div>
-          </div>
-        </section>
-
-        <!-- Contact et responsable -->
-        <section>
-          <h3 class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-user-tie"></i> Contact et responsable</h3>
-          <div class="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label class="label" for="et-resp">Nom du responsable <span class="req">*</span></label>
-              <input id="et-resp" name="responsable" class="input" placeholder="Dr …" [(ngModel)]="form.responsable" #resp="ngModel" required
-                     [class.border-rose-400]="resp.invalid && (resp.touched || f.submitted)">
-            </div>
-            <div>
-              <label class="label" for="et-fonction">Fonction</label>
-              <input id="et-fonction" name="fonctionResponsable" class="input" placeholder="Médecin directeur, infirmier titulaire…" [(ngModel)]="form.fonctionResponsable">
-            </div>
-            <div>
-              <label class="label" for="et-tel">Téléphone <span class="req">*</span></label>
+              <label class="label" for="et-tel">Téléphone principal <span class="req">*</span></label>
               <input id="et-tel" name="telephone" type="tel" inputmode="tel" class="input" placeholder="+243 81 000 0000"
                      [(ngModel)]="form.telephone" #tel="ngModel" required pattern="[+0-9 ().-]{9,20}"
                      [class.border-rose-400]="tel.invalid && (tel.touched || f.submitted)">
@@ -398,40 +331,136 @@
               <input id="et-email" name="email" type="email" class="input" placeholder="contact@…" [(ngModel)]="form.email" #mail="ngModel" email
                      [class.border-rose-400]="mail.invalid && (mail.touched || f.submitted)">
             </div>
+            <div class="sm:col-span-2">
+              <div class="flex items-center justify-between">
+                <span class="label">Coordonnées GPS</span>
+                <button type="button" class="mb-1.5 text-xs font-semibold text-brand-600 hover:text-brand-800 dark:text-brand-400 dark:hover:text-brand-300" (click)="localiser()" [disabled]="localisation">
+                  <i class="fa-solid" [class]="localisation ? 'fa-spinner fa-spin' : 'fa-location-crosshairs'"></i> Ma position actuelle
+                </button>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <input name="latitude" type="number" step="any" class="input font-mono" placeholder="Latitude (ex. -5.9475)" aria-label="Latitude"
+                       [(ngModel)]="form.latitude" [class.border-rose-400]="!coordonneesValides">
+                <input name="longitude" type="number" step="any" class="input font-mono" placeholder="Longitude (ex. 29.1947)" aria-label="Longitude"
+                       [(ngModel)]="form.longitude" [class.border-rose-400]="!coordonneesValides">
+              </div>
+              <p class="mt-1.5 text-xs" [class]="localisationErreur || !coordonneesValides ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500 dark:text-slate-400'">
+                {{ localisationErreur || (!coordonneesValides ? 'Renseignez la latitude et la longitude (degrés décimaux).' : 'Utilisées pour la carte des urgences et le contrôle des doublons.') }}
+              </p>
+            </div>
           </div>
-        </section>
+        </div>
 
-        <!-- Services offerts -->
-        <section>
-          <h3 class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"><i class="fa-solid fa-stethoscope"></i> Services offerts <span class="req">*</span></h3>
-          <div class="flex flex-wrap gap-2">
-            @for (s of servicesDisponibles; track s) {
-              @let actif = form.services.has(s);
-              <button type="button" (click)="basculerService(s)" [attr.aria-pressed]="actif"
-                      class="rounded-full px-3 py-1.5 text-xs font-medium ring-1 transition"
-                      [class]="actif ? 'bg-brand-600 text-white ring-brand-600' : 'bg-white text-slate-600 ring-slate-200 hover:ring-brand-300 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700'">
-                @if (actif) { <i class="fa-solid fa-check mr-1"></i> }{{ s }}
-              </button>
-            }
+        <!-- Étape 2 : rattachement en cascade Province → Zone → Aire -->
+        <div [hidden]="etape !== 2" class="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label class="label" for="et-province">Province <span class="req">*</span></label>
+            <select id="et-province" name="province" class="input" [ngModel]="form.province" (ngModelChange)="changerProvince($event)" required>
+              @for (p of provinces; track p) { <option [value]="p">{{ p }}</option> }
+            </select>
           </div>
-          @if (!form.services.size && f.submitted) {
-            <p class="mt-1.5 text-xs text-rose-600 dark:text-rose-400">Sélectionnez au moins un service.</p>
-          }
-        </section>
+          <div>
+            <label class="label" for="et-district">District sanitaire</label>
+            <input id="et-district" name="districtSanitaire" class="input" placeholder="District sanitaire de …" [(ngModel)]="form.districtSanitaire">
+          </div>
+          <div class="sm:col-span-2" role="group" aria-labelledby="et-zones-titre">
+            <div class="flex flex-wrap items-baseline justify-between gap-2">
+              <span id="et-zones-titre" class="label">Zones de santé <span class="req">*</span></span>
+              <span class="mb-1.5 text-xs text-slate-500 dark:text-slate-400">
+                {{ form.zonesSante.length }} / {{ nombreZonesProvince }} sélectionnée{{ form.zonesSante.length > 1 ? 's' : '' }} · {{ form.province }}
+              </span>
+            </div>
+            <div class="rounded-xl p-3 ring-1" [class]="!form.zonesSante.length && f.submitted ? 'ring-rose-400' : 'ring-slate-200 dark:ring-slate-700'">
+              <div class="mb-3 flex flex-wrap items-center gap-2">
+                <div class="relative min-w-[12rem] flex-1">
+                  <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
+                  <input type="search" name="rechercheZone" class="input pl-8" placeholder="Rechercher une zone…" aria-label="Rechercher une zone de santé"
+                         [(ngModel)]="rechercheZone" [ngModelOptions]="{ standalone: true }">
+                </div>
+                <button type="button" class="text-xs font-semibold text-brand-600 hover:text-brand-800 dark:text-brand-400 dark:hover:text-brand-300" (click)="toutesLesZones()">Tout cocher</button>
+                @if (form.zonesSante.length) {
+                  <button type="button" class="text-xs font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200" (click)="aucuneZone()">Effacer</button>
+                }
+              </div>
+              <div class="flex max-h-56 flex-wrap gap-2 overflow-y-auto">
+                @for (z of zonesProvince; track z) {
+                  @let rang = form.zonesSante.indexOf(z);
+                  <button type="button" (click)="basculerZone(z)" [attr.aria-pressed]="rang >= 0"
+                          class="rounded-full px-3 py-1.5 text-xs font-medium ring-1 transition"
+                          [class]="rang >= 0 ? 'bg-brand-600 text-white ring-brand-600' : 'bg-white text-slate-600 ring-slate-200 hover:ring-brand-300 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700'">
+                    @if (rang >= 0) { <i class="fa-solid fa-check mr-1"></i> }{{ z }}@if (rang === 0) { <span class="ml-1 opacity-80">(principale)</span> }
+                  </button>
+                } @empty {
+                  <p class="text-xs text-slate-500 dark:text-slate-400">Aucune zone ne correspond à « {{ rechercheZone }} ».</p>
+                }
+              </div>
+            </div>
+            <p class="mt-1.5 text-xs" [class]="!form.zonesSante.length && f.submitted ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500 dark:text-slate-400'">
+              @if (!form.zonesSante.length && f.submitted) {
+                Sélectionnez au moins une zone de santé.
+              } @else if (ancienneZone && !form.zonesSante.length) {
+                Zone enregistrée auparavant : « {{ ancienneZone }} ». Choisissez-la dans la liste officielle.
+              } @else {
+                Zones de la province choisie. La première cochée est la zone où se trouve la structure (BCZS, aire de santé, code AMI).
+              }
+            </p>
+          </div>
+          <div>
+            <label class="label" for="et-aire">Aire de santé <span class="req">*</span></label>
+            <input id="et-aire" name="aireSante" class="input" placeholder="Ex. Nyemba" list="aires-connues" [(ngModel)]="form.aireSante" #aire="ngModel" required
+                   [class.border-rose-400]="aire.invalid && (aire.touched || f.submitted)" [disabled]="!form.zonesSante.length">
+            <datalist id="aires-connues">@for (a of airesConnues; track a) { <option [value]="a"></option> }</datalist>
+            <p class="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+              {{ form.zonesSante.length ? 'Aire de la zone ' + form.zonesSante[0] + '. Une aire d’une autre zone est refusée.' : 'Choisissez d’abord la zone de santé.' }}
+            </p>
+          </div>
+          <div>
+            <label class="label" for="et-adresse">Adresse physique <span class="req">*</span></label>
+            <input id="et-adresse" name="adresse" class="input" placeholder="Avenue, numéro, commune" [(ngModel)]="form.adresse" #adr="ngModel" required
+                   [class.border-rose-400]="adr.invalid && (adr.touched || f.submitted)">
+          </div>
+        </div>
 
-        <!-- Médecin chef : superadmin de l'établissement (création seulement) -->
+        <!-- Champs propres à la fiche AMI (étapes 1 à 9) -->
+        <app-fiche-etapes [fiche]="form.fiche" [etape]="etape" role="comite" [soumis]="!!f.submitted" [bczs]="bczs" [dps]="dps" />
+
+        <!-- Étape 3 : compte du médecin chef (création seulement) -->
         @if (!enEdition) {
-          <section class="rounded-2xl border border-brand-100 bg-brand-50/40 p-4 dark:border-brand-500/20 dark:bg-brand-500/5">
-            <h3 class="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-300"><i class="fa-solid fa-user-doctor"></i> Médecin chef de l’établissement <span class="req">*</span></h3>
-            <p class="mb-4 text-xs text-slate-600 dark:text-slate-400">Il administre l’établissement : c’est lui qui ajoutera ensuite les médecins, infirmier·ères et sages-femmes.</p>
+          <section [hidden]="etape !== 3" class="rounded-2xl border border-brand-100 bg-brand-50/40 p-4 dark:border-brand-500/20 dark:bg-brand-500/5">
+            <h4 class="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-300"><i class="fa-solid fa-user-doctor"></i> Compte du médecin chef de l’établissement <span class="req">*</span></h4>
+            <p class="mb-4 text-xs text-slate-600 dark:text-slate-400">Il administre l’établissement, y ajoute le personnel soignant et complète les étapes facultatives de la fiche (infrastructures, personnel, population, capacités).</p>
             <app-champs-medecin-chef [chef]="chef" [soumis]="!!f.submitted" />
           </section>
         }
 
-        <p class="flex items-start gap-2 rounded-xl bg-slate-50 p-3 text-xs text-slate-600 dark:bg-slate-800/50 dark:text-slate-300">
-          <i class="fa-solid fa-shield-halved mt-0.5 text-brand-600 dark:text-brand-400"></i>
-          Le médecin chef se connecte à l’espace professionnel avec son e-mail et le mot de passe temporaire affiché après l’enregistrement, puis ajoute le personnel de son établissement.
-        </p>
+        <!-- Étape 10 : validation et activation -->
+        <div [hidden]="etape !== 10" class="space-y-4">
+          <div class="grid gap-3 sm:grid-cols-3">
+            <div class="card p-4"><p class="text-xs text-slate-500">Complétude estimée</p><p class="text-2xl font-bold text-slate-900 dark:text-white">{{ completudeEstimee }} %</p></div>
+            <div class="card p-4"><p class="text-xs text-slate-500">Statut informatique</p><p class="mt-1"><span class="badge" [class]="classeStatut(statutFiche ?? 'Brouillon')">{{ statutFiche ?? 'Brouillon' }}</span></p></div>
+            <div class="card p-4"><p class="text-xs text-slate-500">Étapes obligatoires</p>
+              @let incompletes = etapesObligatoiresIncompletes;
+              <p class="mt-1 text-sm font-semibold" [class]="incompletes.length ? 'text-rose-600' : 'text-accent-600'">{{ incompletes.length ? 'À compléter : ' + incompletes.join(', ') : 'Complètes' }}</p>
+            </div>
+          </div>
+          <ol class="space-y-2 rounded-xl border border-slate-200 p-4 text-sm text-slate-700 dark:border-slate-700 dark:text-slate-300">
+            <li><b>1. Création de la fiche</b> — enregistrée en brouillon.</li>
+            <li><b>2. Contrôle automatique</b> — champs obligatoires, doublons (code SNIS, GPS), cohérences.</li>
+            <li><b>3. Vérification</b> par le niveau compétent (BCZS / DPS) — par un autre membre que l’auteur de la saisie.</li>
+            <li><b>4. Correction</b> si nécessaire, avec motifs.</li>
+            <li><b>5. Validation</b> par l’autorité habilitée.</li>
+            <li><b>6. Activation</b> — ouverture des modules selon l’étape 6, QR code généré.</li>
+            <li><b>7. Mise à disposition</b> des autres modules AMI.</li>
+          </ol>
+          <p class="flex items-start gap-2 rounded-xl bg-slate-50 p-3 text-xs text-slate-600 dark:bg-slate-800/50 dark:text-slate-300">
+            <i class="fa-solid fa-shield-halved mt-0.5 text-brand-600 dark:text-brand-400"></i>
+            @if (enEdition) {
+              Le circuit (soumission, vérification, validation, activation) se pilote depuis la fiche AMI de l’établissement. Une modification d’une fiche en attente ou validée la renvoie en brouillon.
+            } @else {
+              Après l’enregistrement, ouvrez la fiche AMI de l’établissement pour la soumettre à vérification. Le médecin chef se connecte avec son e-mail et le mot de passe temporaire affiché.
+            }
+          </p>
+        </div>
       </div>
 
       @if (erreurEnregistrement) {
@@ -439,11 +468,15 @@
           <i class="fa-solid fa-circle-exclamation mt-0.5"></i> {{ erreurEnregistrement }}
         </p>
       }
-      <div class="flex flex-col-reverse gap-2 border-t border-slate-100 px-5 py-4 dark:border-slate-800 sm:flex-row sm:justify-end sm:px-6">
+      <div class="flex flex-col-reverse gap-2 border-t border-slate-100 px-5 py-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <button type="button" class="btn-secondary" (click)="fermer()">Annuler</button>
-        <button type="submit" class="btn-primary" [disabled]="enregistrement">
-          <i class="fa-solid" [class]="enregistrement ? 'fa-spinner fa-spin' : 'fa-hospital'"></i> {{ enEdition ? 'Enregistrer les modifications' : 'Enregistrer l’établissement' }}
-        </button>
+        <div class="flex flex-col-reverse gap-2 sm:flex-row">
+          @if (etape > 1) { <button type="button" class="btn-secondary" (click)="allerA(etape - 1)"><i class="fa-solid fa-arrow-left"></i> Précédent</button> }
+          @if (etape < 10) { <button type="button" class="btn-secondary" (click)="allerA(etape + 1)">Suivant <i class="fa-solid fa-arrow-right"></i></button> }
+          <button type="submit" class="btn-primary" [disabled]="enregistrement || chargementFiche">
+            <i class="fa-solid" [class]="enregistrement ? 'fa-spinner fa-spin' : 'fa-hospital'"></i> {{ enEdition ? 'Enregistrer les modifications' : 'Enregistrer l’établissement' }}
+          </button>
+        </div>
       </div>
     </form>
   </div>
@@ -478,7 +511,10 @@
         <div class="space-y-4">
           <div>
             <h2 id="titre-fiche-et" class="text-xl font-bold text-slate-900 dark:text-white">{{ e.nom }}</h2>
-            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400"><span class="font-mono">{{ e.code }}</span> · {{ e.type }} · {{ e.secteur }}</p>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400"><span class="font-mono">{{ e.code }}</span>@if (e.codeAmi) { · <span class="font-mono">{{ e.codeAmi }}</span> } · {{ e.type }} · {{ e.secteur }}</p>
+            @if (e.ficheAmi; as fa) {
+              <p class="mt-1 text-xs"><span class="badge" [class]="classeStatut(fa.statut)">Fiche AMI : {{ fa.statut }}</span> <span class="text-slate-500">complétude {{ fa.completude }} %</span></p>
+            }
           </div>
           <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
             <div><dt class="text-xs text-slate-500 dark:text-slate-400">Province</dt><dd class="text-slate-900 dark:text-white">{{ e.province }}</dd></div>
@@ -554,6 +590,7 @@
 
       @if (peutGerer()) {
         <div class="flex justify-end gap-2 border-t border-slate-100 px-5 py-3 dark:border-slate-800 sm:px-6">
+          <a [routerLink]="['/comite/etablissements', e.id, 'fiche']" class="btn-secondary"><i class="fa-solid fa-file-medical"></i> Fiche AMI</a>
           <button type="button" class="btn-secondary" (click)="fiche = null; ouvrir(e)"><i class="fa-solid fa-pen"></i> Modifier</button>
         </div>
       }

@@ -12,6 +12,7 @@ import { ComiteFlotteComponent } from './pages/flotte.component';
 import { ComiteMessagesComponent } from './pages/messages.component';
 import { ComitePatientesComponent } from './pages/patientes.component';
 import { EtablissementsComponent } from '../admin/pages/etablissements/etablissements.component';
+import { FicheEtablissementComponent } from '../admin/pages/etablissements/fiche-etablissement.component';
 import { BASE_ETABLISSEMENTS, BASE_STATISTIQUES, ESPACE_COMITE, PERIMETRE_STATISTIQUES } from '../admin/data/espace';
 import { PerimetreComiteService } from './perimetre-comite.service';
 import { StatistiquesService, SyntheseEtatService } from '../admin/data/statistiques.service';
@@ -48,6 +49,8 @@ export const COMITE_ROUTES: Routes = [
       { path: '', pathMatch: 'full', redirectTo: 'tableau-de-bord' },
       { path: 'tableau-de-bord', component: ComiteTableauDeBordComponent, canActivate: [motDePassePersonnelGuard], title: 'Tableau de bord global · Comité de pilotage' },
       { path: 'etablissements', component: EtablissementsComponent, canActivate: [motDePassePersonnelGuard], title: 'Établissements sanitaires · Comité de pilotage' },
+      // Fiche AMI (10 étapes) : calculs, saisie et circuit de validation.
+      { path: 'etablissements/:id/fiche', component: FicheEtablissementComponent, canActivate: [motDePassePersonnelGuard], title: 'Fiche AMI · Comité de pilotage' },
       // Tout le personnel soignant de la plateforme (?etablissement=<id> pour filtrer).
       { path: 'personnel', component: ComitePersonnelComponent, canActivate: [motDePassePersonnelGuard], title: 'Personnel soignant · Comité de pilotage' },
       // Tous les relais communautaires (RECO) de la plateforme (?etablissement=<id> pour filtrer).

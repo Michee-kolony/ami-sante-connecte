@@ -11,6 +11,11 @@ import {
 import { messageErreur } from '../../data/session.service';
 import { ESPACE_COMITE } from '../../data/espace';
 import { ChampsMedecinChefComponent, medecinChefNettoye, medecinChefVide } from '../../components/champs-medecin-chef.component';
+import { FicheEtapesComponent } from '../../components/fiche-etapes.component';
+import {
+  CATEGORIE_DU_TYPE, ETAPES, FicheEtablissementService, SECTEUR_DU_STATUT, VERS_SERVICES_PLATEFORME, classeStatut, ficheDepuis,
+  ficheVide, nomPersonne, sectionsAEnvoyer, sectionsModifiees,
+} from '../../data/fiche-etablissement';
 
 const MAX_PHOTOS = 6;
 const PHOTO_MAX_OCTETS = 5 * 1024 * 1024;
@@ -22,6 +27,8 @@ function formulaireVide() {
     latitude: null as number | null, longitude: null as number | null,
     telephone: '', email: '', responsable: '', fonctionResponsable: '', lits: 0,
     services: new Set<ServiceEtablissement>(),
+    /** Fiche AMI (étapes 1 à 9). */
+    fiche: ficheVide(),
   };
 }
 
@@ -35,6 +42,7 @@ function formulaireDepuis(e: Etablissement) {
     latitude: e.latitude, longitude: e.longitude,
     telephone: e.telephone, email: e.email, responsable: e.responsable, fonctionResponsable: e.fonctionResponsable, lits: e.lits,
     services: new Set(e.services),
+    fiche: ficheVide(),
   };
 }
 
@@ -51,11 +59,15 @@ interface NouvellePhoto {
 @Component({
   selector: 'app-etablissements',
   standalone: true,
-  imports: [FormsModule, RouterLink, ChampsMedecinChefComponent],
+  imports: [FormsModule, RouterLink, ChampsMedecinChefComponent, FicheEtapesComponent],
+  providers: [FicheEtablissementService],
   templateUrl: './etablissements.component.html',
 })
 export class EtablissementsComponent implements OnDestroy {
   service = inject(EtablissementsService);
+  private ficheService = inject(FicheEtablissementService);
+  readonly etapes = ETAPES;
+  readonly classeStatut = classeStatut;
   private sanitizer = inject(DomSanitizer);
   etablissements = this.service.etablissements;
   /**
@@ -87,7 +99,7 @@ export class EtablissementsComponent implements OnDestroy {
   filtres = computed(() => {
     const q = this.recherche().trim().toLowerCase();
     return this.etablissements().filter(e => {
-      const texte = `${e.nom} ${e.code} ${e.province} ${zonesEtablissement(e).join(' ')} ${e.aireSante} ${e.responsable}`.toLowerCase();
+      const texte = `${e.nom} ${e.code} ${e.codeAmi ?? ''} ${e.province} ${zonesEtablissement(e).join(' ')} ${e.aireSante} ${e.responsable}`.toLowerCase();
       return (this.filtreStatut() === 'Tous' || e.statut === this.filtreStatut()) && (!q || texte.includes(q));
     });
   });
@@ -315,12 +327,103 @@ export class EtablissementsComponent implements OnDestroy {
     this.form.province = province;
     this.form.zonesSante = this.form.zonesSante.filter(z => zonesDeProvince(province).includes(z));
     this.rechercheZone = '';
+    this.chargerAires();
   }
 
   /** Coche ou décoche une zone ; l'ordre de sélection est gardé (la première est la zone principale). */
   basculerZone(z: string): void {
     const zones = this.form.zonesSante;
     this.form.zonesSante = zones.includes(z) ? zones.filter(x => x !== z) : [...zones, z];
+    if (this.form.zonesSante[0] !== zones[0]) this.chargerAires();
+  }
+
+  // --- Fiche AMI : assistant en 10 étapes ----------------------------------------------
+  /** Étape affichée dans le panneau (1 à 10). */
+  etape = 1;
+  chargementFiche = false;
+  /** Sections de la fiche à l'ouverture (seules les sections modifiées sont envoyées). */
+  private ficheInitiale: ReturnType<typeof sectionsAEnvoyer> | null = null;
+  statutFiche: string | null = null;
+  /** Aires de santé déjà connues de la zone principale (suggestions, cascade Zone → Aire). */
+  airesConnues: string[] = [];
+
+  chargerAires(): void {
+    const zone = this.form.zonesSante[0];
+    this.airesConnues = [];
+    if (!zone) return;
+    this.ficheService.aires(this.form.province, zone).then(a => (this.airesConnues = a)).catch(() => {});
+  }
+
+  get bczs(): string {
+    return this.form.zonesSante[0] ? `BCZS ${this.form.zonesSante[0]}` : '';
+  }
+  get dps(): string {
+    return `DPS ${this.form.province}`;
+  }
+
+  /** Catégorie proposée selon le type de structure (tant qu'elle n'est pas choisie). */
+  changerType(type: TypeEtablissement | ''): void {
+    this.form.type = type;
+    if (type && !this.form.fiche.identification.categorie) this.form.fiche.identification.categorie = CATEGORIE_DU_TYPE[type] ?? null;
+  }
+
+  /** Champs obligatoires manquants par étape (pastilles de l'assistant). */
+  manquants(n: number): string[] {
+    const f = this.form;
+    const fi = f.fiche;
+    const m: string[] = [];
+    const vide = (v: unknown) => v == null || v === '';
+    if (n === 1) {
+      if (!f.nom.trim() || this.nomExiste) m.push('nom');
+      if (!f.type) m.push('type');
+      if (!/^[+0-9 ().-]{9,20}$/.test(f.telephone.trim())) m.push('téléphone');
+      if (vide(fi.identification.niveauSanitaire)) m.push('niveau sanitaire');
+      if (vide(fi.identification.categorie)) m.push('catégorie');
+      if (vide(fi.identification.statutActuel)) m.push('statut actuel');
+      if (!this.coordonneesValides) m.push('GPS');
+    } else if (n === 2) {
+      if (!f.zonesSante.length) m.push('zone de santé');
+      if (!f.aireSante.trim()) m.push('aire de santé');
+      if (!f.adresse.trim()) m.push('adresse');
+      if (!fi.localisation.territoire.trim()) m.push('territoire');
+    } else if (n === 3) {
+      const r = fi.organisation.responsable;
+      if (vide(fi.organisation.statutJuridique)) m.push('statut juridique');
+      if (vide(fi.organisation.modeGestion)) m.push('mode de gestion');
+      if (!r.nom.trim() || !r.prenom.trim() || !r.fonction.trim() || !r.telephone.trim()) m.push('responsable');
+    } else if (n === 4) {
+      if (fi.equipements.some(q => !q.nom.trim())) m.push('nom d’équipement');
+    } else if (n === 5) {
+      if (fi.agents.some(a => !a.nom.trim() || !a.profession)) m.push('agent incomplet');
+    } else if (n === 6) {
+      if (!fi.services.some(s => s.fonctionnel === 'Oui' || s.fonctionnel === 'Partiel')) m.push('service fonctionnel');
+    } else if (n === 7) {
+      if (fi.populations.some(p => p.totale == null)) m.push('population totale');
+    }
+    return m;
+  }
+
+  /** Étapes obligatoires (1, 2, 3, 6) encore incomplètes. */
+  get etapesObligatoiresIncompletes(): number[] {
+    return [1, 2, 3, 6].filter(n => this.manquants(n).length);
+  }
+
+  allerA(n: number): void {
+    this.etape = Math.min(10, Math.max(1, n));
+    document.getElementById('corps-panneau-et')?.scrollTo({ top: 0 });
+  }
+
+  /** Complétude estimée pendant la saisie (la complétude officielle est calculée par le serveur). */
+  get completudeEstimee(): number {
+    const f = this.form.fiche;
+    const valeurs: unknown[] = [
+      this.form.nom, this.form.type, ...Object.values(f.identification), this.form.telephone, this.form.email, this.form.latitude,
+      this.form.aireSante, this.form.adresse, ...Object.values(f.localisation), f.organisation.statutJuridique, f.organisation.modeGestion,
+      f.organisation.proprietaire, f.organisation.autorisation.reference, nomPersonne(f.organisation.responsable),
+      f.infrastructures.litsTotal, f.infrastructures.electricite, f.infrastructures.pointEau, f.equipements.length || null, f.agents.length || null,
+      f.services.some(s => s.fonctionnel) || null, f.populations.length || null, f.capacites.accouchementsMois, f.capacites.cpnMois,
+    ];
+    return Math.round((valeurs.filter(v => v != null && v !== '').length / valeurs.length) * 100);
   }
 
   /** Coche toutes les zones affichées (après filtre), sans changer la zone principale. */
@@ -402,8 +505,46 @@ export class EtablissementsComponent implements OnDestroy {
     this.viderNouvellesPhotos();
     this.photoErreur = this.localisationErreur = this.erreurEnregistrement = '';
     this.rechercheZone = '';
+    this.etape = 1;
+    this.statutFiche = e?.ficheAmi?.statut ?? null;
+    this.ficheInitiale = null;
     this.panneauOuvert = true;
     document.body.style.overflow = 'hidden';
+    this.chargerAires();
+    if (e) {
+      // La fiche complète (dont le registre du personnel) n'est chargée qu'à l'ouverture.
+      this.chargementFiche = true;
+      this.ficheService.obtenir(e.id)
+        .then(r => {
+          this.form.fiche = ficheDepuis(r.fiche);
+          // Établissement antérieur à la fiche : reprise des informations déjà connues.
+          if (!r.fiche) this.preremplirDepuis(e);
+          this.ficheInitiale = r.fiche ? sectionsAEnvoyer(this.form.fiche) : {};
+        })
+        .catch(err => (this.erreurEnregistrement = `Fiche AMI non chargée : ${messageErreur(err)}`))
+        .finally(() => (this.chargementFiche = false));
+    }
+  }
+
+  /** Fiche ouverte pour un établissement ancien : responsable, lits et services déjà saisis. */
+  private preremplirDepuis(e: Etablissement): void {
+    const f = this.form.fiche;
+    const [prenom, ...reste] = e.responsable.split(' ');
+    f.organisation.responsable = {
+      ...f.organisation.responsable, prenom: reste.length ? prenom : '', nom: reste.length ? reste.join(' ') : prenom,
+      fonction: e.fonctionResponsable, telephone: e.telephone,
+    };
+    const statuts: Record<string, string> = { Public: 'Public', Privé: 'Privé lucratif', Confessionnel: 'Confessionnel', Militaire: 'Militaire', ONG: 'Associatif' };
+    f.organisation.statutJuridique = statuts[e.secteur] ?? null;
+    f.identification.categorie = CATEGORIE_DU_TYPE[e.type] ?? null;
+    f.infrastructures.litsTotal = e.lits || null;
+    for (const s of f.services) {
+      const offert = s.service === 'Accouchement' ? e.services.includes('Maternité') : (e.services as string[]).includes(s.service);
+      if (offert) {
+        s.disponible = 'Oui';
+        s.fonctionnel = 'Oui';
+      }
+    }
   }
 
   fermer(): void {
@@ -413,19 +554,29 @@ export class EtablissementsComponent implements OnDestroy {
   }
 
   async enregistrer(f: NgForm): Promise<void> {
-    if (this.enregistrement) return;
-    if (f.invalid || this.nomExiste || !this.coordonneesValides || !this.form.services.size || !this.form.zonesSante.length) {
-      this.erreurEnregistrement = this.enEdition
-        ? 'Vérifiez les champs signalés en rouge (nom, type, secteur, zones de santé, adresse, responsable, téléphone, services, coordonnées).'
-        : 'Vérifiez les champs signalés en rouge, y compris l’identité du médecin chef.';
+    if (this.enregistrement || this.chargementFiche) return;
+    const incomplete = this.etapes.map(e => e.n as number).find(n => this.manquants(n).length);
+    if (f.invalid || this.nomExiste || incomplete) {
+      this.erreurEnregistrement = incomplete
+        ? `Étape ${incomplete} incomplète : ${this.manquants(incomplete).join(', ')}.`
+        : 'Vérifiez les champs signalés en rouge, y compris l’identité du médecin chef (étape 3).';
+      this.allerA(incomplete ?? 3);
       return;
     }
     this.enregistrement = true;
     this.erreurEnregistrement = '';
+    const fiche = this.form.fiche;
+    const org = fiche.organisation;
+    // Champs de l'établissement déduits de la fiche (le serveur applique les mêmes règles).
+    const services = [...new Set(fiche.services
+      .filter(s => s.disponible === 'Oui' && (s.fonctionnel === 'Oui' || s.fonctionnel === 'Partiel') && VERS_SERVICES_PLATEFORME[s.service])
+      .map(s => VERS_SERVICES_PLATEFORME[s.service] as ServiceEtablissement))];
+    const sections = sectionsAEnvoyer(fiche);
+    const aEnvoyer = this.ficheInitiale ? sectionsModifiees(this.ficheInitiale, sections) : sections;
     const donnees: DonneesEtablissement = {
       nom: this.form.nom.trim(),
       type: this.form.type as TypeEtablissement,
-      secteur: this.form.secteur as SecteurEtablissement,
+      secteur: (SECTEUR_DU_STATUT[org.statutJuridique ?? ''] ?? this.form.secteur) as SecteurEtablissement,
       province: this.form.province,
       districtSanitaire: this.form.districtSanitaire.trim(),
       zonesSante: [...this.form.zonesSante],
@@ -435,21 +586,23 @@ export class EtablissementsComponent implements OnDestroy {
       longitude: this.form.longitude,
       telephone: this.form.telephone.trim(),
       email: this.form.email.trim().toLowerCase(),
-      responsable: this.form.responsable.trim(),
-      fonctionResponsable: this.form.fonctionResponsable.trim(),
-      lits: this.form.lits || 0,
-      services: this.servicesDisponibles.filter(s => this.form.services.has(s)),
+      responsable: nomPersonne(org.responsable) || this.form.responsable,
+      fonctionResponsable: org.responsable.fonction.trim() || this.form.fonctionResponsable,
+      lits: fiche.infrastructures.litsTotal ?? this.form.lits ?? 0,
+      services: services.length ? services : this.servicesDisponibles.filter(s => this.form.services.has(s)),
+      fiche: Object.keys(aEnvoyer).length ? aEnvoyer : undefined,
     };
     const fichiers = this.nouvellesPhotos.map(p => p.fichier);
     try {
       if (this.enEdition) {
         const e = await this.service.modifier(this.enEdition.id, donnees, this.photosConservees, fichiers);
         this.fermer();
-        this.notifier(`${e.nom} a été mis à jour.`);
+        const retour = e.ficheAmi?.statut === 'Brouillon' && !!this.statutFiche && this.statutFiche !== 'Brouillon';
+        this.notifier(`${e.nom} a été mis à jour.${retour ? ' La fiche AMI repasse en brouillon : soumettez-la de nouveau.' : ''}`);
       } else {
         const e = await this.service.ajouter(donnees, fichiers, medecinChefNettoye(this.chef));
         this.fermer();
-        this.notifier(`${e.nom} est enregistré sous le code ${e.code}, avec son médecin chef.`);
+        this.notifier(`${e.nom} est enregistré (code AMI ${e.codeAmi ?? e.code}) avec son médecin chef. Sa fiche est en brouillon : ouvrez-la pour la soumettre à vérification.`);
         // Identifiants du médecin chef : affichés une seule fois.
         this.compteCree = { etablissement: e.nom, chef: e.medecinChef, motDePasse: e.motDePasseTemporaire };
       }

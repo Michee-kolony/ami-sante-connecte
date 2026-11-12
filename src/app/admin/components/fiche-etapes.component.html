@@ -1,0 +1,509 @@
+<!-- Étape 1 : identification générale (compléments) -->
+<div [hidden]="etape !== 1" class="grid gap-4 sm:grid-cols-2">
+  <div>
+    <label class="label" for="fi-snis">Code officiel SNIS / DHIS2</label>
+    <input id="fi-snis" name="fiCodeSnis" class="input font-mono" placeholder="Si disponible" [(ngModel)]="fiche.identification.codeSnis" [disabled]="!peut('identification', 'codeSnis')">
+  </div>
+  <div>
+    <label class="label" for="fi-usuel">Nom usuel</label>
+    <input id="fi-usuel" name="fiNomUsuel" class="input" placeholder="Nom utilisé par la population" [(ngModel)]="fiche.identification.nomUsuel" [disabled]="!peut('identification', 'nomUsuel')">
+  </div>
+  <div>
+    <label class="label" for="fi-sigle">Sigle</label>
+    <input id="fi-sigle" name="fiSigle" class="input" placeholder="Ex. CS Nyemba" [(ngModel)]="fiche.identification.sigle" [disabled]="!peut('identification', 'sigle')">
+  </div>
+  <div>
+    <label class="label" for="fi-niveau">Niveau sanitaire @if (comite) { <span class="req">*</span> }</label>
+    <select id="fi-niveau" name="fiNiveau" class="input" [(ngModel)]="fiche.identification.niveauSanitaire" [required]="comite" [disabled]="!peut('identification', 'niveauSanitaire')"
+            [class.border-rose-400]="manque(fiche.identification.niveauSanitaire)">
+      <option [ngValue]="null" disabled>— Choisir —</option>
+      @for (n of niveaux; track n) { <option [ngValue]="n">{{ n }}</option> }
+    </select>
+  </div>
+  <div>
+    <label class="label" for="fi-cat">Catégorie @if (comite) { <span class="req">*</span> }</label>
+    <select id="fi-cat" name="fiCategorie" class="input" [(ngModel)]="fiche.identification.categorie" [required]="comite" [disabled]="!peut('identification', 'categorie')"
+            [class.border-rose-400]="manque(fiche.identification.categorie)">
+      <option [ngValue]="null" disabled>— Choisir —</option>
+      @for (c of categories; track c) { <option [ngValue]="c">{{ c }}</option> }
+    </select>
+  </div>
+  <div>
+    <label class="label" for="fi-statut">Statut actuel @if (comite) { <span class="req">*</span> }</label>
+    <select id="fi-statut" name="fiStatutActuel" class="input" [(ngModel)]="fiche.identification.statutActuel" [required]="comite" [disabled]="!peut('identification', 'statutActuel')"
+            [class.border-rose-400]="manque(fiche.identification.statutActuel)">
+      <option [ngValue]="null" disabled>— Choisir —</option>
+      @for (s of statutsActuels; track s) { <option [ngValue]="s">{{ s }}</option> }
+    </select>
+  </div>
+  <div>
+    <label class="label" for="fi-annee">Année de création</label>
+    <input id="fi-annee" name="fiAnnee" type="number" min="1850" max="2100" class="input" [(ngModel)]="fiche.identification.anneeCreation" [disabled]="!peut('identification', 'anneeCreation')">
+  </div>
+  <div>
+    <label class="label" for="fi-ouverture">Date d’ouverture / mise en service</label>
+    <input id="fi-ouverture" name="fiOuverture" type="date" class="input" [(ngModel)]="fiche.identification.dateOuverture" [disabled]="!peut('identification', 'dateOuverture')">
+  </div>
+  <div class="sm:col-span-2">
+    <label class="label" for="fi-web">Site web</label>
+    <input id="fi-web" name="fiSiteWeb" type="url" class="input" placeholder="https://…" [(ngModel)]="fiche.identification.siteWeb" [disabled]="!peut('identification', 'siteWeb')">
+  </div>
+</div>
+
+<!-- Étape 2 : localisation (compléments) -->
+<div [hidden]="etape !== 2" class="grid gap-4 sm:grid-cols-2">
+  <div>
+    <label class="label" for="fl-pays">Pays</label>
+    <input id="fl-pays" name="flPays" class="input" [(ngModel)]="fiche.localisation.pays" [disabled]="!peut('localisation', 'pays')">
+  </div>
+  <div>
+    <label class="label" for="fl-terr">Ville ou territoire @if (comite) { <span class="req">*</span> }</label>
+    <input id="fl-terr" name="flTerritoire" class="input" placeholder="Ex. Kalemie" [(ngModel)]="fiche.localisation.territoire" [required]="comite" [disabled]="!peut('localisation', 'territoire')"
+           [class.border-rose-400]="manque(fiche.localisation.territoire)">
+  </div>
+  <div>
+    <label class="label" for="fl-commune">Commune / Secteur / Chefferie</label>
+    <input id="fl-commune" name="flCommune" class="input" [(ngModel)]="fiche.localisation.commune" [disabled]="!peut('localisation', 'commune')">
+  </div>
+  <div>
+    <label class="label" for="fl-quartier">Quartier / Village</label>
+    <input id="fl-quartier" name="flQuartier" class="input" [(ngModel)]="fiche.localisation.quartier" [disabled]="!peut('localisation', 'quartier')">
+  </div>
+  <div class="sm:col-span-2">
+    <label class="label" for="fl-reperes">Repères géographiques</label>
+    <input id="fl-reperes" name="flReperes" class="input" placeholder="Près du marché, derrière l’église…" [(ngModel)]="fiche.localisation.reperes" [disabled]="!peut('localisation', 'reperes')">
+  </div>
+  @if (bczs || dps) {
+    <div class="grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 text-sm dark:bg-slate-800/50 sm:col-span-2">
+      <div><p class="text-xs text-slate-500 dark:text-slate-400">Bureau central de zone (auto)</p><p class="font-medium text-slate-900 dark:text-white">{{ bczs || '—' }}</p></div>
+      <div><p class="text-xs text-slate-500 dark:text-slate-400">Division provinciale de la santé (auto)</p><p class="font-medium text-slate-900 dark:text-white">{{ dps || '—' }}</p></div>
+    </div>
+  }
+  <div>
+    <label class="label" for="fl-dbczs">Distance au BCZS (km)</label>
+    <input id="fl-dbczs" name="flDistBczs" type="number" min="0" step="0.1" class="input" [(ngModel)]="fiche.localisation.distanceBczsKm" [disabled]="!peut('localisation', 'distanceBczsKm')">
+  </div>
+  <div>
+    <label class="label" for="fl-dhgr">Distance à l’HGR (km)</label>
+    <input id="fl-dhgr" name="flDistHgr" type="number" min="0" step="0.1" class="input" [(ngModel)]="fiche.localisation.distanceHgrKm" [disabled]="!peut('localisation', 'distanceHgrKm')">
+  </div>
+  <div>
+    <label class="label" for="fl-dcsr">Distance au CSR (km)</label>
+    <input id="fl-dcsr" name="flDistCsr" type="number" min="0" step="0.1" class="input" [(ngModel)]="fiche.localisation.distanceCsrKm" [disabled]="!peut('localisation', 'distanceCsrKm')">
+  </div>
+  <div>
+    <label class="label" for="fl-temps">Temps moyen de déplacement</label>
+    <input id="fl-temps" name="flTemps" class="input" placeholder="Ex. 45 min à moto" [(ngModel)]="fiche.localisation.tempsDeplacement" [disabled]="!peut('localisation', 'tempsDeplacement')">
+  </div>
+  <div>
+    <label class="label" for="fl-transport">Moyen de transport habituel</label>
+    <input id="fl-transport" name="flTransport" class="input" placeholder="Moto, pirogue, à pied…" [(ngModel)]="fiche.localisation.moyenTransport" [disabled]="!peut('localisation', 'moyenTransport')">
+  </div>
+  <div>
+    <label class="label" for="fl-pluies">Accessible en saison des pluies</label>
+    <select id="fl-pluies" name="flPluies" class="input" [(ngModel)]="fiche.localisation.accessibilitePluies" [disabled]="!peut('localisation', 'accessibilitePluies')">
+      <option [ngValue]="null">—</option>
+      @for (a of accessibilite; track a) { <option [ngValue]="a">{{ a }}</option> }
+    </select>
+  </div>
+  <div>
+    <label class="label" for="fl-urgence">Accessible en urgence</label>
+    <select id="fl-urgence" name="flUrgence" class="input" [(ngModel)]="fiche.localisation.accessibiliteUrgence" [disabled]="!peut('localisation', 'accessibiliteUrgence')">
+      <option [ngValue]="null">—</option>
+      @for (a of ouiNon; track a) { <option [ngValue]="a">{{ a }}</option> }
+    </select>
+  </div>
+</div>
+
+<!-- Étape 3 : statut et organisation -->
+<div [hidden]="etape !== 3" class="space-y-6">
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div>
+      <label class="label" for="fo-statut">Statut juridique @if (comite) { <span class="req">*</span> }</label>
+      <select id="fo-statut" name="foStatutJuridique" class="input" [(ngModel)]="fiche.organisation.statutJuridique" [required]="comite" [disabled]="!peut('organisation', 'statutJuridique')"
+              [class.border-rose-400]="manque(fiche.organisation.statutJuridique)">
+        <option [ngValue]="null" disabled>— Choisir —</option>
+        @for (s of statutsJuridiques; track s) { <option [ngValue]="s">{{ s }}</option> }
+      </select>
+    </div>
+    <div>
+      <label class="label" for="fo-gestion">Mode de gestion @if (comite) { <span class="req">*</span> }</label>
+      <select id="fo-gestion" name="foModeGestion" class="input" [(ngModel)]="fiche.organisation.modeGestion" [required]="comite" [disabled]="!peut('organisation', 'modeGestion')"
+              [class.border-rose-400]="manque(fiche.organisation.modeGestion)">
+        <option [ngValue]="null" disabled>— Choisir —</option>
+        @for (m of modesGestion; track m) { <option [ngValue]="m">{{ m }}</option> }
+      </select>
+    </div>
+    <div>
+      <label class="label" for="fo-proprio">Propriétaire de la structure</label>
+      <input id="fo-proprio" name="foProprietaire" class="input" [(ngModel)]="fiche.organisation.proprietaire" [disabled]="!peut('organisation', 'proprietaire')">
+    </div>
+    <div>
+      <label class="label" for="fo-tadm">Tutelle administrative</label>
+      <input id="fo-tadm" name="foTutelleAdm" class="input" [(ngModel)]="fiche.organisation.tutelleAdministrative" [disabled]="!peut('organisation', 'tutelleAdministrative')">
+    </div>
+    <div>
+      <label class="label" for="fo-ttech">Tutelle technique</label>
+      <input id="fo-ttech" name="foTutelleTech" class="input" [(ngModel)]="fiche.organisation.tutelleTechnique" [disabled]="!peut('organisation', 'tutelleTechnique')">
+    </div>
+    <div>
+      <label class="label" for="fo-auto">Référence de l’autorisation de fonctionnement</label>
+      <input id="fo-auto" name="foAutorisation" class="input" [(ngModel)]="fiche.organisation.autorisation.reference" [disabled]="!peut('organisation', 'autorisation')">
+    </div>
+    <div>
+      <label class="label" for="fo-autodate">Date d’autorisation</label>
+      <input id="fo-autodate" name="foAutorisationDate" type="date" class="input" [(ngModel)]="fiche.organisation.autorisation.date" [disabled]="!peut('organisation', 'autorisation')">
+    </div>
+    <div>
+      <label class="label" for="fo-agr">Numéro d’agrément</label>
+      <input id="fo-agr" name="foAgrement" class="input" [(ngModel)]="fiche.organisation.agrement.numero" [disabled]="!peut('organisation', 'agrement')">
+    </div>
+    <div>
+      <label class="label" for="fo-agrdate">Échéance de l’agrément</label>
+      <input id="fo-agrdate" name="foAgrementEcheance" type="date" class="input" [(ngModel)]="fiche.organisation.agrement.dateEcheance" [disabled]="!peut('organisation', 'agrement')">
+    </div>
+  </div>
+
+  <fieldset class="rounded-xl border border-slate-200 p-4 dark:border-slate-700" [disabled]="!peut('organisation', 'responsable')">
+    <legend class="px-1 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Responsable de la structure @if (comite) { <span class="req">*</span> }</legend>
+    <div class="grid gap-3 sm:grid-cols-3">
+      <input name="foRespNom" class="input" placeholder="Nom" aria-label="Nom du responsable" [(ngModel)]="fiche.organisation.responsable.nom" [required]="comite" [class.border-rose-400]="manque(fiche.organisation.responsable.nom)">
+      <input name="foRespPostnom" class="input" placeholder="Postnom" aria-label="Postnom du responsable" [(ngModel)]="fiche.organisation.responsable.postnom">
+      <input name="foRespPrenom" class="input" placeholder="Prénom" aria-label="Prénom du responsable" [(ngModel)]="fiche.organisation.responsable.prenom" [required]="comite" [class.border-rose-400]="manque(fiche.organisation.responsable.prenom)">
+      <input name="foRespFonction" class="input sm:col-span-2" placeholder="Fonction (médecin directeur, infirmier titulaire…)" aria-label="Fonction du responsable" [(ngModel)]="fiche.organisation.responsable.fonction" [required]="comite" [class.border-rose-400]="manque(fiche.organisation.responsable.fonction)">
+      <input name="foRespTel" type="tel" class="input" placeholder="Téléphone" aria-label="Téléphone du responsable" [(ngModel)]="fiche.organisation.responsable.telephone" [required]="comite" [class.border-rose-400]="manque(fiche.organisation.responsable.telephone)">
+    </div>
+    <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">Un changement de responsable est historisé : l’ancien n’est jamais écrasé.</p>
+  </fieldset>
+
+  @for (r of responsablesSecondaires; track r.cle) {
+    <fieldset class="rounded-xl border border-slate-200 p-4 dark:border-slate-700" [disabled]="!peut('organisation', r.cle)">
+      <legend class="px-1 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{{ r.libelle }}</legend>
+      <div class="grid gap-3 sm:grid-cols-3">
+        <input [name]="r.cle + 'Nom'" class="input" placeholder="Nom" [attr.aria-label]="r.libelle + ' : nom'" [(ngModel)]="$any(fiche.organisation)[r.cle].nom">
+        <input [name]="r.cle + 'Prenom'" class="input" placeholder="Prénom" [attr.aria-label]="r.libelle + ' : prénom'" [(ngModel)]="$any(fiche.organisation)[r.cle].prenom">
+        <input [name]="r.cle + 'Tel'" type="tel" class="input" placeholder="Téléphone" [attr.aria-label]="r.libelle + ' : téléphone'" [(ngModel)]="$any(fiche.organisation)[r.cle].telephone">
+      </div>
+    </fieldset>
+  }
+
+  <div class="grid gap-4 sm:grid-cols-3">
+    <div>
+      <label class="label" for="fo-jours">Jours de fonctionnement / semaine</label>
+      <input id="fo-jours" name="foJours" type="number" min="1" max="7" class="input" [(ngModel)]="fiche.organisation.joursFonctionnement" [disabled]="!peut('organisation', 'joursFonctionnement')">
+    </div>
+    <div class="sm:col-span-2">
+      <label class="label" for="fo-horaires">Horaires habituels</label>
+      <input id="fo-horaires" name="foHoraires" class="input" placeholder="Ex. 7 h 30 – 16 h" [(ngModel)]="fiche.organisation.horaires" [disabled]="!peut('organisation', 'horaires')">
+    </div>
+    <div>
+      <label class="label" for="fo-garde">Garde disponible</label>
+      <select id="fo-garde" name="foGarde" class="input" [(ngModel)]="fiche.organisation.garde.disponible" [disabled]="!peut('organisation', 'garde')">
+        <option [ngValue]="null">—</option>
+        @for (a of ouiNon; track a) { <option [ngValue]="a">{{ a }}</option> }
+      </select>
+    </div>
+    <div class="sm:col-span-2">
+      <label class="label" for="fo-gardeh">Horaires de garde</label>
+      <input id="fo-gardeh" name="foGardeHoraires" class="input" placeholder="Ex. 16 h – 7 h 30, week-ends" [(ngModel)]="fiche.organisation.garde.horaires" [disabled]="!peut('organisation', 'garde') || fiche.organisation.garde.disponible !== 'Oui'">
+    </div>
+  </div>
+</div>
+
+<!-- Étape 4 : infrastructures et équipements -->
+<div [hidden]="etape !== 4" class="space-y-6">
+  <fieldset [disabled]="!peut('infrastructures')" class="space-y-4">
+    <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">A. Infrastructures</h4>
+    <div class="grid gap-4 sm:grid-cols-3">
+      <div><label class="label" for="in-bat">Bâtiments</label><input id="in-bat" name="inBatiments" type="number" min="0" class="input" [(ngModel)]="fiche.infrastructures.batiments"></div>
+      <div><label class="label" for="in-lits">Lits (total)</label><input id="in-lits" name="inLitsTotal" type="number" min="0" class="input" [(ngModel)]="fiche.infrastructures.litsTotal"></div>
+      <div>
+        <label class="label" for="in-litsf">Lits fonctionnels</label>
+        <input id="in-litsf" name="inLitsFonct" type="number" min="0" class="input" [(ngModel)]="fiche.infrastructures.litsFonctionnels"
+               [class.border-rose-400]="fiche.infrastructures.litsTotal != null && (fiche.infrastructures.litsFonctionnels ?? 0) > fiche.infrastructures.litsTotal">
+      </div>
+      <div><label class="label" for="in-litsm">Lits de maternité</label><input id="in-litsm" name="inLitsMat" type="number" min="0" class="input" [(ngModel)]="fiche.infrastructures.litsMaternite"></div>
+      <div><label class="label" for="in-toil">Toilettes (total)</label><input id="in-toil" name="inToilettes" type="number" min="0" class="input" [(ngModel)]="fiche.infrastructures.toilettesTotal"></div>
+      <div><label class="label" for="in-toilf">Toilettes fonctionnelles</label><input id="in-toilf" name="inToilettesF" type="number" min="0" class="input" [(ngModel)]="fiche.infrastructures.toilettesFonctionnelles"></div>
+    </div>
+    <div>
+      <p class="label">Salles</p>
+      <div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
+        @for (s of salles; track s.cle) {
+          <label class="block text-xs text-slate-500 dark:text-slate-400">{{ s.libelle }}
+            <input [name]="'salle-' + s.cle" type="number" min="0" class="input mt-1" [(ngModel)]="$any(fiche.infrastructures.salles)[s.cle]">
+          </label>
+        }
+      </div>
+    </div>
+    <div class="grid gap-3 sm:grid-cols-3">
+      @for (o of ouvrages; track o.cle) {
+        <label class="flex items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700">
+          <span class="text-slate-700 dark:text-slate-200">{{ o.libelle }}</span>
+          <select [name]="'ouv-' + o.cle" class="rounded-md border-slate-200 bg-transparent py-1 text-sm dark:border-slate-700" [(ngModel)]="$any(fiche.infrastructures)[o.cle]">
+            <option [ngValue]="null">—</option><option ngValue="Oui">Oui</option><option ngValue="Non">Non</option>
+          </select>
+        </label>
+      }
+    </div>
+  </fieldset>
+
+  <fieldset [disabled]="!peut('equipements')" class="space-y-3">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">B. Équipements · taux de fonctionnalité {{ tauxGlobal }}</h4>
+      <button type="button" class="text-xs font-semibold text-brand-600 hover:text-brand-800 dark:text-brand-400" (click)="ajouterEquipement()"><i class="fa-solid fa-plus"></i> Ajouter un équipement</button>
+    </div>
+    @if (!fiche.equipements.length) {
+      <div class="flex flex-wrap gap-2">
+        @for (n of equipementsCourants; track n) {
+          <button type="button" class="rounded-full bg-white px-3 py-1.5 text-xs text-slate-600 ring-1 ring-slate-200 hover:ring-brand-300 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700" (click)="ajouterEquipement(n)"><i class="fa-solid fa-plus mr-1"></i>{{ n }}</button>
+        }
+      </div>
+    }
+    @for (q of fiche.equipements; track $index; let i = $index) {
+      <div class="rounded-xl border p-3" [class]="incoherent(q) ? 'border-rose-300 dark:border-rose-500/40' : 'border-slate-200 dark:border-slate-700'">
+        <div class="grid gap-3 sm:grid-cols-4">
+          <input [name]="'eq-nom-' + i" class="input sm:col-span-2" placeholder="Équipement *" aria-label="Nom de l’équipement" [(ngModel)]="q.nom" required>
+          <input [name]="'eq-cat-' + i" class="input" placeholder="Catégorie" aria-label="Catégorie" [(ngModel)]="q.categorie">
+          <div class="flex items-center justify-end gap-2">
+            <span class="text-xs font-semibold text-slate-600 dark:text-slate-300">{{ taux(q.fonctionnels, q.total) }}</span>
+            <button type="button" class="btn-ghost px-2 py-1 text-rose-600" (click)="fiche.equipements.splice(i, 1)" aria-label="Retirer"><i class="fa-solid fa-trash"></i></button>
+          </div>
+          <label class="text-xs text-slate-500">Total<input [name]="'eq-tot-' + i" type="number" min="0" class="input mt-1" [(ngModel)]="q.total"></label>
+          <label class="text-xs text-slate-500">Fonctionnels<input [name]="'eq-fon-' + i" type="number" min="0" class="input mt-1" [(ngModel)]="q.fonctionnels"></label>
+          <label class="text-xs text-slate-500">En panne<input [name]="'eq-pan-' + i" type="number" min="0" class="input mt-1" [(ngModel)]="q.enPanne"></label>
+          <label class="text-xs text-slate-500">Hors service<input [name]="'eq-hs-' + i" type="number" min="0" class="input mt-1" [(ngModel)]="q.horsService"></label>
+          <label class="text-xs text-slate-500">Acquisition<input [name]="'eq-acq-' + i" type="date" class="input mt-1" [(ngModel)]="q.dateAcquisition"></label>
+          <label class="text-xs text-slate-500">État général
+            <select [name]="'eq-etat-' + i" class="input mt-1" [(ngModel)]="q.etat"><option [ngValue]="null">—</option>@for (e of etats; track e) { <option [ngValue]="e">{{ e }}</option> }</select>
+          </label>
+          <label class="text-xs text-slate-500">Financement<input [name]="'eq-fin-' + i" class="input mt-1" [(ngModel)]="q.financement"></label>
+          <label class="text-xs text-slate-500">Dernière maintenance<input [name]="'eq-maint-' + i" type="date" class="input mt-1" [(ngModel)]="q.derniereMaintenance"></label>
+          <label class="text-xs text-slate-500">À remplacer
+            <select [name]="'eq-rempl-' + i" class="input mt-1" [(ngModel)]="q.remplacement"><option [ngValue]="null">—</option><option ngValue="Oui">Oui</option><option ngValue="Non">Non</option></select>
+          </label>
+        </div>
+        @if (incoherent(q)) { <p class="mt-2 text-xs text-rose-600 dark:text-rose-400">Fonctionnels + en panne + hors service dépassent la quantité totale.</p> }
+      </div>
+    }
+  </fieldset>
+</div>
+
+<!-- Étape 5 : ressources humaines -->
+<div [hidden]="etape !== 5" class="space-y-5">
+  <p class="flex items-start gap-2 rounded-xl bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
+    <i class="fa-solid fa-lock mt-0.5"></i> Données nominatives protégées : visibles seulement par le comité de pilotage et le médecin chef de l’établissement.
+  </p>
+  <div class="grid gap-3 sm:grid-cols-4">
+    <div class="card p-3"><p class="text-xs text-slate-500">Agents</p><p class="text-xl font-bold text-slate-900 dark:text-white">{{ agentsPresents.length }}</p></div>
+    <div class="card p-3"><p class="text-xs text-slate-500">Disponibles</p><p class="text-xl font-bold text-accent-600">{{ agentsPresents.length - indisponibles }}</p></div>
+    <div class="card p-3"><p class="text-xs text-slate-500">Indisponibles</p><p class="text-xl font-bold text-rose-600">{{ indisponibles }}</p></div>
+    <div class="card p-3 text-xs text-slate-600 dark:text-slate-300">
+      @for (p of parCle('profession').slice(0, 3); track p.cle) { <p>{{ p.cle }} : <b>{{ p.n }}</b></p> } @empty { <p class="text-slate-400">Aucun agent</p> }
+    </div>
+  </div>
+
+  <fieldset [disabled]="!peut('agents')" class="space-y-3">
+    <div class="flex items-center justify-between">
+      <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Agents</h4>
+      <button type="button" class="text-xs font-semibold text-brand-600 hover:text-brand-800 dark:text-brand-400" (click)="ajouterAgent()"><i class="fa-solid fa-user-plus"></i> Ajouter un agent</button>
+    </div>
+    @for (a of fiche.agents; track $index; let i = $index) {
+      <div class="rounded-xl border border-slate-200 p-3 dark:border-slate-700" [class.opacity-60]="a.statut === 'Sorti'">
+        <div class="grid gap-3 sm:grid-cols-4">
+          <input [name]="'ag-code-' + i" class="input font-mono" placeholder="Code agent" aria-label="Code agent" [(ngModel)]="a.code">
+          <input [name]="'ag-nom-' + i" class="input" placeholder="Nom *" aria-label="Nom" [(ngModel)]="a.nom" required>
+          <input [name]="'ag-postnom-' + i" class="input" placeholder="Postnom" aria-label="Postnom" [(ngModel)]="a.postnom">
+          <div class="flex gap-2">
+            <input [name]="'ag-prenom-' + i" class="input" placeholder="Prénom" aria-label="Prénom" [(ngModel)]="a.prenom">
+            <button type="button" class="btn-ghost px-2 py-1 text-rose-600" (click)="fiche.agents.splice(i, 1)" aria-label="Retirer"><i class="fa-solid fa-trash"></i></button>
+          </div>
+          <label class="text-xs text-slate-500">Sexe
+            <select [name]="'ag-sexe-' + i" class="input mt-1" [(ngModel)]="a.sexe"><option [ngValue]="null">—</option><option ngValue="M">M</option><option ngValue="F">F</option></select>
+          </label>
+          <label class="text-xs text-slate-500">Profession *
+            <select [name]="'ag-prof-' + i" class="input mt-1" [(ngModel)]="a.profession" required><option value="" disabled>— Choisir —</option>@for (p of professions; track p) { <option [value]="p">{{ p }}</option> }</select>
+          </label>
+          <label class="text-xs text-slate-500">Spécialité<input [name]="'ag-spe-' + i" class="input mt-1" [(ngModel)]="a.specialite"></label>
+          <label class="text-xs text-slate-500">Qualification<input [name]="'ag-qual-' + i" class="input mt-1" [(ngModel)]="a.qualification"></label>
+          <label class="text-xs text-slate-500">N° d’ordre<input [name]="'ag-ordre-' + i" class="input mt-1" [(ngModel)]="a.numeroOrdre"></label>
+          <label class="text-xs text-slate-500">Fonction<input [name]="'ag-fct-' + i" class="input mt-1" [(ngModel)]="a.fonction"></label>
+          <label class="text-xs text-slate-500">Service d’affectation<input [name]="'ag-svc-' + i" class="input mt-1" [(ngModel)]="a.service"></label>
+          <label class="text-xs text-slate-500">Contrat
+            <select [name]="'ag-ctr-' + i" class="input mt-1" [(ngModel)]="a.contrat"><option [ngValue]="null">—</option>@for (c of contrats; track c) { <option [ngValue]="c">{{ c }}</option> }</select>
+          </label>
+          <label class="text-xs text-slate-500">Statut
+            <select [name]="'ag-stat-' + i" class="input mt-1" [(ngModel)]="a.statut">@for (s of statutsAgent; track s) { <option [value]="s">{{ s }}</option> }</select>
+          </label>
+          <label class="text-xs text-slate-500">Prise de fonction<input [name]="'ag-date-' + i" type="date" class="input mt-1" [(ngModel)]="a.datePriseFonction"></label>
+          <label class="text-xs text-slate-500">Disponibilité
+            <select [name]="'ag-dispo-' + i" class="input mt-1" [(ngModel)]="a.disponibilite"><option value="Disponible">Disponible</option><option value="Indisponible">Indisponible</option></select>
+          </label>
+          <label class="text-xs text-slate-500">Régime
+            <select [name]="'ag-reg-' + i" class="input mt-1" [(ngModel)]="a.regime"><option [ngValue]="null">—</option>@for (r of regimes; track r) { <option [ngValue]="r">{{ r }}</option> }</select>
+          </label>
+        </div>
+      </div>
+    }
+  </fieldset>
+
+  <fieldset [disabled]="!peut('effectifsAttendus')" class="space-y-3">
+    <div class="flex items-center justify-between">
+      <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Effectif attendu (norme) et écart</h4>
+      <button type="button" class="text-xs font-semibold text-brand-600 hover:text-brand-800 dark:text-brand-400" (click)="ajouterNorme()"><i class="fa-solid fa-plus"></i> Ajouter une norme</button>
+    </div>
+    @for (n of fiche.effectifsAttendus; track $index; let i = $index) {
+      <div class="flex flex-wrap items-center gap-2">
+        <select [name]="'norme-prof-' + i" class="input flex-1" aria-label="Profession" [(ngModel)]="n.profession"><option value="" disabled>— Profession —</option>@for (p of professions; track p) { <option [value]="p">{{ p }}</option> }</select>
+        <input [name]="'norme-nb-' + i" type="number" min="0" class="input w-28" placeholder="Attendu" aria-label="Effectif attendu" [(ngModel)]="n.nombre">
+        @if (n.profession && n.nombre != null) {
+          @let ec = presents(n.profession) - n.nombre;
+          <span class="badge" [class]="ec < 0 ? 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300' : 'bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300'">{{ presents(n.profession) }} présent(s) · écart {{ ec > 0 ? '+' : '' }}{{ ec }}</span>
+        }
+        <button type="button" class="btn-ghost px-2 py-1 text-rose-600" (click)="fiche.effectifsAttendus.splice(i, 1)" aria-label="Retirer"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    }
+  </fieldset>
+</div>
+
+<!-- Étape 6 : services et activités sanitaires -->
+<div [hidden]="etape !== 6" class="space-y-3">
+  <p class="text-xs text-slate-500 dark:text-slate-400">Ce que la structure fait <b>vraiment</b>. Un service <b>fonctionnel</b> (Oui) ouvre son module AMI à l’activation de la fiche : CPN, Accouchement, Vaccination.</p>
+  <fieldset [disabled]="!peut('services')" class="overflow-x-auto rounded-xl ring-1 ring-slate-200 dark:ring-slate-700">
+    <table class="min-w-full text-xs">
+      <thead class="bg-slate-50 text-left text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
+        <tr><th class="px-2 py-2">Service</th><th class="px-2 py-2">Autorisé</th><th class="px-2 py-2">Disponible</th><th class="px-2 py-2">Fonctionnel</th><th class="px-2 py-2">Personnel qualifié</th><th class="px-2 py-2">Équipement requis</th><th class="px-2 py-2">Jours / 7</th><th class="px-2 py-2">Vérifié le</th></tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+        @for (s of fiche.services; track s.service; let i = $index) {
+          <tr [class]="modules.includes(s.service) ? 'bg-brand-50/40 dark:bg-brand-500/5' : ''">
+            <td class="whitespace-nowrap px-2 py-1.5 font-medium text-slate-900 dark:text-white">{{ s.service }}@if (modules.includes(s.service)) { <i class="fa-solid fa-puzzle-piece ml-1 text-brand-500" title="Ouvre un module AMI"></i> }</td>
+            <td class="px-1 py-1"><select [name]="'sv-aut-' + i" class="rounded-md border-slate-200 bg-transparent py-1 text-xs dark:border-slate-700" [(ngModel)]="s.autorise"><option [ngValue]="null">—</option><option ngValue="Oui">Oui</option><option ngValue="Non">Non</option></select></td>
+            <td class="px-1 py-1"><select [name]="'sv-dis-' + i" class="rounded-md border-slate-200 bg-transparent py-1 text-xs dark:border-slate-700" [(ngModel)]="s.disponible"><option [ngValue]="null">—</option><option ngValue="Oui">Oui</option><option ngValue="Non">Non</option></select></td>
+            <td class="px-1 py-1">
+              <select [name]="'sv-fon-' + i" class="rounded-md border-slate-200 bg-transparent py-1 text-xs dark:border-slate-700"
+                      [class.text-accent-700]="s.fonctionnel === 'Oui'" [class.font-semibold]="s.fonctionnel === 'Oui'"
+                      [(ngModel)]="s.fonctionnel" (ngModelChange)="$event && $event !== 'Non' && !s.disponible ? s.disponible = 'Oui' : null">
+                <option [ngValue]="null">—</option><option ngValue="Oui">Oui</option><option ngValue="Partiel">Partiel</option><option ngValue="Non">Non</option>
+              </select>
+            </td>
+            <td class="px-1 py-1"><select [name]="'sv-pq-' + i" class="rounded-md border-slate-200 bg-transparent py-1 text-xs dark:border-slate-700" [(ngModel)]="s.personnelQualifie"><option [ngValue]="null">—</option><option ngValue="Oui">Oui</option><option ngValue="Non">Non</option></select></td>
+            <td class="px-1 py-1"><select [name]="'sv-eq-' + i" class="rounded-md border-slate-200 bg-transparent py-1 text-xs dark:border-slate-700" [(ngModel)]="s.equipement"><option [ngValue]="null">—</option><option ngValue="Disponible">Disponible</option><option ngValue="Indisponible">Indisponible</option></select></td>
+            <td class="px-1 py-1"><input [name]="'sv-j-' + i" type="number" min="0" max="7" class="w-14 rounded-md border-slate-200 bg-transparent py-1 text-xs dark:border-slate-700" [(ngModel)]="s.joursActivite"></td>
+            <td class="px-1 py-1"><input [name]="'sv-d-' + i" type="date" class="rounded-md border-slate-200 bg-transparent py-1 text-xs dark:border-slate-700" [(ngModel)]="s.dateVerification"></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </fieldset>
+  @if (comite && soumis && aucunServiceFonctionnel) {
+    <p class="text-xs text-rose-600 dark:text-rose-400">Déclarez au moins un service fonctionnel (Oui ou Partiel).</p>
+  }
+  <p class="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+    <i class="fa-solid fa-puzzle-piece text-brand-500"></i> Modules ouverts à l’activation :
+    @for (m of modulesPrevus; track m) { <span class="badge bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">{{ m }}</span> } @empty { <span class="text-slate-400">aucun</span> }
+  </p>
+</div>
+
+<!-- Étape 7 : population desservie -->
+<div [hidden]="etape !== 7" class="space-y-4">
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <p class="text-xs text-slate-500 dark:text-slate-400">Un enregistrement par année ; les années déjà enregistrées sont conservées. La <b>population de responsabilité</b> sert de base aux cibles.</p>
+    @if (peut('populations')) {
+      <button type="button" class="text-xs font-semibold text-brand-600 hover:text-brand-800 dark:text-brand-400" (click)="ajouterAnnee()"><i class="fa-solid fa-plus"></i> Ajouter une année</button>
+    }
+  </div>
+  <fieldset [disabled]="!peut('populations')" class="space-y-4">
+    @for (p of fiche.populations; track $index; let i = $index) {
+      <div class="rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+        <div class="mb-3 flex items-center justify-between gap-2">
+          <label class="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">Année
+            <input [name]="'po-an-' + i" type="number" min="1950" max="2100" class="input w-28" [(ngModel)]="p.annee" [disabled]="!!p.saisiLe" required
+                   [class.border-rose-400]="anneeEnDouble(p.annee)">
+          </label>
+          @if (p.saisiLe) {
+            <span class="text-[11px] text-slate-400">Saisie par {{ p.saisiPar?.nom }} le {{ p.saisiLe.slice(0, 10) }}</span>
+          } @else {
+            <button type="button" class="btn-ghost px-2 py-1 text-rose-600" (click)="retirerAnnee(i)" aria-label="Retirer"><i class="fa-solid fa-trash"></i></button>
+          }
+        </div>
+        <div class="grid gap-3 sm:grid-cols-4">
+          <label class="text-xs text-slate-500">Population de responsabilité *<input [name]="'po-tot-' + i" type="number" min="0" class="input mt-1" [(ngModel)]="p.totale" required></label>
+          <label class="text-xs text-slate-500">Population administrative<input [name]="'po-adm-' + i" type="number" min="0" class="input mt-1" [(ngModel)]="p.administrative"></label>
+          <label class="text-xs text-slate-500">Fréquentant réellement<input [name]="'po-freq-' + i" type="number" min="0" class="input mt-1" [(ngModel)]="p.frequentant"></label>
+          <label class="text-xs text-slate-500">Ménages<input [name]="'po-men-' + i" type="number" min="0" class="input mt-1" [(ngModel)]="p.menages"></label>
+          <label class="text-xs text-slate-500">Urbaine<input [name]="'po-urb-' + i" type="number" min="0" class="input mt-1" [(ngModel)]="p.urbaine"></label>
+          <label class="text-xs text-slate-500">Rurale<input [name]="'po-rur-' + i" type="number" min="0" class="input mt-1" [(ngModel)]="p.rurale"></label>
+          <label class="text-xs text-slate-500">Masculine<input [name]="'po-h-' + i" type="number" min="0" class="input mt-1" [(ngModel)]="p.hommes"></label>
+          <label class="text-xs text-slate-500">Féminine<input [name]="'po-f-' + i" type="number" min="0" class="input mt-1" [(ngModel)]="p.femmes"></label>
+          @for (t of tranches; track t.cle) {
+            <label class="text-xs text-slate-500">{{ t.libelle }}<input [name]="'po-' + t.cle + '-' + i" type="number" min="0" class="input mt-1" [(ngModel)]="$any(p.tranches)[t.cle]"></label>
+          }
+          <label class="text-xs text-slate-500">Village / Quartier<input [name]="'po-vil-' + i" class="input mt-1" [(ngModel)]="p.village"></label>
+          <label class="text-xs text-slate-500">Source
+            <select [name]="'po-src-' + i" class="input mt-1" [(ngModel)]="p.source"><option [ngValue]="null">—</option>@for (s of sources; track s) { <option [ngValue]="s">{{ s }}</option> }</select>
+          </label>
+          <label class="text-xs text-slate-500">Collecte le<input [name]="'po-col-' + i" type="date" class="input mt-1" [(ngModel)]="p.dateCollecte"></label>
+          <label class="text-xs text-slate-500">Validée le<input [name]="'po-val-' + i" type="date" class="input mt-1" [(ngModel)]="p.dateValidation"></label>
+          <label class="text-xs text-slate-500 sm:col-span-2">Autorité ayant validé<input [name]="'po-aut-' + i" class="input mt-1" [(ngModel)]="p.autorite"></label>
+          <label class="text-xs text-slate-500 sm:col-span-2">Méthode d’estimation<input [name]="'po-meth-' + i" class="input mt-1" [(ngModel)]="p.methode"></label>
+        </div>
+        @for (m of ecart(p); track m) { <p class="mt-2 text-xs text-amber-700 dark:text-amber-300"><i class="fa-solid fa-triangle-exclamation mr-1"></i>{{ m }}</p> }
+      </div>
+    } @empty {
+      <p class="rounded-xl border border-dashed border-slate-300 p-4 text-center text-sm text-slate-500 dark:border-slate-700">Aucune population enregistrée.</p>
+    }
+  </fieldset>
+</div>
+
+<!-- Étape 8 : populations cibles (aperçu) -->
+<div [hidden]="etape !== 8" class="space-y-3">
+  @if (populationBase; as b) {
+    <p class="text-sm text-slate-600 dark:text-slate-300">Population de base {{ b.annee }} : <b>{{ b.totale.toLocaleString('fr-FR') }}</b></p>
+    <div class="overflow-x-auto rounded-xl ring-1 ring-slate-200 dark:ring-slate-700">
+      <table class="min-w-full text-sm">
+        <thead class="bg-slate-50 text-left text-xs text-slate-500 dark:bg-slate-800/60 dark:text-slate-400"><tr><th class="px-3 py-2">Indicateur</th><th class="px-3 py-2">Coefficient</th><th class="px-3 py-2">Cible annuelle</th><th class="px-3 py-2">Cible mensuelle</th></tr></thead>
+        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+          @for (c of cibles; track c.cible) {
+            <tr><td class="px-3 py-2">{{ c.indicateur }}</td><td class="px-3 py-2">{{ c.pct.toLocaleString('fr-FR') }} %</td><td class="px-3 py-2 font-semibold">{{ c.annuelle?.toLocaleString('fr-FR') }}</td><td class="px-3 py-2">{{ c.mensuelle }}</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else {
+    <p class="rounded-xl border border-dashed border-slate-300 p-4 text-center text-sm text-slate-500 dark:border-slate-700">Renseignez la population (étape 7) pour calculer les cibles.</p>
+  }
+  <p class="flex items-start gap-2 rounded-xl bg-rose-50 p-3 text-xs text-rose-800 dark:bg-rose-500/10 dark:text-rose-200"><i class="fa-solid fa-triangle-exclamation mt-0.5"></i> Ne jamais additionner femmes enceintes et naissances attendues : c’est la même cohorte vue de deux façons.</p>
+  <p class="text-xs text-slate-500 dark:text-slate-400">Calcul automatique. Les coefficients validés du module Épidémiologie remplacent les coefficients nationaux (4 %, 4 %, 3,49 %) dans la fiche enregistrée.</p>
+</div>
+
+<!-- Étape 9 : capacités opérationnelles -->
+<div [hidden]="etape !== 9" class="space-y-4">
+  <fieldset [disabled]="!peut('capacites')" class="space-y-4">
+    <div class="grid gap-4 sm:grid-cols-3">
+      <div><label class="label" for="ca-acc">Capacité d’accueil</label><input id="ca-acc" name="caAccueil" type="number" min="0" class="input" [(ngModel)]="fiche.capacites.accueil"></div>
+      <div><label class="label" for="ca-lits">Lits fonctionnels</label><input id="ca-lits" name="caLits" type="number" min="0" class="input" [(ngModel)]="fiche.capacites.litsFonctionnels"></div>
+      <div><label class="label" for="ca-accou">Accouchements réalisables / mois</label><input id="ca-accou" name="caAccouchements" type="number" min="0" class="input" [(ngModel)]="fiche.capacites.accouchementsMois"></div>
+      <div><label class="label" for="ca-cpn">Consultations CPN réalisables / mois</label><input id="ca-cpn" name="caCpn" type="number" min="0" class="input" [(ngModel)]="fiche.capacites.cpnMois"></div>
+      <div><label class="label" for="ca-vac">Séances de vaccination / mois</label><input id="ca-vac" name="caVaccination" type="number" min="0" class="input" [(ngModel)]="fiche.capacites.seancesVaccinationMois"></div>
+      <div><label class="label" for="ca-labo">Examens de laboratoire / période</label><input id="ca-labo" name="caLabo" type="number" min="0" class="input" [(ngModel)]="fiche.capacites.examensLaboPeriode"></div>
+      <div><label class="label" for="ca-urg">Prises en charge urgences / période</label><input id="ca-urg" name="caUrgences" type="number" min="0" class="input" [(ngModel)]="fiche.capacites.urgencesPeriode"></div>
+    </div>
+    <div class="grid gap-3 sm:grid-cols-3">
+      @for (d of disponibilites; track d.cle) {
+        <label class="flex items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700">
+          <span class="text-slate-700 dark:text-slate-200">{{ d.libelle }}</span>
+          <select [name]="'cap-' + d.cle" class="rounded-md border-slate-200 bg-transparent py-1 text-sm dark:border-slate-700" [(ngModel)]="$any(fiche.capacites)[d.cle]">
+            <option [ngValue]="null">—</option><option ngValue="Oui">Oui</option><option ngValue="Non">Non</option>
+          </select>
+        </label>
+      }
+    </div>
+  </fieldset>
+  @if (deficitAccouchements) {
+    <p class="flex items-start gap-2 rounded-xl bg-rose-50 p-3 text-sm text-rose-800 dark:bg-rose-500/10 dark:text-rose-200" role="alert">
+      <i class="fa-solid fa-circle-exclamation mt-0.5"></i> Besoin {{ besoinAccouchements }} accouchements / mois, capacité {{ fiche.capacites.accouchementsMois }} / mois → déficit de {{ deficitAccouchements }}. Capacité insuffisante.
+    </p>
+  }
+  <p class="text-xs text-slate-500 dark:text-slate-400">La comparaison complète (capacité théorique, opérationnelle, activités réalisées, besoins attendus) est calculée dans la fiche enregistrée.</p>
+</div>

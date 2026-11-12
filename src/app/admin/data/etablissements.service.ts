@@ -10,13 +10,18 @@ export type TypeEtablissement =
   | 'Centre de santé'
   | 'Poste de santé'
   | 'Polyclinique'
-  | 'Clinique';
+  | 'Clinique'
+  | 'Hôpital provincial'
+  | 'Hôpital national'
+  | 'Centre médical'
+  | 'Autre';
 export type SecteurEtablissement = 'Public' | 'Privé' | 'Confessionnel' | 'Militaire' | 'ONG';
 export type StatutEtablissement = 'Actif' | 'Suspendu';
 
 export const TYPES_ETABLISSEMENT: TypeEtablissement[] = [
   'Hôpital général de référence', 'Hôpital militaire', 'Centre de santé de référence',
   'Centre de santé', 'Poste de santé', 'Polyclinique', 'Clinique',
+  'Hôpital provincial', 'Hôpital national', 'Centre médical', 'Autre',
 ];
 export const SECTEURS_ETABLISSEMENT: SecteurEtablissement[] = ['Public', 'Privé', 'Confessionnel', 'Militaire', 'ONG'];
 export const SERVICES_ETABLISSEMENT = [
@@ -28,6 +33,10 @@ export interface Etablissement {
   id: string;
   /** Code unique attribué par la plateforme, ex. ETS-KIN-0003. */
   code: string;
+  /** Code AMI (fiche, étape 1), ex. AMI-TAN-KAL-00124 : automatique, jamais modifié. */
+  codeAmi?: string | null;
+  /** Résumé de la fiche AMI (null : établissement enregistré avant la fiche). */
+  ficheAmi?: { statut: string; completude: number; modulesActifs: string[] | null; niveauSanitaire: string | null; statutActuel: string | null } | null;
   nom: string;
   type: TypeEtablissement;
   secteur: SecteurEtablissement;
@@ -99,7 +108,10 @@ export interface CompteMedecinChef {
 
 /** Champs du formulaire d'ajout ou de modification. */
 /** La zone principale (`zoneSante`) est déduite par le serveur : la première de `zonesSante`. */
-export type DonneesEtablissement = Omit<Etablissement, 'id' | 'code' | 'statut' | 'creeLe' | 'photos' | 'medecinsChefs' | 'effectifs' | 'zoneSante'>;
+export type DonneesEtablissement = Omit<Etablissement, 'id' | 'code' | 'codeAmi' | 'ficheAmi' | 'statut' | 'creeLe' | 'photos' | 'medecinsChefs' | 'effectifs' | 'zoneSante'> & {
+  /** Fiche AMI : sections saisies (création) ou modifiées (modification), envoyées en JSON. */
+  fiche?: object;
+};
 
 /**
  * Établissements sanitaires stockés par backend-ami-connecte. Les photos sont déposées
@@ -213,7 +225,8 @@ export class EtablissementsService {
 function corps(donnees: DonneesEtablissement, photos: File[]): FormData {
   const c = new FormData();
   for (const [cle, valeur] of Object.entries(donnees)) {
-    c.append(cle, Array.isArray(valeur) ? JSON.stringify(valeur) : valeur == null ? '' : String(valeur));
+    if (valeur === undefined) continue;
+    c.append(cle, valeur !== null && typeof valeur === 'object' ? JSON.stringify(valeur) : valeur == null ? '' : String(valeur));
   }
   for (const p of photos) c.append('photos', p);
   return c;
