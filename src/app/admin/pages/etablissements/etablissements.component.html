@@ -238,7 +238,7 @@
       </div>
 
       <!-- Étapes -->
-      <nav class="flex gap-1 overflow-x-auto border-b border-slate-100 px-3 py-2 dark:border-slate-800" aria-label="Étapes de la fiche">
+      <nav class="scrollbar-none flex gap-1 overflow-x-auto border-b border-slate-100 px-3 py-2 dark:border-slate-800" aria-label="Étapes de la fiche">
         @for (e of etapes; track e.n) {
           @let manque = f.submitted && manquants(e.n).length > 0;
           <button type="button" (click)="allerA(e.n)" [attr.aria-current]="etape === e.n ? 'step' : null"

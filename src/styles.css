@@ -216,3 +216,14 @@
 .ambulance-fluide { transition: transform 1s linear; }
 .leaflet-zoom-anim .ambulance-fluide { transition: none; }
 .ambulance-libre img { filter: grayscale(0.5); opacity: 0.85; }
+
+@layer utilities {
+  /* Défilement conservé (doigt, pavé tactile, Maj + molette), barre de défilement masquée. */
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}

@@ -61,6 +61,24 @@ export interface PageRecherche {
   resultats: ResumePatiente[];
 }
 
+/** Ligne de l'export Excel : résumé + coordonnées complètes (médecins seulement). */
+export interface LigneExportPatiente extends Omit<ResumePatiente, 'telephoneMasque' | 'photoUrl'> {
+  aPhoto: boolean;
+  telephone: string;
+  telephonePartage: boolean;
+  telephone2: string;
+  email: string;
+  avenue: string;
+  contactUrgence: { nom: string; lien: string; telephone: string };
+  consentements: { sms: boolean | null; appel: boolean | null; whatsapp: boolean | null };
+}
+
+export interface ExportPatientes {
+  total: number;
+  tronque: boolean;
+  lignes: LigneExportPatiente[];
+}
+
 export interface Doublon {
   id: string;
   numero: string;
@@ -517,6 +535,20 @@ export class PatientesService {
     if (province) params['province'] = province;
     if (statut && statut !== 'Tous') params['statut'] = statut;
     return firstValueFrom(this.http.get<PageRecherche>(this.url, { params }));
+  }
+
+  /** Export Excel (médecins, journalisé) : toute la recherche, téléphones complets. */
+  exporter(q: string, statut: string, province = ''): Promise<ExportPatientes> {
+    const params: Record<string, string> = {};
+    if (q.trim()) params['q'] = q.trim();
+    if (province) params['province'] = province;
+    if (statut && statut !== 'Tous') params['statut'] = statut;
+    return firstValueFrom(this.http.get<ExportPatientes>(`${this.url}/export`, { params }));
+  }
+
+  /** Photo d'identification (octets) pour l'export Excel. */
+  photo(id: string): Promise<Blob> {
+    return firstValueFrom(this.http.get(`${this.url}/${encodeURIComponent(id)}/photo`, { responseType: 'blob' }));
   }
 
   doublons(criteres: { nom?: string; prenom?: string; dateNaissance?: string; telephone?: string }): Promise<Doublon[]> {

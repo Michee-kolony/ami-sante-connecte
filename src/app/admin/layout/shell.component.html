@@ -164,6 +164,16 @@
             </button>
           </div>
           <app-theme-toggle />
+          <!-- Export Excel de la page courante (un onglet par tableau) : médecins seulement -->
+          @if (session.estMedecin() && exportExcel.nbTableaux() > 0) {
+            <button type="button" (click)="exportExcel.exporterPage()" [disabled]="exportExcel.enCours()"
+                    class="inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-full bg-emerald-600 px-2.5 text-xs font-bold text-white shadow-md shadow-emerald-900/20 transition hover:bg-emerald-700 disabled:opacity-60 sm:px-3"
+                    [title]="exportExcel.nbTableaux() > 1 ? 'Exporter les ' + exportExcel.nbTableaux() + ' tableaux de la page au format Excel' : 'Exporter le tableau de la page au format Excel'"
+                    aria-label="Exporter la page au format Excel">
+              <i class="fa-solid" [class]="exportExcel.enCours() ? 'fa-spinner fa-spin' : 'fa-file-excel'"></i>
+              <span class="hidden sm:inline">Excel</span>
+            </button>
+          }
           @if (session.estMedecin()) {
             <app-rappels-rdv />
           }

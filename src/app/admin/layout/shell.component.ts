@@ -16,6 +16,7 @@ import { ConversationsFlottantesComponent } from '../components/conversations-fl
 import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
 import { RappelsRdvComponent } from '../components/rappels-rdv.component';
 import { VerrouillageComponent } from '../components/verrouillage.component';
+import { ExportExcelService } from '../data/export-excel.service';
 
 interface NavItem {
   label: string;
@@ -115,6 +116,23 @@ export class ShellComponent {
   /** Menu déroulant « Guides » de la barre du haut : documentation illustrée (FR / LN), ouverte dans un nouvel onglet. */
   docsOpen = false;
   private hote = inject<ElementRef<HTMLElement>>(ElementRef);
+
+  /** Export Excel : bouton « Excel » ajouté à chaque tableau des pages (médecins), et export de la page entière. */
+  exportExcel = inject(ExportExcelService);
+  private contenu = (): HTMLElement | null => this.hote.nativeElement.querySelector('main');
+  private surveillanceExport = afterNextRender(() => {
+    const main = this.contenu();
+    if (main) this.exportExcel.surveiller(main);
+  });
+  /** Connexion, déconnexion ou changement de rôle : boutons ajoutés ou retirés aussitôt. */
+  private droitsExport = effect(() => {
+    this.session.estMedecin();
+    untracked(() => {
+      const main = this.contenu();
+      if (main) this.exportExcel.surveiller(main);
+    });
+  });
+
   guides = [
     { titre: 'Guide médecin', texte: 'Espace professionnel : CPN, consultations, salle de travail, vaccination, urgences.', url: '/guide-espace-medecin', icone: 'fa-user-doctor' },
     { titre: 'Guide patiente', texte: 'Application mobile des mamans : pour l’expliquer aux patientes.', url: '/guide-application-patiente', icone: 'fa-mobile-screen-button' },

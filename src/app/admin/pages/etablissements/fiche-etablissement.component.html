@@ -178,7 +178,7 @@
     <!-- Saisie -->
     @if (onglet === 'saisie' && fiche) {
       <form #f="ngForm" (ngSubmit)="enregistrer(f)" novalidate class="card overflow-hidden">
-        <nav class="flex gap-1 overflow-x-auto border-b border-slate-100 px-3 py-2 dark:border-slate-800" aria-label="Étapes">
+        <nav class="scrollbar-none flex gap-1 overflow-x-auto border-b border-slate-100 px-3 py-2 dark:border-slate-800" aria-label="Étapes">
           @for (s of etapes; track s.n) {
             <button type="button" (click)="etape = s.n" [attr.aria-current]="etape === s.n ? 'step' : null"
                     class="flex flex-none items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium transition"
