@@ -7,9 +7,20 @@
 
   <div class="relative mx-auto grid max-w-7xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-[1fr_auto] lg:px-8">
     <div class="min-w-0">
-      <a routerLink="/" class="flex w-fit items-center gap-2 text-sm font-medium text-brand-700 hover:text-brand-900 dark:text-brand-300 dark:hover:text-white">
-        <i class="fa-solid fa-arrow-left"></i> {{ t(ui.retour) }}
-      </a>
+      <div class="flex flex-wrap items-center gap-3">
+        @if (connecte()) {
+          <a routerLink="/admin" class="inline-flex items-center gap-2 rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-brand-900/20 transition hover:bg-brand-800">
+            <i class="fa-solid fa-arrow-left"></i> {{ t(ui.retourAdmin) }}
+          </a>
+        } @else if (c.espacePro) {
+          <a routerLink="/admin/connexion" class="inline-flex items-center gap-2 rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-brand-900/20 transition hover:bg-brand-800">
+            <i class="fa-solid fa-lock"></i> {{ t(ui.connexionAdmin) }}
+          </a>
+        }
+        <a routerLink="/" class="flex w-fit items-center gap-2 text-sm font-medium text-brand-700 hover:text-brand-900 dark:text-brand-300 dark:hover:text-white">
+          <i class="fa-solid" [class]="connecte() ? 'fa-globe' : 'fa-arrow-left'"></i> {{ t(ui.retour) }}
+        </a>
+      </div>
       <span class="badge mt-6 bg-accent-50 py-1 text-accent-700 ring-1 ring-accent-200 dark:bg-accent-500/10 dark:text-accent-300 dark:ring-accent-500/30">
         <i class="fa-solid {{ c.badgeIcone }}"></i> {{ t(c.badge) }}
       </span>

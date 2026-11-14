@@ -3,11 +3,14 @@ import { Title } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
 import { LangueService } from '../../../shared/i18n/langue.service';
 import { LangueToggleComponent } from '../../../shared/i18n/langue-toggle.component';
+import { SessionService } from '../../../admin/data/session.service';
 import { CaptureGuide, ConfigGuide, EtapeGuide, FormatCapture, Texte } from './guide.model';
 
 /** Libellés fixes de la page des guides. */
 const UI = {
   retour: { fr: 'Retour au site', ln: 'Zonga na site' },
+  retourAdmin: { fr: 'Retour à l’espace professionnel', ln: 'Zonga na esika ya basáli' },
+  connexionAdmin: { fr: 'Se connecter à l’espace professionnel', ln: 'Kokota na esika ya basáli' },
   langue: { fr: 'Ce guide existe en français et en lingala :', ln: 'Mokanda oyo ezali na lifalanse mpe na lingala :' },
   sommaire: { fr: 'Sommaire', ln: 'Makambo ezali na kati' },
   sommaireAria: { fr: 'Sommaire du guide', ln: 'Makambo ya mokanda' },
@@ -39,6 +42,8 @@ export class GuideVueComponent {
 
   private langue = inject(LangueService);
   private titre = inject(Title);
+  /** Soignant connecté (guide ouvert depuis l'espace professionnel) : bouton de retour vers /admin. */
+  readonly connecte = inject(SessionService).connecte;
   ui = UI;
 
   /** Étapes numérotées en continu à travers les parties. */

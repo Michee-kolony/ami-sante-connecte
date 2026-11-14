@@ -113,7 +113,7 @@ export class ShellComponent {
   }
   menuOpen = false;
 
-  /** Menu déroulant « Guides » de la barre du haut : documentation illustrée (FR / LN), ouverte dans un nouvel onglet. */
+  /** Menu déroulant « Guides » de la barre du haut : documentation illustrée (FR / LN), avec retour vers l'espace professionnel. */
   docsOpen = false;
   private hote = inject<ElementRef<HTMLElement>>(ElementRef);
 

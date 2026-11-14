@@ -30,11 +30,11 @@
       <div class="space-y-2 lg:hidden">
         <p class="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-accent-400"><i class="fa-solid fa-book-open mr-1"></i>Guides d’utilisation</p>
         @for (g of guides; track g.url) {
-          <a [href]="g.url" target="_blank" rel="noopener" (click)="menuOpen = false"
+          <a [routerLink]="g.url" (click)="menuOpen = false"
              class="flex items-center gap-3 rounded-xl bg-gradient-to-r from-brand-600 to-accent-600 px-3 py-2.5 text-white shadow-md">
             <i class="fa-solid {{ g.icone }} w-5 text-center"></i>
             <span class="min-w-0 flex-1"><b class="block text-sm">{{ g.titre }}</b><span class="block truncate text-[11px] text-white/80">Français · Lingala</span></span>
-            <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+            <i class="fa-solid fa-arrow-right text-xs"></i>
           </a>
         }
       </div>
@@ -154,7 +154,7 @@
             <i class="fa-solid" [class]="urgences.muet() ? 'fa-volume-xmark text-rose-500' : 'fa-volume-high'"></i>
           </button>
           <!-- Guides : documentation illustrée, visible sur toutes les tailles d'écran -->
-          <div class="relative hidden lg:block" data-docs>
+          <div class="relative" data-docs>
             <button type="button" (click)="docsOpen = !docsOpen" [attr.aria-expanded]="docsOpen" aria-haspopup="true" aria-label="Guides d’utilisation"
                     title="Guides d’utilisation"
                     class="relative inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-full bg-accent-600 px-2.5 text-xs font-bold text-white shadow-md shadow-accent-900/20 ring-2 ring-accent-200 transition hover:bg-accent-700 dark:ring-accent-500/40 sm:px-3">
@@ -216,7 +216,7 @@
             </p>
             <div class="space-y-2 p-3">
               @for (g of guides; track g.url) {
-                <a [href]="g.url" target="_blank" rel="noopener" (click)="docsOpen = false" role="menuitem"
+                <a [routerLink]="g.url" (click)="docsOpen = false" role="menuitem"
                    class="group flex items-center gap-3 rounded-xl p-3 ring-1 ring-slate-200 transition hover:bg-accent-50 hover:ring-accent-300 dark:ring-slate-700 dark:hover:bg-accent-500/10">
                   <span class="flex h-12 w-12 flex-none items-center justify-center rounded-xl bg-gradient-to-br from-brand-600 to-accent-600 text-lg text-white shadow">
                     <i class="fa-solid {{ g.icone }}"></i>
@@ -225,12 +225,12 @@
                     <span class="block font-bold text-slate-900 dark:text-white">{{ g.titre }}</span>
                     <span class="block text-xs leading-snug text-slate-500 dark:text-slate-400">{{ g.texte }}</span>
                   </span>
-                  <i class="fa-solid fa-arrow-up-right-from-square text-slate-400 transition group-hover:text-accent-600"></i>
+                  <i class="fa-solid fa-arrow-right text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-accent-600"></i>
                 </a>
               }
             </div>
             <p class="bg-slate-50 px-4 py-2 text-[11px] text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">
-              <i class="fa-solid fa-language mr-1"></i>En français et en lingala · s’ouvre dans un nouvel onglet, votre travail en cours reste ouvert.
+              <i class="fa-solid fa-language mr-1"></i>En français et en lingala · le bouton « Retour à l’espace professionnel » du guide vous ramène ici.
             </p>
           </div>
         </div>

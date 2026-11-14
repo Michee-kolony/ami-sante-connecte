@@ -32,6 +32,7 @@ export class PublicLayoutComponent {
   nav = [
     { label: 'Accueil', fragment: 'accueil' },
     { label: 'Le projet', fragment: 'projet' },
+    { label: 'Guides', fragment: 'guides' },
     { label: 'Suivi prénatal', fragment: 'cpn' },
     { label: 'Galerie', fragment: 'galerie' },
     { label: 'Confidentialité', fragment: 'confidentialite' },

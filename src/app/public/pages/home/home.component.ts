@@ -19,6 +19,20 @@ export class HomeComponent implements AfterViewInit, OnDestroy {
   /** Valeurs affichées pendant l'animation du compteur. */
   compteurs = this.statistiques.map(s => s.valeur);
 
+  /** Guides illustrés des applications (section « Documentation »). */
+  guides = [
+    {
+      url: '/guide-application-patiente', icone: 'fa-mobile-screen-button', degrade: 'from-accent-600 to-brand-700',
+      public: 'Application mobile · Patientes', titre: 'Guide de l’application patiente',
+      texte: 'Connexion, suivi de la grossesse, rendez-vous, enfants, messages avec les soignants et appel d’urgence.',
+    },
+    {
+      url: '/guide-espace-medecin', icone: 'fa-user-doctor', degrade: 'from-brand-700 to-brand-950',
+      public: 'Espace professionnel · Médecins', titre: 'Guide de l’espace médecin',
+      texte: 'CPN, consultations, salle de travail et partogramme, vaccination, urgences et export Excel.',
+    },
+  ];
+
   // --- Formulaire de contact -------------------------------------------------
   sujets = ['Information générale', 'Suivi de grossesse', 'Partenariat', 'Presse et médias', 'Autre'];
   contact = this.contactVide();

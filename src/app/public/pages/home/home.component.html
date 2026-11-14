@@ -162,6 +162,34 @@
   </ul>
 </section>
 
+<!-- Documentation : guides illustrés des applications -->
+<section id="guides" class="mx-auto max-w-7xl scroll-mt-24 px-4 py-20 sm:px-6 lg:px-8">
+  <div class="max-w-2xl">
+    <p class="text-sm font-semibold uppercase tracking-wider text-accent-600 dark:text-accent-400"><i class="fa-solid fa-book-open mr-1.5"></i>{{ 'Documentation' | t }}</p>
+    <h2 class="mt-2 text-3xl font-bold tracking-tight text-brand-900 dark:text-white">{{ 'Comment utiliser nos applications ?' | t }}</h2>
+    <p class="mt-4 text-slate-600 dark:text-slate-300">{{ 'Des guides pas à pas, illustrés par des captures d’écran, en français et en lingala.' | t }}</p>
+  </div>
+  <div class="mt-10 grid gap-6 md:grid-cols-2">
+    @for (g of guides; track g.url) {
+      <a [routerLink]="g.url" class="group card flex flex-col overflow-hidden transition hover:-translate-y-1 hover:shadow-xl">
+        <div class="flex items-center gap-4 bg-gradient-to-br {{ g.degrade }} p-6 text-white">
+          <span class="flex h-14 w-14 flex-none items-center justify-center rounded-2xl bg-white/15 text-2xl ring-1 ring-white/25"><i class="fa-solid {{ g.icone }}"></i></span>
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-wider text-white/80">{{ g.public | t }}</p>
+            <h3 class="text-xl font-bold">{{ g.titre | t }}</h3>
+          </div>
+        </div>
+        <div class="flex flex-1 flex-col p-6">
+          <p class="flex-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{{ g.texte | t }}</p>
+          <span class="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-brand-700 dark:text-brand-300">
+            {{ 'Lire le guide' | t }} <i class="fa-solid fa-arrow-right transition group-hover:translate-x-1"></i>
+          </span>
+        </div>
+      </a>
+    }
+  </div>
+</section>
+
 <!-- Piliers -->
 <section id="projet" class="mx-auto max-w-7xl scroll-mt-24 px-4 py-20 sm:px-6 lg:px-8">
   <div class="max-w-2xl">

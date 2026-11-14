@@ -18,6 +18,7 @@ import { ConfigGuide } from '../guides/guide.model';
 export class GuideMedecinComponent {
   config: ConfigGuide = {
     url: '/guide-espace-medecin',
+    espacePro: true,
     dossier: 'images/guide-medecin',
     format: 'ecran',
     adresseEcran: 'AMI Santé Connect · /admin',

@@ -61,6 +61,8 @@ export interface RepereGuide {
 export interface ConfigGuide {
   /** Adresse de la page du guide (liens du sommaire). */
   url: string;
+  /** Guide de l'espace professionnel : lien de connexion à /admin pour les visiteurs non connectés. */
+  espacePro?: boolean;
   /** Dossier des captures, relatif à public/ (ex. images/guide-medecin). */
   dossier: string;
   format: FormatCapture;
