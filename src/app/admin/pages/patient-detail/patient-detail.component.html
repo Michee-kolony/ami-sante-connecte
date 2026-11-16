@@ -377,6 +377,9 @@
               }
             </div>
 
+            <!-- RECO attitré : suit la patiente à domicile et reçoit ses alertes -->
+            <app-reco-attitre [patienteId]="p.id" [reco]="dossier.reco" (recoChange)="dossier.reco = $event" />
+
             <!-- Traçabilité -->
             <div class="card p-5">
               <p class="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white"><i class="fa-solid fa-user-doctor text-brand-600 dark:text-brand-400"></i> Traçabilité</p>

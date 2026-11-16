@@ -98,7 +98,32 @@ export interface TableauDeBordReco {
   ceMois: { depuis: string; actions: number; resolues: number };
 }
 
-export interface AlerteReco { id: string; type: string; libelle: string; taches: string[]; occurrences: number; derniereLe: string; ouverte: boolean }
+export interface AlerteReco {
+  id: string; type: string; libelle: string; taches: string[]; occurrences: number; derniereLe: string; ouverte: boolean;
+  /** Détail des dernières occurrences (ex. « Nouvelle patiente confiée à votre suivi : … »), le plus récent d'abord. */
+  messages?: { texte: string; le: string }[];
+}
+
+/** Patiente confiée au RECO : de quoi la retrouver et la suivre (aucune donnée clinique). */
+export interface PatienteReco {
+  id: string;
+  numero: string;
+  nom: string;
+  photoUrl: string | null;
+  commune: string;
+  quartier: string;
+  avenue: string;
+  repere: string;
+  /** Vide si aucun canal téléphonique n'est consenti (visite à domicile seulement). */
+  telephone: string;
+  telephonePartage: boolean;
+  canauxAutorises: string[];
+  suivi: string;
+  grossesse: { semaines: number | null; dpa: string | null } | null;
+  prochainRendezVous: { date: string; pourEnfant: boolean } | null;
+  tachesOuvertes: string[];
+  confieeLe: string | null;
+}
 
 /** Opération faite sur l'appareil, envoyée dès que le réseau le permet. */
 export interface Operation {
@@ -129,7 +154,7 @@ export interface OperationRefusee { operation: Operation; message: string }
 
 interface Session { jeton: string; reco: ProfilReco; sel: string; empreinte: string }
 
-interface Cache { taches: TacheReco[]; referentiel: ReferentielReco | null; alertes: AlerteReco[]; serveurLe: string | null }
+interface Cache { taches: TacheReco[]; referentiel: ReferentielReco | null; alertes: AlerteReco[]; patientes?: PatienteReco[]; serveurLe: string | null }
 
 function lireSession(): Session | null {
   try {
@@ -179,6 +204,8 @@ export class RecoService {
   readonly taches = signal<TacheReco[]>([]);
   readonly referentiel = signal<ReferentielReco | null>(null);
   readonly alertes = signal<AlerteReco[]>([]);
+  /** Patientes confiées à ce RECO (et à lui seul). */
+  readonly patientes = signal<PatienteReco[]>([]);
   readonly operations = signal<Operation[]>([]);
   readonly refusees = signal<OperationRefusee[]>([]);
   readonly derniereSynchro = signal<string | null>(null);
@@ -200,6 +227,7 @@ export class RecoService {
       this.taches.set(cache.taches);
       this.referentiel.set(cache.referentiel);
       this.alertes.set(cache.alertes);
+      this.patientes.set(cache.patientes ?? []);
       this.derniereSynchro.set(cache.serveurLe);
     }
     this.operations.set(ops ?? []);
@@ -259,6 +287,7 @@ export class RecoService {
     this.enregistrer(null);
     try { localStorage.removeItem(CLE_COMPTE); } catch { /* stockage indisponible */ }
     this.taches.set([]);
+    this.patientes.set([]);
     this.operations.set([]);
     this.refusees.set([]);
     this.verrouille.set(false);
@@ -286,7 +315,7 @@ export class RecoService {
   }
 
   private async sauverCache(): Promise<void> {
-    await ecrire('cache', { taches: this.taches(), referentiel: this.referentiel(), alertes: this.alertes(), serveurLe: this.derniereSynchro() } satisfies Cache).catch(() => {});
+    await ecrire('cache', { taches: this.taches(), referentiel: this.referentiel(), alertes: this.alertes(), patientes: this.patientes(), serveurLe: this.derniereSynchro() } satisfies Cache).catch(() => {});
   }
 
   private async sauverFile(): Promise<void> {
@@ -329,6 +358,9 @@ export class RecoService {
       this.taches.set(taches.taches.map(t => this.operations().filter(o => o.numero === t.numero).reduce((x, o) => this.appliquerLocal(x, o), t)));
       this.referentiel.set(referentiel);
       this.alertes.set(alertes);
+      // Patientes confiées : chargées à part (un serveur plus ancien sans cette liste ne bloque pas le reste).
+      const patientes = await firstValueFrom(this.http.get<{ patientes: PatienteReco[] }>(`${URL}/patientes`, this.entetes())).catch(() => null);
+      if (patientes) this.patientes.set(patientes.patientes);
       this.derniereSynchro.set(taches.serveurLe);
       this.enLigne.set(true);
       await this.sauverCache();

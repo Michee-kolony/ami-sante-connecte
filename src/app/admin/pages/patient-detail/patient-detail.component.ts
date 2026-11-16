@@ -21,10 +21,11 @@ type Fenetre = null | 'datation' | 'issue' | 'rdv' | 'action-rdv' | 'grossesse' 
  * Dossier prénatal d'une patiente, partagé entre tous les médecins. L'ouverture est journalisée
  * par le serveur ; elle est distincte des consultations, qui ont chacune leur auteur.
  */
+import { RecoAttitreComponent } from '../../components/reco-attitre.component';
 @Component({
   selector: 'app-patient-detail',
   standalone: true,
-  imports: [FormsModule, RouterLink, AvatarComponent, PatientSuiviComponent, FicheCpnPatienteComponent],
+  imports: [FormsModule, RouterLink, AvatarComponent, PatientSuiviComponent, FicheCpnPatienteComponent, RecoAttitreComponent],
   templateUrl: './patient-detail.component.html',
 })
 export class PatientDetailComponent implements OnChanges, OnDestroy {

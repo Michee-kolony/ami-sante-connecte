@@ -4,11 +4,15 @@ import { FormsModule } from '@angular/forms';
 import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
 import { AvatarComponent } from '../../admin/components/avatar.component';
 import { messageErreur } from '../../admin/data/session.service';
-import { RecoService, type AlerteReco, type TacheReco } from '../reco.service';
+import { RecoService, type AlerteReco, type PatienteReco, type TacheReco } from '../reco.service';
 import { RecoMessagesService } from '../reco-messages.service';
 import { MessagesRecoComponent } from './messages-reco.component';
 
-type Vue = 'liste' | 'tache' | 'signalement' | 'messages' | 'tableau' | 'parametres';
+type Vue = 'liste' | 'tache' | 'signalement' | 'messages' | 'tableau' | 'parametres' | 'patientes';
+/** Alertes qui concernent les patientes confiées au RECO. */
+const TYPES_ALERTE_PATIENTE = ['patiente_affectee', 'patiente_retiree'];
+const sansAccents = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
 type Formulaire = 'tentative' | 'visite_planifiee' | 'visite_realisee' | 'orientation' | 'refus_report' | 'demande_appui' | 'urgence' | null;
 
 /**
@@ -43,6 +47,15 @@ export class EspaceRecoComponent implements OnInit {
   readonly tache = computed(() => this.service.taches().find(t => t.numero === this.numero()) ?? null);
   readonly liste = computed(() => (this.filtre() === 'ouvertes' ? this.service.ouvertes() : this.service.taches()));
   readonly alertesOuvertes = computed(() => this.service.alertes().filter(a => a.ouverte));
+  /** Alertes sur les patientes confiées ou retirées (affichées dans l'onglet « Patientes »). */
+  readonly alertesPatientes = computed(() => this.alertesOuvertes().filter(a => TYPES_ALERTE_PATIENTE.includes(a.type)));
+  /** Recherche dans « Mes patientes » : nom, matricule, quartier, avenue ou repère. */
+  recherchePatiente = signal('');
+  readonly patientesAffichees = computed(() => {
+    const q = sansAccents(this.recherchePatiente());
+    const liste = this.service.patientes();
+    return q ? liste.filter(p => sansAccents([p.nom, p.numero, p.quartier, p.avenue, p.repere, p.commune].join(' ')).includes(q)) : liste;
+  });
   /** Tâches confiées pas encore prises en charge (badge de l'onglet « Tâches »). */
   readonly aPrendreEnCharge = computed(() => this.service.taches().filter(t => this.aPrendre(t)));
   /** Onglet en surbrillance : la fiche d'une tâche reste sous « Tâches ». */
@@ -56,7 +69,7 @@ export class EspaceRecoComponent implements OnInit {
   }
 
   /** Navigation par la barre d'onglets. */
-  ouvrirOnglet(v: 'tableau' | 'liste' | 'signalement' | 'messages' | 'parametres'): void {
+  ouvrirOnglet(v: 'tableau' | 'liste' | 'signalement' | 'messages' | 'parametres' | 'patientes'): void {
     if (v === 'tableau') { this.ouvrirTableau(); return; }
     if (v === 'parametres') { this.ouvrirParametres(); return; }
     this.formulaire.set(null);
@@ -125,6 +138,17 @@ export class EspaceRecoComponent implements OnInit {
   adresse(t: TacheReco): string {
     const { commune, quartier, avenue, repere } = t.personne;
     return [commune, quartier, avenue, repere].filter(Boolean).join(', ');
+  }
+
+  /** Adresse complète d'une patiente confiée. */
+  adressePatiente(p: PatienteReco): string {
+    return [p.commune, p.quartier, p.avenue, p.repere].filter(Boolean).join(', ');
+  }
+
+  /** Ouvre la première tâche de relance ouverte de la patiente. */
+  ouvrirTacheDe(p: PatienteReco): void {
+    const t = this.service.taches().find(x => p.tachesOuvertes.includes(x.numero));
+    if (t) this.ouvrir(t);
   }
 
   /** Découpe le nom complet pour les initiales de l'avatar. */

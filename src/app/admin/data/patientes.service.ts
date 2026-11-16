@@ -437,8 +437,22 @@ export interface Echographie extends SaisieEchographie {
   createdAt: string;
 }
 
+/** Relais communautaire (RECO) attitré de la patiente : il la suit à domicile et reçoit ses alertes. */
+export interface RecoAttitre {
+  id: string; matricule: string; prenom: string; nom: string; postnom: string; telephone: string; photo: string | null;
+  zones: string[]; aireSante: string; statut: string;
+  /** Automatique : selon le quartier (recalculé si l'adresse change) ; Manuelle : désigné par le personnel. */
+  mode: 'Automatique' | 'Manuelle' | null;
+  le: string | null;
+}
+
+/** RECO actif de l'établissement, proposé pour suivre la patiente (le conseillé couvre son secteur). */
+export interface RecoPossible { id: string; matricule: string; nom: string; telephone: string; zones: string[]; aireSante: string; conseille: boolean }
+
 export interface Dossier {
   patiente: Patiente;
+  /** RECO attitré (null : aucun RECO actif ne couvre encore son secteur). */
+  reco?: RecoAttitre | null;
   grossesses: Grossesse[];
   consultations: ConsultationResume[];
   rendezVous: RendezVous[];
@@ -478,6 +492,7 @@ export interface SuiviPatiente {
     contactUrgence: { nom: string; lien: string; telephone: string };
   };
   etablissement: { id: string; nom: string; province: string } | null;
+  reco?: RecoAttitre | null;
   grossesse: { id: string; numero: number; statut: string; agJours: number | null; dpa: string | null; datee: boolean } | null;
   enfants: ResumeEnfant[];
   rendezVous: {
@@ -560,11 +575,11 @@ export class PatientesService {
    * Enregistrement multipart : données en JSON (« donnees ») et photo obligatoire. Hors connexion,
    * la saisie est gardée sur l'appareil (HorsLigneService) et l'appel échoue avec horsLigne.
    */
-  creer(corps: unknown, photo: File): Promise<{ id: string; numero: string; consultationId?: string | null }> {
+  creer(corps: unknown, photo: File): Promise<{ id: string; numero: string; consultationId?: string | null; reco?: RecoAttitre | null }> {
     const f = new FormData();
     f.append('donnees', JSON.stringify(corps));
     f.append('photo', photo);
-    return firstValueFrom(this.http.post<{ id: string; numero: string }>(this.url, f));
+    return firstValueFrom(this.http.post<{ id: string; numero: string; consultationId?: string | null; reco?: RecoAttitre | null }>(this.url, f));
   }
 
   /** Carte patiente (PDF recto-verso, format carte bancaire) générée par le serveur ; le QR suit le domaine du site. */
@@ -582,6 +597,16 @@ export class PatientesService {
   /** Suivi en lecture seule, ouvert aux infirmier·ères. */
   suivi(id: string): Promise<SuiviPatiente> {
     return firstValueFrom(this.http.get<SuiviPatiente>(`${this.url}/${encodeURIComponent(id)}/suivi`));
+  }
+
+  /** RECO actifs de l'établissement de la patiente (choix manuel du RECO attitré). */
+  recosPossibles(id: string): Promise<RecoPossible[]> {
+    return firstValueFrom(this.http.get<RecoPossible[]>(`${this.url}/${encodeURIComponent(id)}/recos`));
+  }
+
+  /** Désigne le RECO attitré (recoId) ou revient au choix automatique selon le quartier (null). */
+  changerReco(id: string, recoId: string | null): Promise<{ reco: RecoAttitre | null }> {
+    return firstValueFrom(this.http.put<{ reco: RecoAttitre | null }>(`${this.url}/${encodeURIComponent(id)}/reco`, { recoId }));
   }
 
   dossier(id: string): Promise<Dossier> {

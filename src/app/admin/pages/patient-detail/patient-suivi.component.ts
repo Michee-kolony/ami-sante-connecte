@@ -1,6 +1,7 @@
 import { Component, Input, OnChanges, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AvatarComponent } from '../../components/avatar.component';
+import { RecoAttitreComponent } from '../../components/reco-attitre.component';
 import { agLisible, dateHeureChiffres, jourChiffres } from '../../data/format';
 import { PatientesService, StatutRdv, SuiviPatiente } from '../../data/patientes.service';
 import { SessionService, messageErreur } from '../../data/session.service';
@@ -16,7 +17,7 @@ const ACTIFS: StatutRdv[] = ['Planifié', 'Confirmé', 'Reporté'];
 @Component({
   selector: 'app-patient-suivi',
   standalone: true,
-  imports: [RouterLink, AvatarComponent],
+  imports: [RouterLink, AvatarComponent, RecoAttitreComponent],
   template: `
 <div class="mx-auto max-w-5xl space-y-6">
   <nav class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
@@ -105,6 +106,9 @@ const ACTIFS: StatutRdv[] = ['Planifié', 'Confirmé', 'Reporté'];
         </dl>
       </div>
     </div>
+
+    <!-- RECO attitré : suit la patiente à domicile et reçoit ses alertes -->
+    <app-reco-attitre [patienteId]="p.id" [reco]="suivi.reco" (recoChange)="suivi.reco = $event" />
 
     <div class="grid gap-6 md:grid-cols-2">
       <!-- Grossesse en cours -->
