@@ -5,7 +5,7 @@ import { RouterLink } from '@angular/router';
 import { PROVINCES_RDC } from '../../data/carte-rdc';
 import { zonesDeProvince } from '../../data/zones-sante';
 import {
-  DonneesEtablissement, DonneesMedecinChef, Etablissement, EtablissementsService, MedecinChef, SECTEURS_ETABLISSEMENT, SERVICES_ETABLISSEMENT,
+  DonneesEtablissement, DonneesMedecinChef, Etablissement, EtablissementsService, MedecinChef, SERVICES_ETABLISSEMENT,
   ServiceEtablissement, StatutEtablissement, TYPES_ETABLISSEMENT, TypeEtablissement, SecteurEtablissement,
 } from '../../data/etablissements.service';
 import { messageErreur } from '../../data/session.service';
@@ -13,8 +13,8 @@ import { ESPACE_COMITE } from '../../data/espace';
 import { ChampsMedecinChefComponent, medecinChefNettoye, medecinChefVide } from '../../components/champs-medecin-chef.component';
 import { FicheEtapesComponent } from '../../components/fiche-etapes.component';
 import {
-  CATEGORIE_DU_TYPE, ETAPES, FicheEtablissementService, SECTEUR_DU_STATUT, VERS_SERVICES_PLATEFORME, classeStatut, ficheDepuis,
-  ficheVide, nomPersonne, sectionsAEnvoyer, sectionsModifiees,
+  CATEGORIES_DU_TYPE, ETAPES, FicheAmi, FicheEtablissementService, SECTEUR_DU_STATUT, TYPES_ANCIENS, VERS_SERVICES_PLATEFORME, adresseComposee,
+  classeStatut, ficheDepuis, ficheVide, nomPersonne, profilCatalogue, sectionsAEnvoyer, sectionsModifiees, serviceVide,
 } from '../../data/fiche-etablissement';
 
 const MAX_PHOTOS = 6;
@@ -27,14 +27,15 @@ function formulaireVide() {
     latitude: null as number | null, longitude: null as number | null,
     telephone: '', email: '', responsable: '', fonctionResponsable: '', lits: 0,
     services: new Set<ServiceEtablissement>(),
-    /** Fiche AMI (étapes 1 à 9). */
+    /** Fiche « Identification générale » (étapes 1 à 10). */
     fiche: ficheVide(),
   };
 }
 
 function formulaireDepuis(e: Etablissement) {
   return {
-    nom: e.nom, type: e.type as TypeEtablissement | '', secteur: e.secteur as SecteurEtablissement | '',
+    // Ancien type (ex. « Hôpital général de référence ») : repris en type + catégorie.
+    nom: e.nom, type: (TYPES_ANCIENS[e.type]?.type ?? e.type) as TypeEtablissement | '', secteur: e.secteur as SecteurEtablissement | '',
     province: e.province, districtSanitaire: e.districtSanitaire ?? '',
     // Seules les zones du référentiel sont reprises (les anciennes saisies libres sont à re-choisir).
     zonesSante: zonesEtablissement(e).filter(z => zonesDeProvince(e.province).includes(z)),
@@ -45,6 +46,19 @@ function formulaireDepuis(e: Etablissement) {
     fiche: ficheVide(),
   };
 }
+
+/** Services de la plateforme (liste courte des établissements anciens) → services du catalogue. */
+const SERVICES_REPRIS: Record<string, { hopital: string[]; centreSante: string[] }> = {
+  CPN: { hopital: ['CPN'], centreSante: ['CPN'] },
+  Maternité: { hopital: ['Maternité', 'Salle d’accouchement'], centreSante: ['Maternité', 'Salle d’accouchement'] },
+  Vaccination: { hopital: ['Vaccination et PEV'], centreSante: ['Vaccination et PEV'] },
+  Urgences: { hopital: ['Urgences médicales'], centreSante: ['Urgences de première ligne'] },
+  Ambulance: { hopital: ['Transport et ambulance'], centreSante: [] },
+  Pédiatrie: { hopital: ['Pédiatrie'], centreSante: ['Consultation préscolaire'] },
+  Laboratoire: { hopital: ['Laboratoire de biologie médicale'], centreSante: ['Laboratoire de première ligne'] },
+  Imagerie: { hopital: ['Imagerie médicale'], centreSante: [] },
+  Chirurgie: { hopital: ['Chirurgie générale'], centreSante: [] },
+};
 
 /** Zones de santé d'un établissement (les plus anciens n'ont qu'une zone, `zoneSante`). */
 export function zonesEtablissement(e: Pick<Etablissement, 'zoneSante' | 'zonesSante'>): string[] {
@@ -81,7 +95,6 @@ export class EtablissementsComponent implements OnDestroy {
   erreurChargement = '';
 
   readonly types = TYPES_ETABLISSEMENT;
-  readonly secteurs = SECTEURS_ETABLISSEMENT;
   readonly servicesDisponibles = SERVICES_ETABLISSEMENT;
   readonly provinces = PROVINCES_RDC.map(p => p.nom).sort((a, b) => a.localeCompare(b, 'fr'));
   readonly maxPhotos = MAX_PHOTOS;
@@ -276,8 +289,10 @@ export class EtablissementsComponent implements OnDestroy {
   photoErreur = '';
   enregistrement = false;
   erreurEnregistrement = '';
-  localisation = false;
-  localisationErreur = '';
+  /** Le responsable principal (étape 5) est le médecin chef : son identité n'est pas ressaisie. */
+  chefEstResponsable = true;
+  /** Pièce jointe de l'acte de création, envoyée après l'enregistrement. */
+  pieceActe: File | null = null;
   notification: string | null = null;
   private timerNotif?: ReturnType<typeof setTimeout>;
 
@@ -287,12 +302,6 @@ export class EtablissementsComponent implements OnDestroy {
 
   get nomExiste(): boolean {
     return this.service.nomExiste(this.form.nom, this.form.province, this.enEdition?.id);
-  }
-
-  get coordonneesValides(): boolean {
-    const { latitude: lat, longitude: lng } = this.form;
-    if (lat == null && lng == null) return true;
-    return lat != null && lng != null && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
   }
 
   get nombrePhotos(): number {
@@ -361,10 +370,22 @@ export class EtablissementsComponent implements OnDestroy {
     return `DPS ${this.form.province}`;
   }
 
-  /** Catégorie proposée selon le type de structure (tant qu'elle n'est pas choisie). */
+  /**
+   * Type de structure : la catégorie suit (déduite s'il n'y en a qu'une, à choisir pour un
+   * hôpital ; une catégorie qui ne correspond plus au type est effacée).
+   */
   changerType(type: TypeEtablissement | ''): void {
     this.form.type = type;
-    if (type && !this.form.fiche.identification.categorie) this.form.fiche.identification.categorie = CATEGORIE_DU_TYPE[type] ?? null;
+    const permises = CATEGORIES_DU_TYPE[type] ?? [];
+    const id = this.form.fiche.identification;
+    if (permises.length === 1) id.categorie = permises[0];
+    else if (id.categorie && !permises.includes(id.categorie)) id.categorie = null;
+  }
+
+  get coordonneesValides(): boolean {
+    const { latitude: lat, longitude: lng } = this.form;
+    if (lat == null && lng == null) return true;
+    return lat != null && lng != null && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
   }
 
   /** Champs obligatoires manquants par étape (pastilles de l'assistant). */
@@ -376,54 +397,75 @@ export class EtablissementsComponent implements OnDestroy {
     if (n === 1) {
       if (!f.nom.trim() || this.nomExiste) m.push('nom');
       if (!f.type) m.push('type');
-      if (!/^[+0-9 ().-]{9,20}$/.test(f.telephone.trim())) m.push('téléphone');
-      if (vide(fi.identification.niveauSanitaire)) m.push('niveau sanitaire');
-      if (vide(fi.identification.categorie)) m.push('catégorie');
-      if (vide(fi.identification.statutActuel)) m.push('statut actuel');
-      if (!this.coordonneesValides) m.push('GPS');
+      else if (vide(fi.identification.categorie) || !(CATEGORIES_DU_TYPE[f.type] ?? []).includes(fi.identification.categorie!)) m.push('catégorie');
+      if (vide(fi.identification.statutActuel)) m.push('statut de fonctionnement');
+      if (vide(fi.organisation.statutJuridique)) m.push('statut juridique');
+      if (vide(fi.organisation.modeGestion)) m.push('régime de gestion');
+      if (fi.identification.anciensNoms.some(a => !!a.debut && !!a.fin && a.fin < a.debut)) m.push('période d’un ancien nom');
     } else if (n === 2) {
       if (!f.zonesSante.length) m.push('zone de santé');
       if (!f.aireSante.trim()) m.push('aire de santé');
-      if (!f.adresse.trim()) m.push('adresse');
-      if (!fi.localisation.territoire.trim()) m.push('territoire');
+      if (!fi.localisation.territoire.trim()) m.push('ville ou territoire');
+      if (!fi.localisation.quartier.trim()) m.push('quartier / village');
+      if (!this.coordonneesValides) m.push('GPS');
     } else if (n === 3) {
-      const r = fi.organisation.responsable;
-      if (vide(fi.organisation.statutJuridique)) m.push('statut juridique');
-      if (vide(fi.organisation.modeGestion)) m.push('mode de gestion');
-      if (!r.nom.trim() || !r.prenom.trim() || !r.fonction.trim() || !r.telephone.trim()) m.push('responsable');
+      if (fi.populations.some(p => p.totale == null)) m.push('population totale');
     } else if (n === 4) {
-      if (fi.equipements.some(q => !q.nom.trim())) m.push('nom d’équipement');
+      if (!/^[+0-9 ().-]{9,20}$/.test(f.telephone.trim())) m.push('téléphone principal');
+      if (fi.contacts.contactsService.some(c => !c.service.trim())) m.push('service d’un contact');
     } else if (n === 5) {
-      if (fi.agents.some(a => !a.nom.trim() || !a.profession)) m.push('agent incomplet');
+      const r = fi.organisation.responsable;
+      if (!r.nom.trim() || !r.prenom.trim() || !r.telephone.trim() || !fi.organisation.titreResponsable || !r.fonction.trim()) m.push('responsable principal');
     } else if (n === 6) {
       if (!fi.services.some(s => s.fonctionnel === 'Oui' || s.fonctionnel === 'Partiel')) m.push('service fonctionnel');
     } else if (n === 7) {
-      if (fi.populations.some(p => p.totale == null)) m.push('population totale');
+      if (fi.infrastructures.litsParUnite.some(u => !u.unite.trim())) m.push('unité de lits');
+    } else if (n === 9) {
+      if (fi.equipements.some(q => !q.nom.trim())) m.push('nom d’équipement');
     }
     return m;
   }
 
-  /** Étapes obligatoires (1, 2, 3, 6) encore incomplètes. */
+  /** Étapes obligatoires (1, 2, 4, 5, 6) encore incomplètes. */
   get etapesObligatoiresIncompletes(): number[] {
-    return [1, 2, 3, 6].filter(n => this.manquants(n).length);
+    return [1, 2, 4, 5, 6].filter(n => this.manquants(n).length);
   }
 
   allerA(n: number): void {
-    this.etape = Math.min(10, Math.max(1, n));
+    this.etape = Math.min(ETAPES.length, Math.max(1, n));
     document.getElementById('corps-panneau-et')?.scrollTo({ top: 0 });
   }
 
   /** Complétude estimée pendant la saisie (la complétude officielle est calculée par le serveur). */
   get completudeEstimee(): number {
     const f = this.form.fiche;
+    const id = f.identification;
+    const loc = f.localisation;
+    const infra = f.infrastructures;
+    const op = f.operationnel;
     const valeurs: unknown[] = [
-      this.form.nom, this.form.type, ...Object.values(f.identification), this.form.telephone, this.form.email, this.form.latitude,
-      this.form.aireSante, this.form.adresse, ...Object.values(f.localisation), f.organisation.statutJuridique, f.organisation.modeGestion,
-      f.organisation.proprietaire, f.organisation.autorisation.reference, nomPersonne(f.organisation.responsable),
-      f.infrastructures.litsTotal, f.infrastructures.electricite, f.infrastructures.pointEau, f.equipements.length || null, f.agents.length || null,
-      f.services.some(s => s.fonctionnel) || null, f.populations.length || null, f.capacites.accouchementsMois, f.capacites.cpnMois,
+      this.form.nom, this.form.type, id.categorie, id.codeSnis, id.codeSnisSource, id.codeSnisVerifieLe, id.nomUsuel || id.sigle,
+      f.organisation.statutJuridique, f.organisation.modeGestion, id.dateOuverture, id.acteCreation.numero, id.acteCreation.autorite, id.statutActuel,
+      this.form.province, loc.territoire, loc.commune, loc.quartier, this.form.zonesSante[0], this.form.aireSante, this.adresse, loc.reperes,
+      this.form.latitude, loc.gps.methode,
+      f.populations.some(p => p.totale != null) || null, f.populations.some(p => p.source) || null,
+      f.populations.some(p => Object.values(p.tranches).some(v => v != null)) || null,
+      this.form.telephone, this.form.email, f.contacts.telephoneUrgence, f.contacts.canalPrivilegie,
+      nomPersonne(f.organisation.responsable), f.organisation.titreResponsable, f.organisation.responsable.telephone, f.organisation.datePriseFonction,
+      f.responsablesFonctionnels.some(r => r.nom.trim()) || null, f.services.some(s => s.fonctionnel) || null,
+      infra.batiments, Object.values(infra.salles).some(v => v != null) || null, infra.litsParUnite.length || null,
+      infra.eau.continuite, infra.toilettesFonctionnelles, infra.electriciteDetail.sources.length || null,
+      infra.connectivite.internet ?? infra.connectivite.reseauMobile, infra.accessibilite.route, infra.etatBatiment.etat,
+      f.personnel.some(p => p.nombre != null) || null, f.equipements.length || null,
+      op.fonctionnement24h, op.urgences.disponible, op.intrants.etat, op.moyensReference.length || null, op.systemeRapportage.length || null,
+      op.dateDerniereEvaluation,
     ];
     return Math.round((valeurs.filter(v => v != null && v !== '').length / valeurs.length) * 100);
+  }
+
+  /** Adresse détaillée composée à partir de l'étape 2 (l'ancienne adresse libre sert à défaut). */
+  get adresse(): string {
+    return adresseComposee(this.form.fiche.localisation) || this.form.adresse.trim();
   }
 
   /** Coche toutes les zones affichées (après filtre), sans changer la zone principale. */
@@ -437,28 +479,6 @@ export class EtablissementsComponent implements OnDestroy {
 
   basculerService(s: ServiceEtablissement): void {
     this.form.services.has(s) ? this.form.services.delete(s) : this.form.services.add(s);
-  }
-
-  /** Remplit les coordonnées GPS avec la position de l'appareil (sur place). */
-  localiser(): void {
-    if (!navigator.geolocation) {
-      this.localisationErreur = 'Géolocalisation indisponible sur cet appareil.';
-      return;
-    }
-    this.localisation = true;
-    this.localisationErreur = '';
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        this.form.latitude = +pos.coords.latitude.toFixed(5);
-        this.form.longitude = +pos.coords.longitude.toFixed(5);
-        this.localisation = false;
-      },
-      () => {
-        this.localisationErreur = 'Position introuvable. Saisissez les coordonnées à la main.';
-        this.localisation = false;
-      },
-      { enableHighAccuracy: true, timeout: 10000 },
-    );
   }
 
   choisirPhotos(event: Event): void {
@@ -502,8 +522,10 @@ export class EtablissementsComponent implements OnDestroy {
     this.form = e ? formulaireDepuis(e) : formulaireVide();
     this.photosConservees = e ? [...e.photos] : [];
     if (!e) this.chef = medecinChefVide();
+    this.chefEstResponsable = true;
+    this.pieceActe = null;
     this.viderNouvellesPhotos();
-    this.photoErreur = this.localisationErreur = this.erreurEnregistrement = '';
+    this.photoErreur = this.erreurEnregistrement = '';
     this.rechercheZone = '';
     this.etape = 1;
     this.statutFiche = e?.ficheAmi?.statut ?? null;
@@ -517,34 +539,47 @@ export class EtablissementsComponent implements OnDestroy {
       this.ficheService.obtenir(e.id)
         .then(r => {
           this.form.fiche = ficheDepuis(r.fiche);
+          this.ficheInitiale = r.fiche ? sectionsAEnvoyer(this.form.fiche) : {};
           // Établissement antérieur à la fiche : reprise des informations déjà connues.
           if (!r.fiche) this.preremplirDepuis(e);
-          this.ficheInitiale = r.fiche ? sectionsAEnvoyer(this.form.fiche) : {};
+          // Ancien type (« Hôpital général de référence »…) : sa catégorie est reprise.
+          const id = this.form.fiche.identification;
+          if (TYPES_ANCIENS[e.type] && !id.categorie) id.categorie = TYPES_ANCIENS[e.type].categorie;
+          this.changerType(this.form.type);
         })
         .catch(err => (this.erreurEnregistrement = `Fiche AMI non chargée : ${messageErreur(err)}`))
         .finally(() => (this.chargementFiche = false));
     }
   }
 
-  /** Fiche ouverte pour un établissement ancien : responsable, lits et services déjà saisis. */
+  /** Fiche ouverte pour un établissement ancien : responsable, statut et services déjà saisis. */
   private preremplirDepuis(e: Etablissement): void {
-    const f = this.form.fiche;
+    const f: FicheAmi = this.form.fiche;
     const [prenom, ...reste] = e.responsable.split(' ');
     f.organisation.responsable = {
       ...f.organisation.responsable, prenom: reste.length ? prenom : '', nom: reste.length ? reste.join(' ') : prenom,
       fonction: e.fonctionResponsable, telephone: e.telephone,
     };
+    if ((['Médecin directeur', 'Médecin chef', 'Infirmier titulaire', 'Administrateur gestionnaire'] as string[]).includes(e.fonctionResponsable)) {
+      f.organisation.titreResponsable = e.fonctionResponsable;
+    }
     const statuts: Record<string, string> = { Public: 'Public', Privé: 'Privé lucratif', Confessionnel: 'Confessionnel', Militaire: 'Militaire', ONG: 'Associatif' };
     f.organisation.statutJuridique = statuts[e.secteur] ?? null;
-    f.identification.categorie = CATEGORIE_DU_TYPE[e.type] ?? null;
-    f.infrastructures.litsTotal = e.lits || null;
-    for (const s of f.services) {
-      const offert = s.service === 'Accouchement' ? e.services.includes('Maternité') : (e.services as string[]).includes(s.service);
-      if (offert) {
-        s.disponible = 'Oui';
-        s.fonctionnel = 'Oui';
+    const profil = profilCatalogue(e.type);
+    for (const court of e.services) {
+      for (const nom of SERVICES_REPRIS[court]?.[profil] ?? []) {
+        if (!f.services.some(s => s.service === nom)) f.services.push({ ...serviceVide(nom), existence: 'Oui', disponible: 'Oui', fonctionnel: 'Oui' });
       }
     }
+  }
+
+  /** Pièce jointe de l'acte de création, choisie à l'étape 1 (envoyée après l'enregistrement). */
+  choisirPieceActe(fichier: File): void {
+    if (fichier.size > 10 * 1024 * 1024) {
+      this.erreurEnregistrement = 'La pièce jointe dépasse 10 Mo.';
+      return;
+    }
+    this.pieceActe = fichier;
   }
 
   fermer(): void {
@@ -559,14 +594,15 @@ export class EtablissementsComponent implements OnDestroy {
     if (f.invalid || this.nomExiste || incomplete) {
       this.erreurEnregistrement = incomplete
         ? `Étape ${incomplete} incomplète : ${this.manquants(incomplete).join(', ')}.`
-        : 'Vérifiez les champs signalés en rouge, y compris l’identité du médecin chef (étape 3).';
-      this.allerA(incomplete ?? 3);
+        : 'Vérifiez les champs signalés en rouge, y compris le compte du médecin chef (étape 5).';
+      this.allerA(incomplete ?? 5);
       return;
     }
     this.enregistrement = true;
     this.erreurEnregistrement = '';
     const fiche = this.form.fiche;
     const org = fiche.organisation;
+    const lits = fiche.infrastructures.litsParUnite.reduce((s, u) => s + (u.installes ?? 0), 0);
     // Champs de l'établissement déduits de la fiche (le serveur applique les mêmes règles).
     const services = [...new Set(fiche.services
       .filter(s => s.disponible === 'Oui' && (s.fonctionnel === 'Oui' || s.fonctionnel === 'Partiel') && VERS_SERVICES_PLATEFORME[s.service])
@@ -581,31 +617,43 @@ export class EtablissementsComponent implements OnDestroy {
       districtSanitaire: this.form.districtSanitaire.trim(),
       zonesSante: [...this.form.zonesSante],
       aireSante: this.form.aireSante.trim(),
-      adresse: this.form.adresse.trim(),
+      // Adresse détaillée composée (étape 2), jamais ressaisie.
+      adresse: this.adresse,
       latitude: this.form.latitude,
       longitude: this.form.longitude,
       telephone: this.form.telephone.trim(),
       email: this.form.email.trim().toLowerCase(),
       responsable: nomPersonne(org.responsable) || this.form.responsable,
       fonctionResponsable: org.responsable.fonction.trim() || this.form.fonctionResponsable,
-      lits: fiche.infrastructures.litsTotal ?? this.form.lits ?? 0,
+      lits: fiche.infrastructures.litsParUnite.length ? lits : this.form.lits ?? 0,
       services: services.length ? services : this.servicesDisponibles.filter(s => this.form.services.has(s)),
       fiche: Object.keys(aEnvoyer).length ? aEnvoyer : undefined,
     };
+    // Le médecin chef est le responsable principal : identité reprise de l'étape 5.
+    const r = org.responsable;
+    const chef = this.chefEstResponsable
+      ? { ...this.chef, prenom: r.prenom, nom: r.nom, postnom: r.postnom, telephone: r.telephone }
+      : this.chef;
     const fichiers = this.nouvellesPhotos.map(p => p.fichier);
     try {
+      let e: Etablissement;
       if (this.enEdition) {
-        const e = await this.service.modifier(this.enEdition.id, donnees, this.photosConservees, fichiers);
-        this.fermer();
+        e = await this.service.modifier(this.enEdition.id, donnees, this.photosConservees, fichiers);
         const retour = e.ficheAmi?.statut === 'Brouillon' && !!this.statutFiche && this.statutFiche !== 'Brouillon';
         this.notifier(`${e.nom} a été mis à jour.${retour ? ' La fiche AMI repasse en brouillon : soumettez-la de nouveau.' : ''}`);
       } else {
-        const e = await this.service.ajouter(donnees, fichiers, medecinChefNettoye(this.chef));
-        this.fermer();
-        this.notifier(`${e.nom} est enregistré (code AMI ${e.codeAmi ?? e.code}) avec son médecin chef. Sa fiche est en brouillon : ouvrez-la pour la soumettre à vérification.`);
+        const cree = await this.service.ajouter(donnees, fichiers, medecinChefNettoye(chef));
+        e = cree;
+        this.notifier(`${cree.nom} est enregistré (code AMI ${cree.codeAmi ?? cree.code}) avec son médecin chef. Sa fiche est en brouillon : ouvrez-la pour la soumettre à vérification.`);
         // Identifiants du médecin chef : affichés une seule fois.
-        this.compteCree = { etablissement: e.nom, chef: e.medecinChef, motDePasse: e.motDePasseTemporaire };
+        this.compteCree = { etablissement: cree.nom, chef: cree.medecinChef, motDePasse: cree.motDePasseTemporaire };
       }
+      // Pièce jointe de l'acte de création : déposée une fois l'établissement enregistré.
+      if (this.pieceActe) {
+        await this.ficheService.ajouterPiece(e.id, 'acteCreation', this.pieceActe)
+          .catch(err => this.notifier(`${e.nom} est enregistré, mais la pièce jointe de l’acte n’a pas été envoyée : ${messageErreur(err)}`));
+      }
+      this.fermer();
     } catch (err) {
       this.erreurEnregistrement = messageErreur(err);
     } finally {

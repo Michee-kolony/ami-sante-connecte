@@ -4,6 +4,9 @@ import { firstValueFrom } from 'rxjs';
 import { BASE_ETABLISSEMENTS } from './espace';
 
 export type TypeEtablissement =
+  | 'Hôpital'
+  | 'Laboratoire'
+  | 'Maternité'
   | 'Hôpital général de référence'
   | 'Hôpital militaire'
   | 'Centre de santé de référence'
@@ -18,10 +21,12 @@ export type TypeEtablissement =
 export type SecteurEtablissement = 'Public' | 'Privé' | 'Confessionnel' | 'Militaire' | 'ONG';
 export type StatutEtablissement = 'Actif' | 'Suspendu';
 
+/**
+ * Types proposés (fiche « Identification générale », §1) : la nature de la structure. La catégorie
+ * (HGR, hôpital provincial, spécialisé…) est dans la fiche. Les anciens types restent lisibles.
+ */
 export const TYPES_ETABLISSEMENT: TypeEtablissement[] = [
-  'Hôpital général de référence', 'Hôpital militaire', 'Centre de santé de référence',
-  'Centre de santé', 'Poste de santé', 'Polyclinique', 'Clinique',
-  'Hôpital provincial', 'Hôpital national', 'Centre médical', 'Autre',
+  'Hôpital', 'Centre de santé', 'Centre de santé de référence', 'Clinique', 'Poste de santé', 'Laboratoire', 'Maternité', 'Autre',
 ];
 export const SECTEURS_ETABLISSEMENT: SecteurEtablissement[] = ['Public', 'Privé', 'Confessionnel', 'Militaire', 'ONG'];
 export const SERVICES_ETABLISSEMENT = [

@@ -84,16 +84,30 @@
           }
         </div>
         <div class="card p-4">
-          <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Équipements (étape 4)</p>
+          <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Équipements (étape 9)</p>
           <p class="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{{ k.equipements.taux != null ? k.equipements.taux + ' %' : '—' }}</p>
           <p class="text-xs text-slate-500">Taux de fonctionnalité · {{ k.equipements.fonctionnels }} / {{ k.equipements.total }} · {{ k.equipements.aRemplacer }} à remplacer</p>
         </div>
         <div class="card p-4">
-          <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Ressources humaines (étape 5)</p>
-          <p class="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{{ k.rh.total }} <span class="text-sm font-normal text-slate-500">agents</span></p>
-          <p class="text-xs text-slate-500">{{ k.rh.disponibles }} disponibles · {{ k.rh.indisponibles }} indisponibles</p>
+          <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Ressources humaines (étape 8)</p>
+          @if (k.personnel?.total) {
+            <p class="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{{ k.personnel!.total }} <span class="text-sm font-normal text-slate-500">agents</span></p>
+            <p class="text-xs text-slate-500">{{ k.personnel!.fonctions }} fonction(s) renseignée(s)</p>
+          } @else {
+            <p class="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{{ k.rh.total }} <span class="text-sm font-normal text-slate-500">agents</span></p>
+            <p class="text-xs text-slate-500">{{ k.rh.disponibles }} disponibles · {{ k.rh.indisponibles }} indisponibles</p>
+          }
         </div>
       </div>
+
+      @if (k.personnel?.total) {
+        <div class="card p-4">
+          <p class="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Personnel par groupe de fonctions</p>
+          <div class="grid gap-x-8 sm:grid-cols-2">
+            @for (g of k.personnel!.parGroupe; track g.groupe) { <p class="flex justify-between text-sm"><span>{{ g.groupe }}</span><b>{{ g.total }}</b></p> }
+          </div>
+        </div>
+      }
 
       @if (k.rh.total || k.rh.ecarts.length) {
         <div class="card grid gap-4 p-4 md:grid-cols-3">
@@ -189,13 +203,14 @@
           }
         </nav>
         <div class="p-5">
-          @if (etape === 1 || etape === 2 || etape === 6) {
+          @if (etapesEtablissement.includes(etape) || etape === 5 || etape === 6) {
             <p class="mb-4 text-xs text-slate-500 dark:text-slate-400">
-              @if (comite) { Nom, type, province, zones, aire, adresse, téléphone et GPS se modifient depuis la liste des établissements (bouton Modifier). }
+              @if (comite) { Nom, type, province, zones, aire, GPS, téléphone principal et e-mail se modifient depuis la liste des établissements (bouton Modifier). }
               @else { Les champs grisés sont gérés par le comité de pilotage. }
             </p>
           }
-          <app-fiche-etapes [fiche]="fiche" [etape]="etape" [role]="comite ? 'comite' : 'chef'" [soumis]="!!f.submitted" [bczs]="d.rattachement.bczs" [dps]="d.rattachement.dps" />
+          <app-fiche-etapes [fiche]="fiche" [etape]="etape" [role]="comite ? 'comite' : 'chef'" [soumis]="!!f.submitted" [type]="d.etablissement.type"
+                            [bczs]="d.rattachement.bczs" [dps]="d.rattachement.dps" (pieceActe)="ajouterPiece('acteCreation', $event)" />
         </div>
         <div class="flex items-center justify-between gap-2 border-t border-slate-100 px-5 py-3 dark:border-slate-800">
           <p class="text-xs text-slate-500">{{ modifie ? 'Modifications non enregistrées.' : 'Aucune modification en cours.' }}</p>
@@ -292,11 +307,12 @@
             </div>
 
             <div class="card p-4">
-              <h2 class="mb-2 text-sm font-semibold text-slate-900 dark:text-white"><i class="fa-solid fa-file-contract mr-1 text-brand-600"></i> Autorisation de fonctionnement (étape 3)</h2>
-              <p class="text-sm text-slate-600 dark:text-slate-300">Référence : {{ d.fiche?.organisation?.autorisation?.reference || '—' }} · date : {{ d.fiche?.organisation?.autorisation?.date || '—' }}</p>
+              @let acte = d.fiche?.identification?.acteCreation;
+              <h2 class="mb-2 text-sm font-semibold text-slate-900 dark:text-white"><i class="fa-solid fa-file-contract mr-1 text-brand-600"></i> Acte de création (étape 1)</h2>
+              <p class="text-sm text-slate-600 dark:text-slate-300">N° {{ acte?.numero || '—' }} · date : {{ acte?.date || '—' }} · autorité : {{ acte?.autorite || '—' }}</p>
               <div class="mt-2 flex flex-wrap items-center gap-2">
-                @if (d.fiche?.organisation?.autorisation?.piece; as p) { <a [href]="p.url" target="_blank" rel="noopener" class="text-sm text-brand-700 hover:underline dark:text-brand-300"><i class="fa-solid fa-file mr-1"></i>{{ p.nom }}</a> }
-                <label class="btn-secondary cursor-pointer"><i class="fa-solid fa-upload"></i> {{ d.fiche?.organisation?.autorisation?.piece ? 'Remplacer' : 'Joindre' }} la pièce<input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" class="sr-only" (change)="ajouterPiece('autorisation', $event)"></label>
+                @if (acte?.piece; as p) { <a [href]="p.url" target="_blank" rel="noopener" class="text-sm text-brand-700 hover:underline dark:text-brand-300"><i class="fa-solid fa-file mr-1"></i>{{ p.nom }}</a> }
+                <label class="btn-secondary cursor-pointer"><i class="fa-solid fa-upload"></i> {{ acte?.piece ? 'Remplacer' : 'Joindre' }} la pièce<input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" class="sr-only" (change)="ajouterPiece('acteCreation', $event)"></label>
               </div>
             </div>
           }

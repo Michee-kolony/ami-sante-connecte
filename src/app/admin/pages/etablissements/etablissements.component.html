@@ -312,41 +312,14 @@
                 <p class="mt-1.5 text-xs text-rose-600 dark:text-rose-400">Un établissement porte déjà ce nom dans cette province.</p>
               }
             </div>
-            <div>
+            <div class="sm:col-span-2">
               <label class="label" for="et-type">Type de structure <span class="req">*</span></label>
               <select id="et-type" name="type" class="input" [ngModel]="form.type" (ngModelChange)="changerType($event)" #type="ngModel" required
                       [class.border-rose-400]="type.invalid && (type.touched || f.submitted)">
                 <option value="" disabled>— Choisir —</option>
                 @for (t of types; track t) { <option [value]="t">{{ t }}</option> }
               </select>
-            </div>
-            <div>
-              <label class="label" for="et-tel">Téléphone principal <span class="req">*</span></label>
-              <input id="et-tel" name="telephone" type="tel" inputmode="tel" class="input" placeholder="+243 81 000 0000"
-                     [(ngModel)]="form.telephone" #tel="ngModel" required pattern="[+0-9 ().-]{9,20}"
-                     [class.border-rose-400]="tel.invalid && (tel.touched || f.submitted)">
-            </div>
-            <div>
-              <label class="label" for="et-email">E-mail</label>
-              <input id="et-email" name="email" type="email" class="input" placeholder="contact@…" [(ngModel)]="form.email" #mail="ngModel" email
-                     [class.border-rose-400]="mail.invalid && (mail.touched || f.submitted)">
-            </div>
-            <div class="sm:col-span-2">
-              <div class="flex items-center justify-between">
-                <span class="label">Coordonnées GPS</span>
-                <button type="button" class="mb-1.5 text-xs font-semibold text-brand-600 hover:text-brand-800 dark:text-brand-400 dark:hover:text-brand-300" (click)="localiser()" [disabled]="localisation">
-                  <i class="fa-solid" [class]="localisation ? 'fa-spinner fa-spin' : 'fa-location-crosshairs'"></i> Ma position actuelle
-                </button>
-              </div>
-              <div class="grid grid-cols-2 gap-3">
-                <input name="latitude" type="number" step="any" class="input font-mono" placeholder="Latitude (ex. -5.9475)" aria-label="Latitude"
-                       [(ngModel)]="form.latitude" [class.border-rose-400]="!coordonneesValides">
-                <input name="longitude" type="number" step="any" class="input font-mono" placeholder="Longitude (ex. 29.1947)" aria-label="Longitude"
-                       [(ngModel)]="form.longitude" [class.border-rose-400]="!coordonneesValides">
-              </div>
-              <p class="mt-1.5 text-xs" [class]="localisationErreur || !coordonneesValides ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500 dark:text-slate-400'">
-                {{ localisationErreur || (!coordonneesValides ? 'Renseignez la latitude et la longitude (degrés décimaux).' : 'Utilisées pour la carte des urgences et le contrôle des doublons.') }}
-              </p>
+              <p class="hint">La catégorie (HGR, hôpital provincial, CSR…) se précise juste en dessous, seulement quand le type ne suffit pas.</p>
             </div>
           </div>
         </div>
@@ -358,10 +331,6 @@
             <select id="et-province" name="province" class="input" [ngModel]="form.province" (ngModelChange)="changerProvince($event)" required>
               @for (p of provinces; track p) { <option [value]="p">{{ p }}</option> }
             </select>
-          </div>
-          <div>
-            <label class="label" for="et-district">District sanitaire</label>
-            <input id="et-district" name="districtSanitaire" class="input" placeholder="District sanitaire de …" [(ngModel)]="form.districtSanitaire">
           </div>
           <div class="sm:col-span-2" role="group" aria-labelledby="et-zones-titre">
             <div class="flex flex-wrap items-baseline justify-between gap-2">
@@ -405,7 +374,7 @@
               }
             </p>
           </div>
-          <div>
+          <div class="sm:col-span-2">
             <label class="label" for="et-aire">Aire de santé <span class="req">*</span></label>
             <input id="et-aire" name="aireSante" class="input" placeholder="Ex. Nyemba" list="aires-connues" [(ngModel)]="form.aireSante" #aire="ngModel" required
                    [class.border-rose-400]="aire.invalid && (aire.touched || f.submitted)" [disabled]="!form.zonesSante.length">
@@ -414,27 +383,29 @@
               {{ form.zonesSante.length ? 'Aire de la zone ' + form.zonesSante[0] + '. Une aire d’une autre zone est refusée.' : 'Choisissez d’abord la zone de santé.' }}
             </p>
           </div>
-          <div>
-            <label class="label" for="et-adresse">Adresse physique <span class="req">*</span></label>
-            <input id="et-adresse" name="adresse" class="input" placeholder="Avenue, numéro, commune" [(ngModel)]="form.adresse" #adr="ngModel" required
-                   [class.border-rose-400]="adr.invalid && (adr.touched || f.submitted)">
-          </div>
         </div>
 
-        <!-- Champs propres à la fiche AMI (étapes 1 à 9) -->
-        <app-fiche-etapes [fiche]="form.fiche" [etape]="etape" role="comite" [soumis]="!!f.submitted" [bczs]="bczs" [dps]="dps" />
+        <!-- Rubriques de la fiche « Identification générale » (étapes 1 à 10) -->
+        <app-fiche-etapes [fiche]="form.fiche" [etape]="etape" role="comite" [soumis]="!!f.submitted" [type]="form.type || null" [bczs]="bczs" [dps]="dps"
+                          [etab]="form" (pieceActe)="choisirPieceActe($event)" />
 
-        <!-- Étape 3 : compte du médecin chef (création seulement) -->
+        <!-- Étape 5 : compte du médecin chef (création seulement) -->
         @if (!enEdition) {
-          <section [hidden]="etape !== 3" class="rounded-2xl border border-brand-100 bg-brand-50/40 p-4 dark:border-brand-500/20 dark:bg-brand-500/5">
+          <section [hidden]="etape !== 5" class="rounded-2xl border border-brand-100 bg-brand-50/40 p-4 dark:border-brand-500/20 dark:bg-brand-500/5">
             <h4 class="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-300"><i class="fa-solid fa-user-doctor"></i> Compte du médecin chef de l’établissement <span class="req">*</span></h4>
-            <p class="mb-4 text-xs text-slate-600 dark:text-slate-400">Il administre l’établissement, y ajoute le personnel soignant et complète les étapes facultatives de la fiche (infrastructures, personnel, population, capacités).</p>
-            <app-champs-medecin-chef [chef]="chef" [soumis]="!!f.submitted" />
+            <p class="mb-3 text-xs text-slate-600 dark:text-slate-400">Il administre l’établissement, y ajoute le personnel soignant et complète les étapes facultatives de la fiche.</p>
+            <label class="mb-4 flex items-start gap-2 text-sm text-slate-700 dark:text-slate-200">
+              <input type="checkbox" name="chefEstResponsable" class="mt-0.5 rounded border-slate-300 text-brand-600" [(ngModel)]="chefEstResponsable">
+              <span>Le responsable principal ci-dessus est le médecin chef
+                @if (chefEstResponsable) { <span class="block text-xs text-slate-500 dark:text-slate-400">Nom, prénom, postnom et téléphone sont repris du responsable principal : ne complétez que le reste.</span> }
+              </span>
+            </label>
+            <app-champs-medecin-chef [chef]="chef" [soumis]="!!f.submitted" [identiteFournie]="chefEstResponsable" />
           </section>
         }
 
-        <!-- Étape 10 : validation et activation -->
-        <div [hidden]="etape !== 10" class="space-y-4">
+        <!-- Étape 11 : validation et activation -->
+        <div [hidden]="etape !== 11" class="space-y-4">
           <div class="grid gap-3 sm:grid-cols-3">
             <div class="card p-4"><p class="text-xs text-slate-500">Complétude estimée</p><p class="text-2xl font-bold text-slate-900 dark:text-white">{{ completudeEstimee }} %</p></div>
             <div class="card p-4"><p class="text-xs text-slate-500">Statut informatique</p><p class="mt-1"><span class="badge" [class]="classeStatut(statutFiche ?? 'Brouillon')">{{ statutFiche ?? 'Brouillon' }}</span></p></div>
@@ -472,7 +443,7 @@
         <button type="button" class="btn-secondary" (click)="fermer()">Annuler</button>
         <div class="flex flex-col-reverse gap-2 sm:flex-row">
           @if (etape > 1) { <button type="button" class="btn-secondary" (click)="allerA(etape - 1)"><i class="fa-solid fa-arrow-left"></i> Précédent</button> }
-          @if (etape < 10) { <button type="button" class="btn-secondary" (click)="allerA(etape + 1)">Suivant <i class="fa-solid fa-arrow-right"></i></button> }
+          @if (etape < etapes.length) { <button type="button" class="btn-secondary" (click)="allerA(etape + 1)">Suivant <i class="fa-solid fa-arrow-right"></i></button> }
           <button type="submit" class="btn-primary" [disabled]="enregistrement || chargementFiche">
             <i class="fa-solid" [class]="enregistrement ? 'fa-spinner fa-spin' : 'fa-hospital'"></i> {{ enEdition ? 'Enregistrer les modifications' : 'Enregistrer l’établissement' }}
           </button>

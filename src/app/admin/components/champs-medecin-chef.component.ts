@@ -33,20 +33,22 @@ export function medecinChefNettoye(c: DonneesMedecinChef): DonneesMedecinChef {
   viewProviders: [{ provide: ControlContainer, useExisting: NgForm }],
   template: `
     <div class="grid gap-4 sm:grid-cols-3">
-      <div>
-        <label class="label" for="mc-prenom">Prénom <span class="req">*</span></label>
-        <input id="mc-prenom" name="mcPrenom" class="input" required [(ngModel)]="chef.prenom" #prenom="ngModel"
-               [class.border-rose-400]="prenom.invalid && (prenom.touched || soumis)">
-      </div>
-      <div>
-        <label class="label" for="mc-nom">Nom <span class="req">*</span></label>
-        <input id="mc-nom" name="mcNom" class="input uppercase" required [(ngModel)]="chef.nom" #nom="ngModel"
-               [class.border-rose-400]="nom.invalid && (nom.touched || soumis)">
-      </div>
-      <div>
-        <label class="label" for="mc-postnom">Postnom</label>
-        <input id="mc-postnom" name="mcPostnom" class="input uppercase" [(ngModel)]="chef.postnom">
-      </div>
+      @if (!identiteFournie) {
+        <div>
+          <label class="label" for="mc-prenom">Prénom <span class="req">*</span></label>
+          <input id="mc-prenom" name="mcPrenom" class="input" required [(ngModel)]="chef.prenom" #prenom="ngModel"
+                 [class.border-rose-400]="prenom.invalid && (prenom.touched || soumis)">
+        </div>
+        <div>
+          <label class="label" for="mc-nom">Nom <span class="req">*</span></label>
+          <input id="mc-nom" name="mcNom" class="input uppercase" required [(ngModel)]="chef.nom" #nom="ngModel"
+                 [class.border-rose-400]="nom.invalid && (nom.touched || soumis)">
+        </div>
+        <div>
+          <label class="label" for="mc-postnom">Postnom</label>
+          <input id="mc-postnom" name="mcPostnom" class="input uppercase" [(ngModel)]="chef.postnom">
+        </div>
+      }
       <div>
         <label class="label" for="mc-sexe">Sexe <span class="req">*</span></label>
         <select id="mc-sexe" name="mcSexe" class="input" required [(ngModel)]="chef.sexe" #sexe="ngModel"
@@ -88,11 +90,13 @@ export function medecinChefNettoye(c: DonneesMedecinChef): DonneesMedecinChef {
         <input id="mc-adresse" name="mcAdresse" class="input" required [(ngModel)]="chef.adresse" #adresse="ngModel"
                [class.border-rose-400]="adresse.invalid && (adresse.touched || soumis)">
       </div>
-      <div>
-        <label class="label" for="mc-tel">Téléphone <span class="req">*</span></label>
-        <input id="mc-tel" name="mcTel" type="tel" class="input" required placeholder="+243 …" [(ngModel)]="chef.telephone" #tel="ngModel"
-               [class.border-rose-400]="tel.invalid && (tel.touched || soumis)">
-      </div>
+      @if (!identiteFournie) {
+        <div>
+          <label class="label" for="mc-tel">Téléphone <span class="req">*</span></label>
+          <input id="mc-tel" name="mcTel" type="tel" class="input" required placeholder="+243 …" [(ngModel)]="chef.telephone" #tel="ngModel"
+                 [class.border-rose-400]="tel.invalid && (tel.touched || soumis)">
+        </div>
+      }
       <div>
         <label class="label" for="mc-grade">Grade <span class="req">*</span></label>
         <select id="mc-grade" name="mcGrade" class="input" required [(ngModel)]="chef.grade">
@@ -122,6 +126,8 @@ export class ChampsMedecinChefComponent {
   @Input({ required: true }) chef!: DonneesMedecinChef;
   /** Formulaire déjà soumis : les champs invalides sont signalés. */
   @Input() soumis = false;
+  /** Prénom, nom, postnom et téléphone déjà saisis ailleurs (responsable principal) : pas redemandés. */
+  @Input() identiteFournie = false;
 
   readonly pieces = PIECES_IDENTITE;
   readonly grades = GRADES['Médecin'];

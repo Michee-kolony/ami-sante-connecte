@@ -3,8 +3,8 @@ import { FormsModule, NgForm } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FicheEtapesComponent } from '../../components/fiche-etapes.component';
 import {
-  ETAPES, FicheAmi, FicheComplete, FicheEtablissementService, classeStatut, ficheDepuis, filtrerPourChef, nomPersonne, sectionsAEnvoyer,
-  sectionsModifiees,
+  ETAPES, ETAPES_ETABLISSEMENT, FicheAmi, FicheComplete, FicheEtablissementService, classeStatut, ficheDepuis, filtrerPourChef, nomPersonne,
+  sectionsAEnvoyer, sectionsModifiees,
 } from '../../data/fiche-etablissement';
 import { ESPACE_COMITE } from '../../data/espace';
 import { SessionService, messageErreur } from '../../data/session.service';
@@ -28,7 +28,9 @@ export class FicheEtablissementComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private session = inject(SessionService);
   readonly comite = inject(ESPACE_COMITE);
-  readonly etapes = ETAPES.filter(e => e.n !== 8 && e.n !== 10);
+  /** Étapes saisissables ici (la validation a son propre onglet). */
+  readonly etapes = ETAPES.filter(e => e.n !== ETAPES.length);
+  readonly etapesEtablissement = ETAPES_ETABLISSEMENT;
   readonly classeStatut = classeStatut;
   readonly nomPersonne = nomPersonne;
 
@@ -39,7 +41,8 @@ export class FicheEtablissementComponent implements OnInit {
   chargement = true;
   erreur = '';
   onglet: Onglet = 'synthese';
-  etape = 4;
+  /** Première étape complétable par le médecin chef (population cible). */
+  etape = 3;
   enregistrement = false;
   message = '';
   erreurAction = '';
@@ -51,7 +54,7 @@ export class FicheEtablissementComponent implements OnInit {
 
   ngOnInit(): void {
     this.id = this.route.snapshot.paramMap.get('id') ?? this.session.etablissement()?.id ?? '';
-    // Médecin chef : il complète d'abord les étapes facultatives (4, 5, 7, 9).
+    // Médecin chef : il complète d'abord les étapes facultatives (population, infrastructures, personnel…).
     if (!this.comite) this.onglet = 'saisie';
     this.charger();
   }
@@ -95,7 +98,7 @@ export class FicheEtablissementComponent implements OnInit {
   async enregistrer(f: NgForm): Promise<void> {
     if (!this.fiche || this.enregistrement) return;
     if (f.invalid) {
-      this.erreurAction = 'Vérifiez les champs signalés (équipement sans nom, agent sans nom ou profession, année sans population).';
+      this.erreurAction = 'Vérifiez les champs signalés (équipement ou unité de lits sans nom, année sans population, contact sans service).';
       return;
     }
     const sections = this.aEnvoyer();
@@ -139,10 +142,14 @@ export class FicheEtablissementComponent implements OnInit {
     this.executer('verifier', { ...v, motifs: v.motifs.split('\n').map(m => m.trim()).filter(Boolean) });
   }
 
-  async ajouterPiece(type: 'autorisation' | 'verification', event: Event): Promise<void> {
-    const input = event.target as HTMLInputElement;
-    const fichier = input.files?.[0];
-    input.value = '';
+  async ajouterPiece(type: 'acteCreation' | 'autorisation' | 'verification', event: Event | File): Promise<void> {
+    let fichier: File | undefined;
+    if (event instanceof File) fichier = event;
+    else {
+      const input = event.target as HTMLInputElement;
+      fichier = input.files?.[0];
+      input.value = '';
+    }
     if (!fichier) return;
     if (fichier.size > 10 * 1024 * 1024) {
       this.erreurAction = 'Le fichier dépasse 10 Mo.';
