@@ -377,10 +377,9 @@
               @let etat = etatService(s);
               <div class="flex items-center justify-between gap-3 px-3 py-1.5" [class]="ouvreModule(s) ? 'bg-brand-50/40 dark:bg-brand-500/5' : ''">
                 <span class="text-sm text-slate-700 dark:text-slate-200">{{ libelleService(s) }}@if (ouvreModule(s)) { <i class="fa-solid fa-puzzle-piece ml-1 text-brand-500" title="Ouvre un module AMI"></i> }</span>
-                <select [class]="petit" [attr.aria-label]="libelleService(s)" [ngModel]="etat" (ngModelChange)="definirEtatService(s, $event)" [ngModelOptions]="{ standalone: true }"
-                        [class.text-accent-700]="etat === 'Fonctionnel'" [class.font-semibold]="etat === 'Fonctionnel'" [class.text-amber-700]="etat === 'Partiel'" [class.text-rose-700]="etat === 'Non fonctionnel'">
-                  <option value="">—</option>
-                  @for (e of etatsService; track e) { <option [value]="e">{{ e }}</option> }
+                <select [class]="classeEtatService(etat)" [attr.aria-label]="libelleService(s)" [ngModel]="etat" (ngModelChange)="definirEtatService(s, $event)" [ngModelOptions]="{ standalone: true }">
+                  <option value="" [class]="classeOptionService('')">— Choisir —</option>
+                  @for (e of etatsService; track e) { <option [value]="e" [class]="classeOptionService(e)">{{ e }}</option> }
                 </select>
               </div>
             }

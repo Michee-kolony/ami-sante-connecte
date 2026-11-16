@@ -249,6 +249,27 @@ export class FicheEtapesComponent implements OnInit, OnChanges {
   }
 
   // --- 6. Services et activités ------------------------------------------------------------------
+  /** Liste déroulante d'un service : grande, contrastée, colorée selon l'état choisi. */
+  classeEtatService(etat: EtatService): string {
+    const base = 'w-44 shrink-0 cursor-pointer rounded-lg border-2 px-3 py-2 text-sm font-semibold shadow-sm transition focus:outline-none focus:ring-4 focus:ring-brand-500/20 disabled:cursor-not-allowed disabled:opacity-70';
+    switch (etat) {
+      case 'Fonctionnel': return `${base} border-emerald-600 bg-emerald-50 text-emerald-900 dark:border-emerald-400 dark:bg-emerald-500/20 dark:text-emerald-100`;
+      case 'Partiel': return `${base} border-amber-500 bg-amber-50 text-amber-900 dark:border-amber-400 dark:bg-amber-500/20 dark:text-amber-100`;
+      case 'Non fonctionnel': return `${base} border-rose-600 bg-rose-50 text-rose-900 dark:border-rose-400 dark:bg-rose-500/20 dark:text-rose-100`;
+      case 'Absent': return `${base} border-slate-500 bg-slate-100 text-slate-900 dark:border-slate-400 dark:bg-slate-700 dark:text-white`;
+      default: return `${base} border-slate-400 bg-white text-slate-900 dark:border-slate-500 dark:bg-slate-800 dark:text-white`;
+    }
+  }
+  /** Choix de la liste ouverte : texte foncé et gras sur fond clair (sombre en mode sombre). */
+  classeOptionService(etat: EtatService): string {
+    switch (etat) {
+      case 'Fonctionnel': return 'bg-white font-semibold text-emerald-800 dark:bg-slate-900 dark:text-emerald-300';
+      case 'Partiel': return 'bg-white font-semibold text-amber-800 dark:bg-slate-900 dark:text-amber-300';
+      case 'Non fonctionnel': return 'bg-white font-semibold text-rose-800 dark:bg-slate-900 dark:text-rose-300';
+      case 'Absent': return 'bg-white font-semibold text-slate-900 dark:bg-slate-900 dark:text-white';
+      default: return 'bg-white font-semibold text-slate-600 dark:bg-slate-900 dark:text-slate-300';
+    }
+  }
   libelleService(nom: string): string {
     return this.catalogue?.libellesService[this.profil]?.[nom] ?? nom;
   }
