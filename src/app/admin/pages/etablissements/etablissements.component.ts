@@ -37,8 +37,9 @@ function formulaireDepuis(e: Etablissement) {
     // Ancien type (ex. « Hôpital général de référence ») : repris en type + catégorie.
     nom: e.nom, type: (TYPES_ANCIENS[e.type]?.type ?? e.type) as TypeEtablissement | '', secteur: e.secteur as SecteurEtablissement | '',
     province: e.province, districtSanitaire: e.districtSanitaire ?? '',
-    // Seules les zones du référentiel sont reprises (les anciennes saisies libres sont à re-choisir).
-    zonesSante: zonesEtablissement(e).filter(z => zonesDeProvince(e.province).includes(z)),
+    // Une seule zone, prise du référentiel (les anciennes saisies libres sont à re-choisir ;
+    // pour les fiches enregistrées avec plusieurs zones, seule la principale est gardée).
+    zonesSante: zonesEtablissement(e).filter(z => zonesDeProvince(e.province).includes(z)).slice(0, 1),
     aireSante: e.aireSante, adresse: e.adresse,
     latitude: e.latitude, longitude: e.longitude,
     telephone: e.telephone, email: e.email, responsable: e.responsable, fonctionResponsable: e.fonctionResponsable, lits: e.lits,
@@ -339,11 +340,14 @@ export class EtablissementsComponent implements OnDestroy {
     this.chargerAires();
   }
 
-  /** Coche ou décoche une zone ; l'ordre de sélection est gardé (la première est la zone principale). */
+  /** Choisit la zone de santé (une seule) ; un second clic sur la zone choisie la retire. */
   basculerZone(z: string): void {
-    const zones = this.form.zonesSante;
-    this.form.zonesSante = zones.includes(z) ? zones.filter(x => x !== z) : [...zones, z];
-    if (this.form.zonesSante[0] !== zones[0]) this.chargerAires();
+    const avant = this.form.zonesSante[0];
+    this.form.zonesSante = avant === z ? [] : [z];
+    if (this.form.zonesSante[0] !== avant) {
+      this.form.aireSante = '';
+      this.chargerAires();
+    }
   }
 
   // --- Fiche AMI : assistant en 10 étapes ----------------------------------------------
@@ -466,11 +470,6 @@ export class EtablissementsComponent implements OnDestroy {
   /** Adresse détaillée composée à partir de l'étape 2 (l'ancienne adresse libre sert à défaut). */
   get adresse(): string {
     return adresseComposee(this.form.fiche.localisation) || this.form.adresse.trim();
-  }
-
-  /** Coche toutes les zones affichées (après filtre), sans changer la zone principale. */
-  toutesLesZones(): void {
-    this.form.zonesSante = [...this.form.zonesSante, ...this.zonesProvince.filter(z => !this.form.zonesSante.includes(z))];
   }
 
   aucuneZone(): void {
